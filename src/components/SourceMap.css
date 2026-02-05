@@ -4,3 +4,8 @@
   overflow: auto;
   border: 2px solid white;
 }
+
+.slider {
+  padding: 10px;
+  padding-top: 30px;
+}

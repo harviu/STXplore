@@ -8,8 +8,13 @@ import './SourceMap.css';
 
 function SourceMap() {
   const svgRef = useRef();
-  const maps = {c: comm, b:beat, d:district}
-  const [selectedMap, setSelectedMap] = useState('c');
+  const maps = {sc: comm, sb:beat, sd:district}
+  const [selectedMap, setSelectedMap] = useState('sc');
+  const [sliderValue, setSliderValue] = useState(50);
+
+  const handleSlider = (event) => {
+    setSliderValue(event.target.value);
+  };
 
   const mapChange = (event) => {
     setSelectedMap(event.target.value);
@@ -48,19 +53,23 @@ function SourceMap() {
       <div className="source">
         <h2>Source</h2>
         <div>
-          <input type="radio" id="Community" name="SMaps" value='c' checked={selectedMap === 'c'} onChange={mapChange}/>
-          <label htmlFor="Community">Community Area Map</label>
+          <input type="radio" id="SCommunity" name="SMaps" value='sc' checked={selectedMap === 'sc'} onChange={mapChange}/>
+          <label htmlFor="SCommunity">Community Area Map</label>
           <span>    </span>
-          <input type="radio" id="Beats" name="SMaps" value='b' checked={selectedMap === 'b'} onChange={mapChange}/>
-          <label htmlFor="Beats">Police Beats Map</label>
+          <input type="radio" id="SBeats" name="SMaps" value='sb' checked={selectedMap === 'sb'} onChange={mapChange}/>
+          <label htmlFor="SBeats">Police Beats Map</label>
           <span>    </span>
-          <input type="radio" id="Districts" name="SMaps" value='d' checked={selectedMap === 'd'} onChange={mapChange}/>
-          <label htmlFor="Districts">Police Districts Map</label>
+          <input type="radio" id="SDistricts" name="SMaps" value='sd' checked={selectedMap === 'sd'} onChange={mapChange}/>
+          <label htmlFor="SDistricts">Police Districts Map</label>
         </div>
         <div id="content">
           <svg ref={svgRef} width="600" height="600">
             <g className="map"></g>
           </svg>
+        </div>
+        <div className="slider">
+          <label htmlFor="sliderBar"> View {sliderValue} days ago</label>
+          <input type="range" id="sliderBar" min="1" max="365" value={sliderValue} onChange={handleSlider}/>
         </div>
       </div>
     </>

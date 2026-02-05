@@ -8,8 +8,8 @@ import './TargetMap.css';
 
 function TargetMap() {
   const svgRef = useRef();
-  const maps = {c: comm, b:beat, d:district}
-  const [selectedMap, setSelectedMap] = useState('c');
+  const maps = {tc: comm, tb:beat, td:district}
+  const [selectedMap, setSelectedMap] = useState('tc');
 
   const mapChange = (event) => {
     setSelectedMap(event.target.value);
@@ -48,14 +48,14 @@ function TargetMap() {
       <div className="target">
         <h2>Target</h2>
         <div>
-          <input type="radio" id="Community" name="TMaps" value='c' checked={selectedMap === 'c'} onChange={mapChange}/>
-          <label htmlFor="Community">Community Area Map</label>
+          <input type="radio" id="TCommunity" name="TMaps" value='tc' checked={selectedMap === 'tc'} onChange={mapChange}/>
+          <label htmlFor="TCommunity">Community Area Map</label>
           <span>    </span>
-          <input type="radio" id="Beats" name="TMaps" value='b' checked={selectedMap === 'b'} onChange={mapChange}/>
-          <label htmlFor="Beats">Police Beats Map</label>
+          <input type="radio" id="TBeats" name="TMaps" value='tb' checked={selectedMap === 'tb'} onChange={mapChange}/>
+          <label htmlFor="TBeats">Police Beats Map</label>
           <span>    </span>
-          <input type="radio" id="Districts" name="TMaps" value='d' checked={selectedMap === 'd'} onChange={mapChange}/>
-          <label htmlFor="Districts">Police Districts Map</label>
+          <input type="radio" id="TDistricts" name="TMaps" value='td' checked={selectedMap === 'td'} onChange={mapChange}/>
+          <label htmlFor="TDistricts">Police Districts Map</label>
         </div>
         <div id="content">
           <svg ref={svgRef} width="600" height="600">
