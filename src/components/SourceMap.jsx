@@ -1,3 +1,4 @@
+
 import { useEffect, useMemo, useRef, useState } from "react";
 import { select, geoPath, geoMercator } from "d3";
 
@@ -5,18 +6,18 @@ import comm from "../../data/Chicago-Data/Boundries/CommAreas_20250306/chicagoCo
 import beat from "../../data/Chicago-Data/Boundries/PoliceBeatDec2012_20250225/beats.json";
 import district from "../../data/Chicago-Data/Boundries/PoliceDistrictDec2012_20250128/district.json";
 
-function Map() {
+function SourceMap() {
   console.log("Map component rendered");  
   const wrapperRef = useRef(null);
   const svgRef = useRef(null);
 
-  const maps = useMemo(() => ({ c: comm, b: beat, d: district }), []);
+  const maps = useMemo(() => ({ sc: comm, sb: beat, sd: district }), []);
 
   console.log("COMM SAMPLE:", comm.features[0].properties);
   console.log("BEAT SAMPLE:", beat.features[0].properties);
   console.log("DISTRICT SAMPLE:", district.features[0].properties);
 
-  const [selectedMap, setSelectedMap] = useState("c");
+  const [selectedMap, setSelectedMap] = useState("sc");
 
   // Responsive sizing (updates when window size changes)
   const [size, setSize] = useState({ width: 900, height: 650 });
@@ -61,27 +62,29 @@ function Map() {
     const svg = select(svgRef.current);
     const g = svg.select(".map");
 
+
     // Make svg scale to container
     svg.attr("viewBox", `0 0 ${size.width} ${size.height}`).attr("preserveAspectRatio", "xMidYMid meet");
 
     const projection = geoMercator().fitSize([size.width, size.height], data);
     const pathGen = geoPath(projection);
 
+
     // Helper to get a stable id + label for any feature
     const getFeatureId = (d) => {
-      if (selectedMap === "c") return d.properties.area_num_1;
-      if (selectedMap === "b") return d.properties.beat_num;
-      if (selectedMap === "d") return d.properties.dist_num;
+      if (selectedMap === "sc") return d.properties.area_num_1;
+      if (selectedMap === "sb") return d.properties.beat_num;
+      if (selectedMap === "sd") return d.properties.dist_num;
     };
 
     const getFeatureLabel = (d) => {
-      if (selectedMap === "c")
+      if (selectedMap === "sc")
         return `${d.properties.community} (Community Area ${d.properties.area_num_1})`;
     
-      if (selectedMap === "b")
+      if (selectedMap === "sb")
         return `Beat ${d.properties.beat_num} — District ${d.properties.district}`;
     
-      if (selectedMap === "d")
+      if (selectedMap === "sd")
         return `District ${d.properties.dist_label}`;
     
       return "Unknown";
@@ -131,38 +134,39 @@ function Map() {
   return (
     <>
       <div style={{ textAlign: "center", marginBottom: 8 }}>
+        <h2>Source Map</h2>
         <div>
           <input
             type="radio"
-            id="Community"
-            name="Maps"
-            value="c"
-            checked={selectedMap === "c"}
+            id="SCommunity"
+            name="SMaps"
+            value="sc"
+            checked={selectedMap === "sc"}
             onChange={mapChange}
           />
-          <label htmlFor="Community"> Community Area Map</label>
+          <label htmlFor="SCommunity"> Community Area Map</label>
         </div>
         <div>
           <input
             type="radio"
-            id="Beats"
-            name="Maps"
-            value="b"
-            checked={selectedMap === "b"}
+            id="SBeats"
+            name="SMaps"
+            value="sb"
+            checked={selectedMap === "sb"}
             onChange={mapChange}
           />
-          <label htmlFor="Beats"> Police Beats Map</label>
+          <label htmlFor="SBeats"> Police Beats Map</label>
         </div>
         <div>
           <input
             type="radio"
-            id="Districts"
-            name="Maps"
-            value="d"
-            checked={selectedMap === "d"}
+            id="SDistricts"
+            name="SMaps"
+            value="sd"
+            checked={selectedMap === "sd"}
             onChange={mapChange}
           />
-          <label htmlFor="Districts"> Police Districts Map</label>
+          <label htmlFor="SDistricts"> Police Districts Map</label>
         </div>
 
         {selectedId && (
@@ -213,4 +217,4 @@ function Map() {
   );
 }
 
-export default Map;
+export default SourceMap;

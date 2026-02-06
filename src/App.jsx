@@ -1,11 +1,15 @@
 import './App.css'
-import Map from './components/Map.jsx'
+import TargetMap from './components/TargetMap.jsx'
+import SourceMap from './components/SourceMap.jsx'
 
 function App() {
   return (
     <>
       <h1>Chicago Map</h1>
-      <Map />
+      <div className="maps">
+        <SourceMap />
+        <TargetMap />
+      </div>
     </>
   )
 }
