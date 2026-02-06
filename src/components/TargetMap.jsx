@@ -33,6 +33,13 @@ function TargetMap() {
   // Click-selected feature id (so selection persists)
   const [selectedId, setSelectedId] = useState(null);
 
+  //Slider for future date
+  const [futureSliderValue, setFutureSliderValue] = useState(30);
+
+  const handleFutureSlider = (event) => {
+    setFutureSliderValue(event.target.value);
+  };
+
   const mapChange = (event) => {
     setSelectedMap(event.target.value);
     setSelectedId(null); // reset selection when switching map type
@@ -213,6 +220,10 @@ function TargetMap() {
           </div>
         )}
       </div>
+      <div className="futureSlider">
+          <label htmlFor="futureSliderBar"> Predict {futureSliderValue} days from now</label>
+          <input type="range" id="futureSliderBar" min="1" max="365" value={futureSliderValue} onChange={handleFutureSlider}/>
+        </div>
     </>
   );
 }

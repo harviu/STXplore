@@ -33,6 +33,13 @@ function SourceMap() {
   // Click-selected feature id (so selection persists)
   const [selectedId, setSelectedId] = useState(null);
 
+  //Slider to select past day
+  const [sliderValue, setSliderValue] = useState(90);
+
+  const handleSlider = (event) => {
+    setSliderValue(event.target.value);
+  };
+
   const mapChange = (event) => {
     setSelectedMap(event.target.value);
     setSelectedId(null); // reset selection when switching map type
@@ -212,6 +219,10 @@ function SourceMap() {
             {tooltip.text}
           </div>
         )}
+      </div>
+      <div className="slider">
+        <label htmlFor="sliderBar"> View {sliderValue} days ago</label>
+        <input type="range" id="sliderBar" min="1" max="365" value={sliderValue} onChange={handleSlider}/>
       </div>
     </>
   );
