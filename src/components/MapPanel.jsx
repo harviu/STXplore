@@ -15,7 +15,7 @@ function useResizeObserverSize() {
     const ro = new ResizeObserver(() => {
       const rect = el.getBoundingClientRect();
       const w = Math.max(0, Math.floor(rect.width));
-      const h = Math.max(0, Math.floor(rect.height)); // IMPORTANT: no forced 400px min
+      const h = Math.max(0, Math.floor(rect.height));
       setSize({ width: w, height: h });
     });
 
@@ -143,8 +143,6 @@ export default function MapPanel({ onSelectionChange }) {
           District
         </label>
       </div>
-
-      {/* ONE padded content box for: map + slider (so slider never "falls outside") */}
       <div
         style={{
           flex: "1 1 auto",
@@ -158,7 +156,7 @@ export default function MapPanel({ onSelectionChange }) {
           gap: 10,
         }}
       >
-        {/* Map area shrinks/grows; slider stays visible */}
+        {/* Map area*/}
         <div
           ref={mapWrapRef}
           style={{

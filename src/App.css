@@ -48,7 +48,6 @@ body {
   padding: 12px 16px;
 }
 
-/* Top row fills the remaining viewport height under the header */
 .topRow {
   display: grid;
   grid-template-columns: 4fr 1fr; /* 80/20 */
@@ -64,7 +63,6 @@ body {
   min-height: 0;
 }
 
-/* Side panel scrolls internally if long */
 .sideCell {
   overflow: hidden;
 }
