@@ -3,6 +3,7 @@ import Panel from "./Panel.jsx";
 import GeoMap from "./GeoMap.jsx";
 import { BOUNDARY_GEO, getBoundaryId, getBoundaryLabel } from "../lib/boundaries.js";
 import { indexById } from "../lib/indexById.js";
+import { loadDummyCrimeCounts } from "../lib/dummyCrimeData.js";
 
 function useResizeObserverSize() {
   const ref = useRef(null);
@@ -39,6 +40,9 @@ export default function MapPanel({ onSelectionChange }) {
   const [futureDays, setFutureDays] = useState(30);
 
   const [hover, setHover] = useState(null);
+  
+  // Crime counts state (using dummy data for visualization)
+  const [crimeCounts, setCrimeCounts] = useState(null);
 
   // Bind controls to the active entity
   const layer = activeMode === "source" ? sourceLayer : targetLayer;
@@ -51,6 +55,33 @@ export default function MapPanel({ onSelectionChange }) {
 
   const getId = useMemo(() => (f) => getBoundaryId(layer, f), [layer]);
   const getLabel = useMemo(() => (f) => getBoundaryLabel(layer, f), [layer]);
+
+  // Load dummy crime counts for source mode
+  useEffect(() => {
+    if (activeMode !== "source") {
+      setCrimeCounts(null);
+      return;
+    }
+    
+    let mounted = true;
+    
+    loadDummyCrimeCounts(pastDays, layer)
+      .then(counts => {
+        if (mounted) {
+          setCrimeCounts(counts);
+        }
+      })
+      .catch(error => {
+        console.error('Error loading dummy crime data:', error);
+        if (mounted) {
+          setCrimeCounts(null);
+        }
+      });
+    
+    return () => {
+      mounted = false;
+    };
+  }, [activeMode, layer, pastDays]);
 
   function makeSelection(mode, layerX, idX, daysX) {
     if (!idX) return null;
@@ -176,6 +207,7 @@ export default function MapPanel({ onSelectionChange }) {
             getLabel={getLabel}
             onSelectId={setSelectedId}
             onHover={setHover}
+            crimeCounts={crimeCounts}
           />
         </div>
 

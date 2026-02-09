@@ -1,5 +1,5 @@
-import { useEffect, useRef } from "react";
-import { select, geoPath, geoMercator } from "d3";
+import { useEffect, useRef, useMemo } from "react";
+import { select, geoPath, geoMercator, scaleSequential, interpolateYlOrRd } from "d3";
 
 /**
  * Controlled D3 Geo map.
@@ -16,8 +16,24 @@ export default function GeoMap({
     getLabel,
     onSelectId,
     onHover,
+    crimeCounts, // Map<string, number> - boundary ID to crime count
 }) {
     const svgRef = useRef(null);
+
+    // Create color scale based on crime counts
+    const colorScale = useMemo(() => {
+        if (!crimeCounts || crimeCounts.size === 0) {
+            return null;
+        }
+        
+        const counts = Array.from(crimeCounts.values());
+        const maxCount = Math.max(...counts, 1);
+        const minCount = Math.min(...counts, 0);
+        
+        // Use yellow-orange-red color scheme for heat map
+        return scaleSequential(interpolateYlOrRd)
+            .domain([minCount, maxCount]);
+    }, [crimeCounts]);
 
     useEffect(() => {
         if (!svgRef.current || !geo) return;
@@ -30,7 +46,18 @@ export default function GeoMap({
         const projection = geoMercator().fitSize([width, height], geo);
         const pathGen = geoPath(projection);
 
-        const fillFor = (d) => (getId(d) === selectedId ? "#ff9f1c" : "#ccc");
+        const fillFor = (d) => {
+            const id = getId(d);
+            if (id === selectedId) return "#ff9f1c";
+            
+            // Use heat map color if available, otherwise default gray
+            if (colorScale && crimeCounts) {
+                const count = crimeCounts.get(id) || 0;
+                return colorScale(count);
+            }
+            return "#ccc";
+        };
+        
         const strokeWFor = (d) => (getId(d) === selectedId ? 1.5 : 0.6);
 
         g.selectAll("path")
@@ -43,15 +70,37 @@ export default function GeoMap({
             .style("cursor", "pointer")
             .on("mouseenter", (event, d) => {
                 const id = getId(d);
-                if (id !== selectedId) select(event.currentTarget).attr("fill", "#e72");
-                onHover?.({ x: event.clientX, y: event.clientY, text: getLabel(d) });
+                if (id !== selectedId) {
+                    // Darken on hover - use opacity for heat map colors
+                    const currentFill = select(event.currentTarget).attr("fill");
+                    if (currentFill !== "#ccc") {
+                        select(event.currentTarget).attr("opacity", "0.8");
+                    } else {
+                        select(event.currentTarget).attr("fill", "#e72");
+                    }
+                }
+                
+                // Update tooltip with crime count if available
+                let tooltipText = getLabel(d);
+                if (crimeCounts) {
+                    const count = crimeCounts.get(id) || 0;
+                    tooltipText += ` - ${count} crime${count !== 1 ? 's' : ''}`;
+                }
+                onHover?.({ x: event.clientX, y: event.clientY, text: tooltipText });
             })
             .on("mousemove", (event, d) => {
-                onHover?.({ x: event.clientX, y: event.clientY, text: getLabel(d) });
+                const id = getId(d);
+                let tooltipText = getLabel(d);
+                if (crimeCounts) {
+                    const count = crimeCounts.get(id) || 0;
+                    tooltipText += ` - ${count} crime${count !== 1 ? 's' : ''}`;
+                }
+                onHover?.({ x: event.clientX, y: event.clientY, text: tooltipText });
             })
             .on("mouseleave", (event, d) => {
-                // restore correct fill
+                // restore correct fill and opacity
                 select(event.currentTarget).attr("fill", fillFor(d));
+                select(event.currentTarget).attr("opacity", "1");
                 onHover?.(null);
             })
             .on("click", (event, d) => {
@@ -66,7 +115,7 @@ export default function GeoMap({
         return () => {
             svg.on("click", null);
         };
-    }, [geo, width, height, selectedId, getId, getLabel, onSelectId, onHover]);
+    }, [geo, width, height, selectedId, getId, getLabel, onSelectId, onHover, colorScale, crimeCounts]);
 
     return (
         <svg ref={svgRef} style={{ width: "100%", height: "100%", display: "block" }}>
