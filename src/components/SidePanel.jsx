@@ -2,7 +2,7 @@ import Panel from "./Panel.jsx";
 
 export default function SidePanel({ selection }) {
   return (
-    <Panel title="Selection" fill style={{ minHeight: 0, maxHeight: "625px"}}>
+    <Panel title="Current Selection" fill style={{ minHeight: 0, maxHeight: "625px"}}>
     <div style={{ padding: "5%", boxSizing: "border-box", overflow: "auto", flex: 1, minHeight: 0 }}>
       {!selection ? (
         <p style={{ opacity: 0.8, marginTop: 0 }}>Click a boundary to see details.</p>

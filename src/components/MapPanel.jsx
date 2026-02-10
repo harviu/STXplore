@@ -135,7 +135,7 @@ export default function MapPanel({ onSelectionChange }) {
   const { ref: mapWrapRef, size } = useResizeObserverSize();
 
   return (
-    <Panel title="Map" fill style={{ minHeight: 0, maxHeight: "625px" }}>
+    <Panel title="Map of Chicago" fill style={{ minHeight: 0, maxHeight: "625px" }}>
       {/* Controls */}
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
         <strong>Entity:</strong>
