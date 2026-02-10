@@ -29,6 +29,7 @@ function useResizeObserverSize() {
 
 export default function MapPanel({ onSelectionChange }) {
   const [activeMode, setActiveMode] = useState("source"); // "source" | "target"
+  const [inactiveMode, setInactiveMode] = useState("target");
 
   const [sourceLayer, setSourceLayer] = useState("community");
   const [targetLayer, setTargetLayer] = useState("community");
@@ -43,6 +44,16 @@ export default function MapPanel({ onSelectionChange }) {
   
   // Crime counts state (using dummy data for visualization)
   const [crimeCounts, setCrimeCounts] = useState(null);
+
+  const handleClickSource = () => {
+    setActiveMode("source");
+    setInactiveMode("target");
+  }
+
+  const handleClickTarget = () => {
+    setActiveMode("target");
+    setInactiveMode("source");
+  }
 
   // Bind controls to the active entity
   const layer = activeMode === "source" ? sourceLayer : targetLayer;
@@ -115,10 +126,11 @@ export default function MapPanel({ onSelectionChange }) {
   useEffect(() => {
     onSelectionChange?.({
       activeMode,
+      inactiveMode,
       source: sourceSelection,
       target: targetSelection,
     });
-  }, [activeMode, sourceSelection, targetSelection, onSelectionChange]);
+  }, [activeMode, sourceSelection, targetSelection, onSelectionChange, inactiveMode]);
 
   const { ref: mapWrapRef, size } = useResizeObserverSize();
 
@@ -127,10 +139,10 @@ export default function MapPanel({ onSelectionChange }) {
       {/* Controls */}
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
         <strong>Entity:</strong>
-        <button onClick={() => setActiveMode("source")} disabled={activeMode === "source"}>
+        <button onClick={handleClickSource} disabled={activeMode === "source"}>
           Source
         </button>
-        <button onClick={() => setActiveMode("target")} disabled={activeMode === "target"}>
+        <button onClick={handleClickTarget} disabled={activeMode === "target"}>
           Target
         </button>
 

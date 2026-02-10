@@ -8,11 +8,13 @@ import DashboardPanel from "./components/DashboardPanel.jsx";
 export default function App() {
   const [state, setState] = useState({
     activeMode: "source",
+    inactiveMode: "target",
     source: null,
     target: null,
   });
 
   const activeSelection = state[state.activeMode];
+  const inactiveSelection = state[state.inactiveMode];
 
   return (
     <div className="app">
@@ -32,7 +34,7 @@ export default function App() {
         </section>
 
         <section className="dashRow">
-          <DashboardPanel selection={activeSelection} />
+          <DashboardPanel selection={activeSelection} inactiveSelection={inactiveSelection}/>
         </section>
       </main>
     </div>
