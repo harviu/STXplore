@@ -102,9 +102,9 @@ function TargetMap() {
       .data(data.features, (d) => getFeatureId(d))
       .join("path")
       .attr("d", pathGen)
-      .attr("fill", (d) => (getFeatureId(d) === selectedId ? "#ff9f1c" : "#ccc"))
+      .attr("fill", (d) => (getFeatureId(d) === selectedId ? "#2563eb" : "#ccc"))
       .attr("stroke", "#fff")
-      .attr("stroke-width", (d) => (getFeatureId(d) === selectedId ? 1.5 : 0.6))
+      .attr("stroke-width", (d) => (getFeatureId(d) === selectedId ? 2.5 : 1.2))
       .style("cursor", "pointer")
       .on("mouseenter", (event, d) => {
         // highlight on hover (without breaking selected highlight)
@@ -128,7 +128,7 @@ function TargetMap() {
       .on("mouseleave", (event, d) => {
         const id = getFeatureId(d);
         // restore correct fill
-        select(event.currentTarget).attr("fill", id === selectedId ? "#ff9f1c" : "#ccc");
+        select(event.currentTarget).attr("fill", id === selectedId ? "#2563eb" : "#ccc");
 
         setTooltip((t) => ({ ...t, visible: false }));
       })

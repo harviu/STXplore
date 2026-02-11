@@ -48,7 +48,7 @@ export default function GeoMap({
 
         const fillFor = (d) => {
             const id = getId(d);
-            if (id === selectedId) return "#ff9f1c";
+            if (id === selectedId) return "#2563eb";
             
             // Use heat map color if available, otherwise default gray
             if (colorScale && crimeCounts) {
@@ -58,7 +58,7 @@ export default function GeoMap({
             return "#ccc";
         };
         
-        const strokeWFor = (d) => (getId(d) === selectedId ? 1.5 : 0.6);
+        const strokeWFor = (d) => (getId(d) === selectedId ? 2.5 : 1.2);
 
         g.selectAll("path")
             .data(geo.features, (d) => getId(d))
