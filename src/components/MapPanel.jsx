@@ -232,7 +232,7 @@ export default function MapPanel({ onSelectionChange }) {
                 id="pastDays"
                 type="range"
                 min="1"
-                max="365"
+                max="90"
                 value={pastDays}
                 onChange={(e) => setPastDays(Number(e.target.value))}
                 style={{ width: "100%" }}
@@ -245,7 +245,7 @@ export default function MapPanel({ onSelectionChange }) {
                 id="futureDays"
                 type="range"
                 min="1"
-                max="365"
+                max="30"
                 value={futureDays}
                 onChange={(e) => setFutureDays(Number(e.target.value))}
                 style={{ width: "100%" }}

@@ -222,7 +222,7 @@ function SourceMap() {
       </div>
       <div className="slider">
         <label htmlFor="sliderBar"> View {sliderValue} days ago</label>
-        <input type="range" id="sliderBar" min="1" max="365" value={sliderValue} onChange={handleSlider}/>
+        <input type="range" id="sliderBar" min="1" max="90" value={sliderValue} onChange={handleSlider}/>
       </div>
     </>
   );

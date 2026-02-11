@@ -222,7 +222,7 @@ function TargetMap() {
       </div>
       <div className="futureSlider">
           <label htmlFor="futureSliderBar"> Predict {futureSliderValue} days from now</label>
-          <input type="range" id="futureSliderBar" min="1" max="365" value={futureSliderValue} onChange={handleFutureSlider}/>
+          <input type="range" id="futureSliderBar" min="1" max="30" value={futureSliderValue} onChange={handleFutureSlider}/>
         </div>
     </>
   );
