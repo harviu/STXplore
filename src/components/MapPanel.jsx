@@ -199,29 +199,57 @@ export default function MapPanel({ onSelectionChange }) {
           gap: 10,
         }}
       >
-        {/* Map area*/}
-        <div
-          ref={mapWrapRef}
-          style={{
-            flex: "1 1 auto",
-            minHeight: 0,
-            width: "100%",
-            position: "relative",
-            overflow: "hidden",
-          }}
-        >
-          <GeoMap
-            geo={geo}
-            width={size.width}
-            height={size.height}
-            selectedId={selectedId}
-            getId={getId}
-            getLabel={getLabel}
-            onSelectId={setSelectedId}
-            onHover={setHover}
-            crimeCounts={crimeCounts}
-          />
+        <div style={{ display: "flex", flex: "1 1 auto", flexDirection: "row", height: "100%" }}>
+          {/* Map area 1*/}
+          <div
+            ref={mapWrapRef}
+            style={{
+              flex: "1 1 auto",
+              minHeight: 0,
+              width: "100%",
+              position: "relative",
+              overflow: "hidden",
+            }}
+          >
+            <GeoMap
+              geo={geo}
+              width={size.width/2}
+              height={size.height/2}
+              selectedId={selectedId}
+              getId={getId}
+              getLabel={getLabel}
+              onSelectId={setSelectedId}
+              onHover={setHover}
+              crimeCounts={crimeCounts}
+            />
+
+          </div>
+          {/* Map area 2*/}
+          <div
+            ref={mapWrapRef}
+            style={{
+              flex: "1 1 auto",
+              minHeight: 0,
+              width: "100%",
+              position: "relative",
+              overflow: "hidden",
+            }}
+          >
+            <GeoMap
+              geo={geo}
+              width={size.width/2}
+              height={size.height/2}
+              selectedId={selectedId}
+              getId={getId}
+              getLabel={getLabel}
+              onSelectId={setSelectedId}
+              onHover={setHover}
+              crimeCounts={crimeCounts}
+            />
+
+          </div>
         </div>
+        
 
         {/* Slider row */}
         <div style={{ flex: "0 0 auto" }}>
