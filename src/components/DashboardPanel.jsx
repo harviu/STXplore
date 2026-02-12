@@ -4,6 +4,11 @@ export default function DashboardPanel({ selection, inactiveSelection }) {
   const hasActive = Boolean(selection);
   const hasInactive = Boolean(inactiveSelection);
 
+  const cFL = (string) => {
+    if (!string) return ''; // Handle empty or null strings
+    return string.charAt(0).toUpperCase() + string.slice(1);
+  };
+
   return (
     <Panel title="Dashboard">
       <div style={{ padding: "5%", boxSizing: "border-box" }}>
@@ -15,25 +20,35 @@ export default function DashboardPanel({ selection, inactiveSelection }) {
           <p style={{ opacity: 0.8 }}>Select a boundary to begin.</p>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            {hasActive ? (
+            {hasActive && selection.mode === "source"? (
               <p style={{ opacity: 0.95, margin: 0 }}>
-                <strong>{selection.mode.toUpperCase()}</strong> ready to compute stats for{" "}
+                <strong>{cFL(selection.mode)}</strong> ready to compute stats for{" "}
                 <strong>{selection.name}</strong>.
               </p>
-            ) : (
-              <p style={{ opacity: 0.75, margin: 0 }}>
-                Active selection not chosen yet.
-              </p>
-            )}
-
-            {hasInactive ? (
+            ) : hasInactive && inactiveSelection.mode === "source" ? (
               <p style={{ opacity: 0.9, margin: 0 }}>
-                <strong>{inactiveSelection.mode.toUpperCase()}</strong> ready to compute stats for{" "}
+                <strong>{cFL(inactiveSelection.mode)}</strong> ready to compute stats for{" "}
                 <strong>{inactiveSelection.name}</strong>.
               </p>
             ) : (
-              <p style={{ opacity: 0.75, margin: 0 }}>
-                Inactive selection not chosen yet.
+              <p style={{ opacity: 0.8, margin: 0 }}>
+                <strong>Source</strong> selection not chosen yet.
+              </p>
+            )}
+
+            {hasInactive && inactiveSelection.mode === "target" ? (
+              <p style={{ opacity: 0.9, margin: 0 }}>
+                <strong>{cFL(inactiveSelection.mode)}</strong> ready to compute stats for{" "}
+                <strong>{inactiveSelection.name}</strong>.
+              </p>
+            ) : hasActive && selection.mode === "target" ? (
+              <p style={{ opacity: 0.9, margin: 0 }}>
+                <strong>{cFL(selection.mode)}</strong> ready to compute stats for{" "}
+                <strong>{selection.name}</strong>.
+              </p>
+            ):(
+              <p style={{ opacity: 0.8, margin: 0 }}>
+                <strong>Target</strong> selection not chosen yet.
               </p>
             )}
           </div>
