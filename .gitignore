@@ -23,3 +23,8 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# DB
+backend/.env
+__pycache__/
+*.pyc
