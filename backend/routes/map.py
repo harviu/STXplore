@@ -6,7 +6,7 @@ from backend.db.database import get_db
 router = APIRouter(tags=["map"])
 
 @router.get("/map/counts")
-def map_counts(
+def map_counts( # type: ignore
     start: str = Query(..., description="YYYY-MM-DD (inclusive)"),
     end: str = Query(..., description="YYYY-MM-DD (exclusive)"),
     db: Session = Depends(get_db),
@@ -24,4 +24,4 @@ def map_counts(
     """)
 
     rows = db.execute(sql, {"start": start, "end": end}).mappings().all()
-    return {"start": start, "end": end, "data": list(rows)} 
+    return {"start": start, "end": end, "data": list(rows)}  # type: ignore
