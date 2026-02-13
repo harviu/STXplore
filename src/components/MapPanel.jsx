@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState, useEffect } from "react";
 import Panel from "./Panel.jsx";
-import GeoMap from "./GeoMap.jsx";
+import MapBoxMap from "./MapBoxMap.jsx";
 import { BOUNDARY_GEO, getBoundaryId, getBoundaryLabel } from "../lib/boundaries.js";
 import { indexById } from "../lib/indexById.js";
 import { loadDummyCrimeCounts } from "../lib/dummyCrimeData.js";
@@ -29,7 +29,6 @@ function useResizeObserverSize() {
 
 export default function MapPanel({ onSelectionChange }) {
   const [activeMode, setActiveMode] = useState("source"); // "source" | "target"
-  const [inactiveMode, setInactiveMode] = useState("target");
 
   const [sourceLayer, setSourceLayer] = useState("community");
   const [targetLayer, setTargetLayer] = useState("community");
@@ -45,16 +44,6 @@ export default function MapPanel({ onSelectionChange }) {
   // Crime counts state (using dummy data for visualization)
   const [crimeCounts, setCrimeCounts] = useState(null);
 
-  const handleClickSource = () => {
-    setActiveMode("source");
-    setInactiveMode("target");
-  }
-
-  const handleClickTarget = () => {
-    setActiveMode("target");
-    setInactiveMode("source");
-  }
-
   // Bind controls to the active entity
   const layer = activeMode === "source" ? sourceLayer : targetLayer;
   const setLayer = activeMode === "source" ? setSourceLayer : setTargetLayer;
@@ -63,9 +52,6 @@ export default function MapPanel({ onSelectionChange }) {
   const setSelectedId = activeMode === "source" ? setSourceSelectedId : setTargetSelectedId;
 
   const geo = BOUNDARY_GEO[layer];
-
-  const getId = useMemo(() => (f) => getBoundaryId(layer, f), [layer]);
-  const getLabel = useMemo(() => (f) => getBoundaryLabel(layer, f), [layer]);
 
   // Load dummy crime counts for source mode
   useEffect(() => {
@@ -126,23 +112,22 @@ export default function MapPanel({ onSelectionChange }) {
   useEffect(() => {
     onSelectionChange?.({
       activeMode,
-      inactiveMode,
       source: sourceSelection,
       target: targetSelection,
     });
-  }, [activeMode, sourceSelection, targetSelection, onSelectionChange, inactiveMode]);
+  }, [activeMode, sourceSelection, targetSelection, onSelectionChange]);
 
   const { ref: mapWrapRef, size } = useResizeObserverSize();
 
   return (
-    <Panel title="Map of Chicago" fill style={{ minHeight: 0, maxHeight: "625px" }}>
+    <Panel title="Map" fill style={{ minHeight: 0, maxHeight: "625px" }}>
       {/* Controls */}
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
         <strong>Entity:</strong>
-        <button onClick={handleClickSource} disabled={activeMode === "source"}>
+        <button onClick={() => setActiveMode("source")} disabled={activeMode === "source"}>
           Source
         </button>
-        <button onClick={handleClickTarget} disabled={activeMode === "target"}>
+        <button onClick={() => setActiveMode("target")} disabled={activeMode === "target"}>
           Target
         </button>
 
@@ -210,16 +195,15 @@ export default function MapPanel({ onSelectionChange }) {
             overflow: "hidden",
           }}
         >
-          <GeoMap
-            geo={geo}
+          <MapBoxMap
             width={size.width}
             height={size.height}
+            geo={geo}
+            crimeCounts={crimeCounts}
+            layer={layer}
             selectedId={selectedId}
-            getId={getId}
-            getLabel={getLabel}
             onSelectId={setSelectedId}
             onHover={setHover}
-            crimeCounts={crimeCounts}
           />
         </div>
 
