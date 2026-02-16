@@ -4,6 +4,8 @@ import MapBoxMap from "./MapBoxMap.jsx";
 import { BOUNDARY_GEO, getBoundaryId, getBoundaryLabel } from "../lib/boundaries.js";
 import { indexById } from "../lib/indexById.js";
 import { loadDummyCrimeCounts } from "../lib/dummyCrimeData.js";
+import { DayPicker } from "react-day-picker";
+import "react-day-picker/style.css";
 
 function todayISO() {
   return new Date().toISOString().slice(0, 10);
@@ -45,6 +47,8 @@ export default function MapPanel({ onSelectionChange }) {
 
   // Anchor date for "today" — default is current date; user can pick another via calendar
   const [anchorDate, setAnchorDate] = useState(() => todayISO());
+  const [calendarOpen, setCalendarOpen] = useState(false);
+  const calendarRef = useRef(null);
 
   const [hover, setHover] = useState(null);
   
@@ -128,6 +132,18 @@ export default function MapPanel({ onSelectionChange }) {
     });
   }, [activeMode, anchorDate, sourceSelection, targetSelection, onSelectionChange]);
 
+  // Close calendar when clicking outside
+  useEffect(() => {
+    if (!calendarOpen) return;
+    function handleClickOutside(e) {
+      if (calendarRef.current && !calendarRef.current.contains(e.target)) {
+        setCalendarOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [calendarOpen]);
+
   const { ref: mapWrapRef, size } = useResizeObserverSize();
 
   return (
@@ -144,13 +160,56 @@ export default function MapPanel({ onSelectionChange }) {
 
         <span style={{ opacity: 0.5, padding: "0 8px" }}>|</span>
 
-        <strong>Start date:</strong>
-        <input
-          type="date"
-          value={anchorDate}
-          onChange={(e) => setAnchorDate(e.target.value)}
-          title="Anchor date (default: today). Source/target days are relative to this."
-        />
+        <strong>Anchor date:</strong>
+        <div ref={calendarRef} style={{ position: "relative", display: "inline-block" }}>
+          <button
+            type="button"
+            onClick={() => setCalendarOpen((open) => !open)}
+            title="Pick start date (anchor for source/target days)"
+            style={{
+              padding: "4px 10px",
+              cursor: "pointer",
+              border: "1px solid rgba(255,255,255,0.3)",
+              borderRadius: 6,
+              background: "rgba(255,255,255,0.08)",
+              color: "inherit",
+              fontSize: "inherit",
+            }}
+          >
+            {anchorDate}
+          </button>
+          {calendarOpen && (
+            <div
+              style={{
+                position: "absolute",
+                top: "100%",
+                left: 0,
+                marginTop: 4,
+                zIndex: 1000,
+                background: "var(--panel-bg, #1e1e1e)",
+                borderRadius: 8,
+                boxShadow: "0 4px 20px rgba(0,0,0,0.4)",
+                padding: 8,
+              }}
+            >
+              <DayPicker
+                mode="single"
+                selected={anchorDate ? new Date(anchorDate + "T12:00:00") : undefined}
+                onSelect={(date) => {
+                  if (date) {
+                    setAnchorDate(date.toISOString().slice(0, 10));
+                    setCalendarOpen(false);
+                  }
+                }}
+                navLayout="around"
+                startMonth={new Date(2001, 0)}
+                showOutsideDays
+                animate
+                captionLayout="dropdown"
+              />
+            </div>
+          )}
+        </div>
 
         <span style={{ opacity: 0.5, padding: "0 8px" }}>|</span>
 
