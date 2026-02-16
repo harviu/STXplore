@@ -186,9 +186,9 @@ function TargetMap() {
       <div
         ref={wrapperRef}
         style={{
-          width: "min(1000px, 95vw)",
-          height: "75vh",
-          margin: "0 auto",
+          width: "100%",
+          height: "100%",
+          minHeight: 400,
           position: "relative",
         }}
       >

@@ -5,6 +5,10 @@ import { BOUNDARY_GEO, getBoundaryId, getBoundaryLabel } from "../lib/boundaries
 import { indexById } from "../lib/indexById.js";
 import { loadDummyCrimeCounts } from "../lib/dummyCrimeData.js";
 
+function todayISO() {
+  return new Date().toISOString().slice(0, 10);
+}
+
 function useResizeObserverSize() {
   const ref = useRef(null);
   const [size, setSize] = useState({ width: 900, height: 650 });
@@ -38,6 +42,9 @@ export default function MapPanel({ onSelectionChange }) {
 
   const [pastDays, setPastDays] = useState(90);
   const [futureDays, setFutureDays] = useState(30);
+
+  // Anchor date for "today" — default is current date; user can pick another via calendar
+  const [anchorDate, setAnchorDate] = useState(() => todayISO());
 
   const [hover, setHover] = useState(null);
   
@@ -83,7 +90,7 @@ export default function MapPanel({ onSelectionChange }) {
     };
   }, [activeMode, layer, pastDays]);
 
-  function makeSelection(mode, layerX, idX, daysX) {
+  function makeSelection(mode, layerX, idX, daysX, anchorISO, dateOffsetDays) {
     if (!idX) return null;
     const geoX = BOUNDARY_GEO[layerX];
 
@@ -92,33 +99,34 @@ export default function MapPanel({ onSelectionChange }) {
     const feature = idx.get(idX);
     if (!feature) return null;
 
+    const anchor = new Date(anchorISO);
+    const date = new Date(anchor);
+    date.setDate(date.getDate() + dateOffsetDays);
+    const dateISO = date.toISOString().slice(0, 10);
+
     return {
       mode,
       layer: layerX,
       id: idX,
       name: getBoundaryLabel(layerX, feature),
       days: daysX,
+      dateISO,
       feature,
     };
   }
 
-  const sourceSelection = useMemo(
-    () => makeSelection("source", sourceLayer, sourceSelectedId, pastDays),
-    [sourceLayer, sourceSelectedId, pastDays]
-  );
+  const sourceSelection = useMemo(() => makeSelection("source", sourceLayer, sourceSelectedId, pastDays, anchorDate, -pastDays), [sourceLayer, sourceSelectedId, pastDays, anchorDate]);
 
-  const targetSelection = useMemo(
-    () => makeSelection("target", targetLayer, targetSelectedId, futureDays),
-    [targetLayer, targetSelectedId, futureDays]
-  );
+  const targetSelection = useMemo(() => makeSelection("target", targetLayer, targetSelectedId, futureDays, anchorDate, futureDays),[targetLayer, targetSelectedId, futureDays, anchorDate]);
 
   useEffect(() => {
     onSelectionChange?.({
       activeMode,
+      anchorDate,
       source: sourceSelection,
       target: targetSelection,
     });
-  }, [activeMode, sourceSelection, targetSelection, onSelectionChange]);
+  }, [activeMode, anchorDate, sourceSelection, targetSelection, onSelectionChange]);
 
   const { ref: mapWrapRef, size } = useResizeObserverSize();
 
@@ -133,6 +141,16 @@ export default function MapPanel({ onSelectionChange }) {
         <button onClick={() => setActiveMode("target")} disabled={activeMode === "target"}>
           Target
         </button>
+
+        <span style={{ opacity: 0.5, padding: "0 8px" }}>|</span>
+
+        <strong>Start date:</strong>
+        <input
+          type="date"
+          value={anchorDate}
+          onChange={(e) => setAnchorDate(e.target.value)}
+          title="Anchor date (default: today). Source/target days are relative to this."
+        />
 
         <span style={{ opacity: 0.5, padding: "0 8px" }}>|</span>
 
@@ -245,7 +263,9 @@ export default function MapPanel({ onSelectionChange }) {
         <div style={{ flex: "0 0 auto" }}>
           {activeMode === "source" ? (
             <>
-              <label htmlFor="pastDays">View {pastDays} days ago</label>
+              <label htmlFor="pastDays">
+                Source date: {pastDays} days before start ({anchorDate})
+              </label>
               <input
                 id="pastDays"
                 type="range"
@@ -258,7 +278,9 @@ export default function MapPanel({ onSelectionChange }) {
             </>
           ) : (
             <>
-              <label htmlFor="futureDays">Predict {futureDays} days from now</label>
+              <label htmlFor="futureDays">
+                Target date: {futureDays} days after start ({anchorDate})
+              </label>
               <input
                 id="futureDays"
                 type="range"
