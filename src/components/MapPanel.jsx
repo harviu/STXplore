@@ -1,6 +1,5 @@
 import { useMemo, useRef, useState, useEffect } from "react";
 import Panel from "./Panel.jsx";
-import GeoMap from "./GeoMap.jsx";
 import MapBoxMap from "./MapBoxMap.jsx";
 import { BOUNDARY_GEO, getBoundaryId, getBoundaryLabel } from "../lib/boundaries.js";
 import { indexById } from "../lib/indexById.js";
@@ -190,7 +189,14 @@ export default function MapPanel({ onSelectionChange }) {
       >
         <div
           ref={mapWrapRef}
-          style={{ display: "flex", flex: "1 1 auto", flexDirection: "row", height: "100%", minHeight: 0 }}
+          style={{
+            display: "flex",
+            flex: "1 1 auto",
+            flexDirection: "row",
+            gap: 16,
+            height: "100%",
+            minHeight: 0,
+          }}
         >
           {/* Map area 1*/}
           <div
@@ -201,16 +207,15 @@ export default function MapPanel({ onSelectionChange }) {
               overflow: "hidden",
             }}
           >
-            <GeoMap
-              geo={geo}
+            <MapBoxMap
               width={Math.max(0, Math.floor(size.width / 2))}
               height={size.height}
+              geo={geo}
+              crimeCounts={crimeCounts}
+              layer={layer}
               selectedId={selectedId}
-              getId={getId}
-              getLabel={getLabel}
               onSelectId={setSelectedId}
               onHover={setHover}
-              crimeCounts={crimeCounts}
             />
           </div>
           {/* Map area 2*/}
@@ -223,14 +228,14 @@ export default function MapPanel({ onSelectionChange }) {
             }}
           >
             <MapBoxMap
-            width={Math.max(0, Math.floor(size.width / 2))}
-            height={size.height}
-            geo={geo}
-            crimeCounts={crimeCounts}
-            layer={layer}
-            selectedId={selectedId}
-            onSelectId={setSelectedId}
-            onHover={setHover}
+              width={Math.max(0, Math.floor(size.width / 2))}
+              height={size.height}
+              geo={geo}
+              crimeCounts={crimeCounts}
+              layer={layer}
+              selectedId={selectedId}
+              onSelectId={setSelectedId}
+              onHover={setHover}
             />
           </div>
         </div>
