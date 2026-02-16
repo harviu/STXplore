@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState, useEffect } from "react";
 import Panel from "./Panel.jsx";
+import GeoMap from "./GeoMap.jsx";
 import MapBoxMap from "./MapBoxMap.jsx";
 import { BOUNDARY_GEO, getBoundaryId, getBoundaryLabel } from "../lib/boundaries.js";
 import { indexById } from "../lib/indexById.js";
@@ -52,6 +53,9 @@ export default function MapPanel({ onSelectionChange }) {
   const setSelectedId = activeMode === "source" ? setSourceSelectedId : setTargetSelectedId;
 
   const geo = BOUNDARY_GEO[layer];
+
+  const getId = useMemo(() => (f) => getBoundaryId(layer, f), [layer]);
+  const getLabel = useMemo(() => (f) => getBoundaryLabel(layer, f), [layer]);
 
   // Load dummy crime counts for source mode
   useEffect(() => {
@@ -184,22 +188,23 @@ export default function MapPanel({ onSelectionChange }) {
           gap: 10,
         }}
       >
-        <div style={{ display: "flex", flex: "1 1 auto", flexDirection: "row", height: "100%" }}>
+        <div
+          ref={mapWrapRef}
+          style={{ display: "flex", flex: "1 1 auto", flexDirection: "row", height: "100%", minHeight: 0 }}
+        >
           {/* Map area 1*/}
           <div
-            ref={mapWrapRef}
             style={{
               flex: "1 1 auto",
               minHeight: 0,
-              width: "100%",
               position: "relative",
               overflow: "hidden",
             }}
           >
             <GeoMap
               geo={geo}
-              width={size.width/2}
-              height={size.height/2}
+              width={Math.max(0, Math.floor(size.width / 2))}
+              height={size.height}
               selectedId={selectedId}
               getId={getId}
               getLabel={getLabel}
@@ -207,31 +212,26 @@ export default function MapPanel({ onSelectionChange }) {
               onHover={setHover}
               crimeCounts={crimeCounts}
             />
-
           </div>
           {/* Map area 2*/}
           <div
-            ref={mapWrapRef}
             style={{
               flex: "1 1 auto",
               minHeight: 0,
-              width: "100%",
               position: "relative",
               overflow: "hidden",
             }}
           >
-            <GeoMap
-              geo={geo}
-              width={size.width/2}
-              height={size.height/2}
-              selectedId={selectedId}
-              getId={getId}
-              getLabel={getLabel}
-              onSelectId={setSelectedId}
-              onHover={setHover}
-              crimeCounts={crimeCounts}
+            <MapBoxMap
+            width={Math.max(0, Math.floor(size.width / 2))}
+            height={size.height}
+            geo={geo}
+            crimeCounts={crimeCounts}
+            layer={layer}
+            selectedId={selectedId}
+            onSelectId={setSelectedId}
+            onHover={setHover}
             />
-
           </div>
         </div>
         
