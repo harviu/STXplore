@@ -194,6 +194,7 @@ export default function MapPanel({ onSelectionChange }) {
             >
               <DayPicker
                 mode="single"
+                autoFocus
                 selected={anchorDate ? new Date(anchorDate + "T12:00:00") : undefined}
                 onSelect={(date) => {
                   if (date) {
