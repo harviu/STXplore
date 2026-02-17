@@ -21,8 +21,6 @@ function rangeFromPastDays(pastDays, anchorDate, futureDays){
   start.setDate(start.getDate() - pastDays);
   const end = new Date(anchorDate);
   end.setDate(end.getDate() + futureDays);
-  console.log(start);
-  console.log(end);
   return { start: toYYYYMMDD(start), end: toYYYYMMDD(end) };
 }
 
@@ -155,7 +153,6 @@ export default function MapPanel({ onSelectionChange }) {
     ({ signal }) => {
       if (!activeSelection) return Promise.resolve(null);
       const { start, end } = rangeFromPastDays(pastDays, anchorDate, futureDays);
-      console.log(start);
       return api.selectionSummary(
         activeSelection.layer,
         activeSelection.id,
