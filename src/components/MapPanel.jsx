@@ -146,7 +146,7 @@ export default function MapPanel({ onSelectionChange }) {
   const targetSelection = useMemo(() => makeSelection("target", targetLayer, targetSelectedId, futureDays, anchorDate, futureDays),[targetLayer, targetSelectedId, futureDays, anchorDate]);
 
   const relationSelection = useMemo(() => makeSelection("relation", relationLayer, relationSelectedId, pastDays, anchorDate, -pastDays), [relationLayer, relationSelectedId, pastDays, anchorDate]);
-   const activeSelection = activeMode === "source" ? sourceSelection : relationSelection;
+   const activeSelection = activeMode === "source" ? sourceSelection : targetSelection;
 
   const { data: selectionSummary, loading: summaryLoading, error: summaryError } = useApi(
     ({ signal }) => {
@@ -168,6 +168,7 @@ export default function MapPanel({ onSelectionChange }) {
       activeMode,
       inactiveMode: "target",
       anchorDate,
+      inactiveMode: activeMode === "source" ? "target" : "source",
       source: sourceSelection,
       target: targetSelection,
       summary: selectionSummary,
