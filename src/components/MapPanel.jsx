@@ -34,13 +34,15 @@ function useResizeObserverSize() {
 }
 
 export default function MapPanel({ onSelectionChange }) {
-  const [activeMode, setActiveMode] = useState("source"); // "source" | "target"
+  const [activeMode, setActiveMode] = useState("source"); // "source" | "relation"
 
   const [sourceLayer, setSourceLayer] = useState("community");
   const [targetLayer, setTargetLayer] = useState("community");
+  const [relationLayer, setRelationLayer] = useState("community");
 
   const [sourceSelectedId, setSourceSelectedId] = useState(null);
   const [targetSelectedId, setTargetSelectedId] = useState(null);
+  const [relationSelectedId, setRelationSelectedId] = useState(null);
 
   const [pastDays, setPastDays] = useState(90);
   const [futureDays, setFutureDays] = useState(30);
@@ -56,11 +58,11 @@ export default function MapPanel({ onSelectionChange }) {
   const [crimeCounts, setCrimeCounts] = useState(null);
 
   // Bind controls to the active entity
-  const layer = activeMode === "source" ? sourceLayer : targetLayer;
-  const setLayer = activeMode === "source" ? setSourceLayer : setTargetLayer;
+  const layer = activeMode === "source" ? sourceLayer : relationLayer;
+  const setLayer = activeMode === "source" ? setSourceLayer : setRelationLayer;
 
-  const selectedId = activeMode === "source" ? sourceSelectedId : targetSelectedId;
-  const setSelectedId = activeMode === "source" ? setSourceSelectedId : setTargetSelectedId;
+  const selectedId = activeMode === "source" ? sourceSelectedId : relationSelectedId;
+  const setSelectedId = activeMode === "source" ? setSourceSelectedId : setRelationSelectedId;
 
   const geo = BOUNDARY_GEO[layer];
 
@@ -123,14 +125,17 @@ export default function MapPanel({ onSelectionChange }) {
 
   const targetSelection = useMemo(() => makeSelection("target", targetLayer, targetSelectedId, futureDays, anchorDate, futureDays),[targetLayer, targetSelectedId, futureDays, anchorDate]);
 
+  const relationSelection = useMemo(() => makeSelection("relation", relationLayer, relationSelectedId, pastDays, anchorDate, -pastDays), [relationLayer, relationSelectedId, pastDays, anchorDate]);
+
   useEffect(() => {
     onSelectionChange?.({
       activeMode,
       anchorDate,
       source: sourceSelection,
       target: targetSelection,
+      relation: relationSelection,
     });
-  }, [activeMode, anchorDate, sourceSelection, targetSelection, onSelectionChange]);
+  }, [activeMode, anchorDate, sourceSelection, targetSelection, relationSelection, onSelectionChange]);
 
   // Close calendar when clicking outside
   useEffect(() => {
@@ -154,8 +159,8 @@ export default function MapPanel({ onSelectionChange }) {
         <button onClick={() => setActiveMode("source")} disabled={activeMode === "source"}>
           Source
         </button>
-        <button onClick={() => setActiveMode("target")} disabled={activeMode === "target"}>
-          Target
+        <button onClick={() => setActiveMode("relation")} disabled={activeMode === "relation"}>
+          Relation
         </button>
 
         <span style={{ opacity: 0.5, padding: "0 8px" }}>|</span>
@@ -308,11 +313,11 @@ export default function MapPanel({ onSelectionChange }) {
             <MapBoxMap
               width={Math.max(0, Math.floor(size.width / 2))}
               height={size.height}
-              geo={geo}
-              crimeCounts={crimeCounts}
-              layer={layer}
-              selectedId={selectedId}
-              onSelectId={setSelectedId}
+              geo={BOUNDARY_GEO[targetLayer]}
+              crimeCounts={null}
+              layer={targetLayer}
+              selectedId={targetSelectedId}
+              onSelectId={setTargetSelectedId}
               onHover={setHover}
             />
           </div>
