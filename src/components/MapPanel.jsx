@@ -36,14 +36,17 @@ function useResizeObserverSize() {
 export default function MapPanel({ onSelectionChange }) {
   const [activeMode, setActiveMode] = useState("source"); // "source" | "relation"
 
+  //community, beat, or district for each map
   const [sourceLayer, setSourceLayer] = useState("community");
   const [targetLayer, setTargetLayer] = useState("community");
   const [relationLayer, setRelationLayer] = useState("community");
 
+  // Selected boundary IDs for each map
   const [sourceSelectedId, setSourceSelectedId] = useState(null);
   const [targetSelectedId, setTargetSelectedId] = useState(null);
   const [relationSelectedId, setRelationSelectedId] = useState(null);
 
+  //date sliders
   const [pastDays, setPastDays] = useState(90);
   const [futureDays, setFutureDays] = useState(30);
 
@@ -71,7 +74,7 @@ export default function MapPanel({ onSelectionChange }) {
 
   // Load dummy crime counts for source mode
   useEffect(() => {
-    if (activeMode !== "source") {
+    if (activeMode !== "relation") {//Is source
       setCrimeCounts(null);
       return;
     }
@@ -130,6 +133,7 @@ export default function MapPanel({ onSelectionChange }) {
   useEffect(() => {
     onSelectionChange?.({
       activeMode,
+      inactiveMode: "target",
       anchorDate,
       source: sourceSelection,
       target: targetSelection,
@@ -152,8 +156,8 @@ export default function MapPanel({ onSelectionChange }) {
   const { ref: mapWrapRef, size } = useResizeObserverSize();
 
   return (
-    <Panel title="Crime Map" fill style={{ minHeight: 0, maxHeight: "625px" }}>
-      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", height: "100%"}}>
+    <Panel title="Crime Map" fill style={{ minHeight: 0, maxHeight: "95%" }}>
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", height: "85%"}}>
         {/* Date Picker */}
         <strong>Anchor date:</strong>
         <div ref={calendarRef} style={{ position: "relative", display: "inline-block" }}>

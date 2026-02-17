@@ -29,7 +29,7 @@ export default function App() {
           </div>
 
           <div className="sideCell">
-            <SidePanel selection={activeSelection} />
+            <SidePanel selection={activeSelection} inactiveSelection={inactiveSelection} />
           </div>
         </section>
 
