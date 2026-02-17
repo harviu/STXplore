@@ -172,7 +172,6 @@ export default function MapPanel({ onSelectionChange }) {
       activeMode,
       inactiveMode: "target",
       anchorDate,
-      inactiveMode: activeMode === "source" ? "target" : "source",
       source: sourceSelection,
       target: targetSelection,
       summary: selectionSummary,
