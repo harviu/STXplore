@@ -7,7 +7,7 @@ load_dotenv()
 
 app = FastAPI(title="Crime Data Api", version="0.1.0")
 
-cors = os.getenv("CORS_ORIGINS", "http://localhost:5173, https://localhost:3000")
+cors = os.getenv("CORS_ORIGINS", "http://localhost:5173, http://localhost:3000, http://localhost:8000")
 origins = [o.strip() for o in cors.split(",") if o.strip()]
 
 app.add_middleware(
