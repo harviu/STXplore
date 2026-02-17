@@ -25,10 +25,10 @@ export default function DashboardPanel({ selection, inactiveSelection }) {
                 <strong>{cFL(selection.mode)}</strong> ready to compute stats for{" "}
                 <strong>{selection.name}</strong>.
               </p>
-            ) : hasActive && selection.mode === "relation" ? (
+            ) : hasInactive && inactiveSelection.mode === "source" ? (
               <p style={{ opacity: 0.9, margin: 0 }}>
-                <strong>{cFL(selection.mode)}</strong> ready to compute stats for{" "}
-                <strong>{selection.name}</strong>.
+                <strong>{cFL(inactiveSelection.mode)}</strong> ready to compute stats for{" "}
+                <strong>{inactiveSelection.name}</strong>.
               </p>
             ) : (
               <p style={{ opacity: 0.8, margin: 0 }}>

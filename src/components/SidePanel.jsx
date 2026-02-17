@@ -8,44 +8,22 @@ export default function SidePanel({ selection, inactiveSelection }) {
         <p style={{ opacity: 0.8, marginTop: 0 }}>Click a boundary to see details.</p>
       ) : !inactiveSelection ? (
         <div>
-          {selection.mode !== "relation" ? (
-            <div>
-              <div><strong>Source Selection:</strong></div>
-              <div><strong>Mode:</strong> {selection.mode}</div>
-              <div><strong>Layer:</strong> {selection.layer}</div>
-              <div><strong>ID:</strong> {selection.id}</div>
-              <div><strong>Name:</strong> {selection.name}</div>
-              <div><strong>Days:</strong> {selection.days}</div>
+          <div><strong>Source Selection:</strong></div>
+          <div><strong>Mode:</strong> {selection.mode}</div>
+          <div><strong>Layer:</strong> {selection.layer}</div>
+          <div><strong>ID:</strong> {selection.id}</div>
+          <div><strong>Name:</strong> {selection.name}</div>
+          <div><strong>Days:</strong> {selection.days}</div>
 
-              <hr style={{ margin: "12px 0", opacity: 0.2 }} />
+          <hr style={{ margin: "12px 0", opacity: 0.2 }} />
 
-              <details>
-                <summary style={{ cursor: "pointer" }}>Raw properties</summary>
-                <pre style={{ whiteSpace: "pre-wrap", fontSize: 12, maxHeight: "95%", overflow: "auto", marginTop: 8, }}>
-                  {JSON.stringify(selection.feature?.properties ?? {}, null, 2)}
-                </pre>
-              </details>
-            </div>
-          ) : (
-            <div>
-              <div><strong>Relation Selection:</strong></div>
-              <div><strong>Mode:</strong> {selection.mode}</div>
-              <div><strong>Layer:</strong> {selection.layer}</div>
-              <div><strong>ID:</strong> {selection.id}</div>
-              <div><strong>Name:</strong> {selection.name}</div>
-              <div><strong>Days:</strong> {selection.days}</div>
-
-              <hr style={{ margin: "12px 0", opacity: 0.2 }} />
-
-              <details>
-                <summary style={{ cursor: "pointer" }}>Raw properties</summary>
-                <pre style={{ whiteSpace: "pre-wrap", fontSize: 12, maxHeight: "95%", overflow: "auto", marginTop: 8, }}>
-                  {JSON.stringify(selection.feature?.properties ?? {}, null, 2)}
-                </pre>
-              </details>
-            </div>
-          )}
-          </div>
+          <details>
+            <summary style={{ cursor: "pointer" }}>Raw properties</summary>
+            <pre style={{ whiteSpace: "pre-wrap", fontSize: 12, maxHeight: "95%", overflow: "auto", marginTop: 8, }}>
+              {JSON.stringify(selection.feature?.properties ?? {}, null, 2)}
+            </pre>
+          </details>
+        </div>
       ) : !selection ? (
         <div>
           <div><strong>Target Selection:</strong></div>
@@ -66,43 +44,23 @@ export default function SidePanel({ selection, inactiveSelection }) {
         </div>
       ) : (
         <div>
-          {selection.mode !== "relation" ? (
-            <div>
-              <div><strong>Source Selection:</strong></div>
-              <div><strong>Mode:</strong> {selection.mode}</div>
-              <div><strong>Layer:</strong> {selection.layer}</div>
-              <div><strong>ID:</strong> {selection.id}</div>
-              <div><strong>Name:</strong> {selection.name}</div>
-              <div><strong>Days:</strong> {selection.days}</div>
+          <div>
+            <div><strong>Source Selection:</strong></div>
+            <div><strong>Mode:</strong> {selection.mode}</div>
+            <div><strong>Layer:</strong> {selection.layer}</div>
+            <div><strong>ID:</strong> {selection.id}</div>
+            <div><strong>Name:</strong> {selection.name}</div>
+            <div><strong>Days:</strong> {selection.days}</div>
 
-              <hr style={{ margin: "12px 0", opacity: 0.2 }} />
+            <hr style={{ margin: "12px 0", opacity: 0.2 }} />
 
-              <details>
-                <summary style={{ cursor: "pointer" }}>Raw properties</summary>
-                <pre style={{ whiteSpace: "pre-wrap", fontSize: 12, maxHeight: "95%", overflow: "auto", marginTop: 8, }}>
-                  {JSON.stringify(selection.feature?.properties ?? {}, null, 2)}
-                </pre>
-              </details>
-            </div>
-          ) : (
-            <div>
-              <div><strong>Relation Selection:</strong></div>
-              <div><strong>Mode:</strong> {selection.mode}</div>
-              <div><strong>Layer:</strong> {selection.layer}</div>
-              <div><strong>ID:</strong> {selection.id}</div>
-              <div><strong>Name:</strong> {selection.name}</div>
-              <div><strong>Days:</strong> {selection.days}</div>
-
-              <hr style={{ margin: "12px 0", opacity: 0.2 }} />
-
-              <details>
-                <summary style={{ cursor: "pointer" }}>Raw properties</summary>
-                <pre style={{ whiteSpace: "pre-wrap", fontSize: 12, maxHeight: "95%", overflow: "auto", marginTop: 8, }}>
-                  {JSON.stringify(selection.feature?.properties ?? {}, null, 2)}
-                </pre>
-              </details>
-            </div>
-          )}
+            <details>
+              <summary style={{ cursor: "pointer" }}>Raw properties</summary>
+              <pre style={{ whiteSpace: "pre-wrap", fontSize: 12, maxHeight: "95%", overflow: "auto", marginTop: 8, }}>
+                {JSON.stringify(selection.feature?.properties ?? {}, null, 2)}
+              </pre>
+            </details>
+          </div>
           <hr style={{ margin: "16px 0", opacity: 0.8 }} />
           <div>
             <div><strong>Target Selection:</strong></div>
