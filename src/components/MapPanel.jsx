@@ -152,19 +152,9 @@ export default function MapPanel({ onSelectionChange }) {
   const { ref: mapWrapRef, size } = useResizeObserverSize();
 
   return (
-    <Panel title="Map" fill style={{ minHeight: 0, maxHeight: "625px" }}>
-      {/* Controls */}
-      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-        <strong>Entity:</strong>
-        <button onClick={() => setActiveMode("source")} disabled={activeMode === "source"}>
-          Source
-        </button>
-        <button onClick={() => setActiveMode("relation")} disabled={activeMode === "relation"}>
-          Relation
-        </button>
-
-        <span style={{ opacity: 0.5, padding: "0 8px" }}>|</span>
-
+    <Panel title="Crime Map" fill style={{ minHeight: 0, maxHeight: "625px" }}>
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", height: "100%"}}>
+        {/* Date Picker */}
         <strong>Anchor date:</strong>
         <div ref={calendarRef} style={{ position: "relative", display: "inline-block" }}>
           <button
@@ -216,172 +206,289 @@ export default function MapPanel({ onSelectionChange }) {
             </div>
           )}
         </div>
+        <div style={{ display: "flex", flexDirection: "row", width: "100%", height: "100%"}}>
+          {/* Source/Relation Map */}
+          <div style={{ flex: "1 1 auto", flexDirection: "column", padding: "0 8px", display: "flex", alignItems: "center" }}>
+            {/* Controls */}
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+              <strong>Map:</strong>
+              <button onClick={() => setActiveMode("source")} disabled={activeMode === "source"}>
+                Source
+              </button>
+              <button onClick={() => setActiveMode("relation")} disabled={activeMode === "relation"}>
+                Relation
+              </button>
 
-        <span style={{ opacity: 0.5, padding: "0 8px" }}>|</span>
+              <span style={{ opacity: 0.5, padding: "0 8px" }}>|</span>
 
-        <strong>Layer:</strong>
-        <label>
-          <input
-            type="radio"
-            name="layer"
-            checked={layer === "community"}
-            onChange={() => {
-              setLayer("community");
-              setSelectedId(null);
-            }}
-          />
-          Community
-        </label>
-        <label>
-          <input
-            type="radio"
-            name="layer"
-            checked={layer === "beat"}
-            onChange={() => {
-              setLayer("beat");
-              setSelectedId(null);
-            }}
-          />
-          Beat
-        </label>
-        <label>
-          <input
-            type="radio"
-            name="layer"
-            checked={layer === "district"}
-            onChange={() => {
-              setLayer("district");
-              setSelectedId(null);
-            }}
-          />
-          District
-        </label>
-      </div>
-      <div
-        style={{
-          flex: "1 1 auto",
-          minHeight: 0,
-          overflow: "hidden",
-          position: "relative",
-          padding: "2.5%",
-          boxSizing: "border-box",
-          display: "flex",
-          flexDirection: "column",
-          gap: 10,
-        }}
-      >
-        <div
-          ref={mapWrapRef}
-          style={{
-            display: "flex",
-            flex: "1 1 auto",
-            flexDirection: "row",
-            gap: 16,
-            height: "100%",
-            minHeight: 0,
-          }}
-        >
-          {/* Map area 1*/}
-          <div
-            style={{
-              flex: "1 1 auto",
-              minHeight: 0,
-              position: "relative",
-              overflow: "hidden",
-            }}
-          >
-            <MapBoxMap
-              width={Math.max(0, Math.floor(size.width / 2))}
-              height={size.height}
-              geo={geo}
-              crimeCounts={crimeCounts}
-              layer={layer}
-              selectedId={selectedId}
-              onSelectId={setSelectedId}
-              onHover={setHover}
-            />
+              <strong>Layer:</strong>
+              <label>
+                <input
+                  type="radio"
+                  name="layer"
+                  checked={layer === "community"}
+                  onChange={() => {
+                    setLayer("community");
+                    setSelectedId(null);
+                  }}
+                />
+                Community
+              </label>
+              <label>
+                <input
+                  type="radio"
+                  name="layer"
+                  checked={layer === "beat"}
+                  onChange={() => {
+                    setLayer("beat");
+                    setSelectedId(null);
+                  }}
+                />
+                Beat
+              </label>
+              <label>
+                <input
+                  type="radio"
+                  name="layer"
+                  checked={layer === "district"}
+                  onChange={() => {
+                    setLayer("district");
+                    setSelectedId(null);
+                  }}
+                />
+                District
+              </label>
+            </div>
+            <div
+              style={{
+                flex: "1 1 auto",
+                minHeight: 0,
+                overflow: "hidden",
+                position: "relative",
+                padding: "2.5%",
+                boxSizing: "border-box",
+                display: "flex",
+                flexDirection: "column",
+                gap: 10,
+              }}
+            >
+              <div
+                ref={mapWrapRef}
+                style={{
+                  display: "flex",
+                  flex: "1 1 auto",
+                  flexDirection: "row",
+                  gap: 16,
+                  height: "100%",
+                  minHeight: 0,
+                }}
+              >
+                {/* Map area 1*/}
+                <div
+                  style={{
+                    flex: "1 1 auto",
+                    minHeight: 0,
+                    position: "relative",
+                    overflow: "hidden",
+                  }}
+                >
+                  <MapBoxMap
+                    width={Math.max(0, Math.floor(size.width / 2))}
+                    height={size.height}
+                    geo={geo}
+                    crimeCounts={crimeCounts}
+                    layer={layer}
+                    selectedId={selectedId}
+                    onSelectId={setSelectedId}
+                    onHover={setHover}
+                  />
+                </div>
+              </div>
+              
+
+              {/* Slider row */}
+              <div style={{ flex: "0 0 auto" }}>
+                <>
+                  <label htmlFor="pastDays">
+                    Source date: {pastDays} days before start ({anchorDate})
+                  </label>
+                  <input
+                    id="pastDays"
+                    type="range"
+                    min="1"
+                    max="90"
+                    value={pastDays}
+                    onChange={(e) => setPastDays(Number(e.target.value))}
+                    style={{ width: "100%" }}
+                  />
+                </>
+              </div>
+
+              {/* Tooltip */}
+              {hover && (
+                <div
+                  style={{
+                    position: "fixed",
+                    left: hover.x + 12,
+                    top: hover.y + 12,
+                    background: "rgba(0,0,0,0.8)",
+                    color: "white",
+                    padding: "6px 8px",
+                    borderRadius: 6,
+                    fontSize: 12,
+                    pointerEvents: "none",
+                    maxWidth: 280,
+                    zIndex: 9999,
+                    whiteSpace: "nowrap",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                  }}
+                >
+                  {hover.text}
+                </div>
+              )}
+            </div>
           </div>
-          {/* Map area 2*/}
-          <div
-            style={{
-              flex: "1 1 auto",
-              minHeight: 0,
-              position: "relative",
-              overflow: "hidden",
-            }}
-          >
-            <MapBoxMap
-              width={Math.max(0, Math.floor(size.width / 2))}
-              height={size.height}
-              geo={BOUNDARY_GEO[targetLayer]}
-              crimeCounts={null}
-              layer={targetLayer}
-              selectedId={targetSelectedId}
-              onSelectId={setTargetSelectedId}
-              onHover={setHover}
-            />
+          {/* Target Map */}
+          <div style={{ flex: "1 1 auto", flexDirection: "column", padding: "0 8px", display: "flex", alignItems: "center" }}>
+            {/* Controls */}
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+              <strong>Map:</strong>
+              <button disabled>
+                Target
+              </button>
+
+              <span style={{ opacity: 0.5, padding: "0 8px" }}>|</span>
+
+              <strong>Layer:</strong>
+              <label>
+                <input
+                  type="radio"
+                  name="targetLayer"
+                  checked={targetLayer === "community"}
+                  onChange={() => {
+                    setTargetLayer("community");
+                    setTargetSelectedId(null);
+                  }}
+                />
+                Community
+              </label>
+              <label>
+                <input
+                  type="radio"
+                  name="targetLayer"
+                  checked={targetLayer === "beat"}
+                  onChange={() => {
+                    setTargetLayer("beat");
+                    setTargetSelectedId(null);
+                  }}
+                />
+                Beat
+              </label>
+              <label>
+                <input
+                  type="radio"
+                  name="targetLayer"
+                  checked={targetLayer === "district"}
+                  onChange={() => {
+                    setTargetLayer("district");
+                    setTargetSelectedId(null);
+                  }}
+                />
+                District
+              </label>
+            </div>
+            <div
+              style={{
+                flex: "1 1 auto",
+                minHeight: 0,
+                overflow: "hidden",
+                position: "relative",
+                padding: "2.5%",
+                boxSizing: "border-box",
+                display: "flex",
+                flexDirection: "column",
+                gap: 10,
+              }}
+            >
+              <div
+                ref={mapWrapRef}
+                style={{
+                  display: "flex",
+                  flex: "1 1 auto",
+                  flexDirection: "row",
+                  gap: 16,
+                  height: "100%",
+                  minHeight: 0,
+                }}
+              >
+                {/* Map area 2*/}
+                <div
+                  style={{
+                    flex: "1 1 auto",
+                    minHeight: 0,
+                    position: "relative",
+                    overflow: "hidden",
+                  }}
+                >
+                  <MapBoxMap
+                    width={Math.max(0, Math.floor(size.width / 2))}
+                    height={size.height}
+                    geo={BOUNDARY_GEO[targetLayer]}
+                    crimeCounts={null}
+                    layer={targetLayer}
+                    selectedId={targetSelectedId}
+                    onSelectId={setTargetSelectedId}
+                    onHover={setHover}
+                  />
+                </div>
+              </div>
+              
+
+              {/* Slider row */}
+              <div style={{ flex: "0 0 auto" }}>
+                <>
+                  <label htmlFor="futureDays">
+                    Target date: {futureDays} days after start ({anchorDate})
+                  </label>
+                  <input
+                    id="futureDays"
+                    type="range"
+                    min="1"
+                    max="30"
+                    value={futureDays}
+                    onChange={(e) => setFutureDays(Number(e.target.value))}
+                    style={{ width: "100%" }}
+                  />
+                </>
+              </div>
+
+              {/* Tooltip */}
+              {hover && (
+                <div
+                  style={{
+                    position: "fixed",
+                    left: hover.x + 12,
+                    top: hover.y + 12,
+                    background: "rgba(0,0,0,0.8)",
+                    color: "white",
+                    padding: "6px 8px",
+                    borderRadius: 6,
+                    fontSize: 12,
+                    pointerEvents: "none",
+                    maxWidth: 280,
+                    zIndex: 9999,
+                    whiteSpace: "nowrap",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                  }}
+                >
+                  {hover.text}
+                </div>
+              )}
+            </div>
           </div>
         </div>
-        
-
-        {/* Slider row */}
-        <div style={{ flex: "0 0 auto" }}>
-          {activeMode === "source" ? (
-            <>
-              <label htmlFor="pastDays">
-                Source date: {pastDays} days before start ({anchorDate})
-              </label>
-              <input
-                id="pastDays"
-                type="range"
-                min="1"
-                max="90"
-                value={pastDays}
-                onChange={(e) => setPastDays(Number(e.target.value))}
-                style={{ width: "100%" }}
-              />
-            </>
-          ) : (
-            <>
-              <label htmlFor="futureDays">
-                Target date: {futureDays} days after start ({anchorDate})
-              </label>
-              <input
-                id="futureDays"
-                type="range"
-                min="1"
-                max="30"
-                value={futureDays}
-                onChange={(e) => setFutureDays(Number(e.target.value))}
-                style={{ width: "100%" }}
-              />
-            </>
-          )}
-        </div>
-
-        {/* Tooltip */}
-        {hover && (
-          <div
-            style={{
-              position: "fixed",
-              left: hover.x + 12,
-              top: hover.y + 12,
-              background: "rgba(0,0,0,0.8)",
-              color: "white",
-              padding: "6px 8px",
-              borderRadius: 6,
-              fontSize: 12,
-              pointerEvents: "none",
-              maxWidth: 280,
-              zIndex: 9999,
-              whiteSpace: "nowrap",
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-            }}
-          >
-            {hover.text}
-          </div>
-        )}
       </div>
     </Panel>
   );
