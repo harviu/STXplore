@@ -6,6 +6,23 @@ import { indexById } from "../lib/indexById.js";
 import { loadDummyCrimeCounts } from "../lib/dummyCrimeData.js";
 import { DayPicker } from "react-day-picker";
 import "react-day-picker/style.css";
+import { api } from "../lib/api.js";
+import { useApi } from "../hooks/useApi.js";
+
+function toYYYYMMDD(d) {
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+function rangeFromPastDays(pastDays){
+  const end = new Date();
+  const start = new Date();
+  start.setDate(end.getDate() - pastDays);
+  return { start: toYYYYMMDD(start), end: toYYYYMMDD(end) };
+}
+
 
 function todayISO() {
   return new Date().toISOString().slice(0, 10);
@@ -129,17 +146,45 @@ export default function MapPanel({ onSelectionChange }) {
   const targetSelection = useMemo(() => makeSelection("target", targetLayer, targetSelectedId, futureDays, anchorDate, futureDays),[targetLayer, targetSelectedId, futureDays, anchorDate]);
 
   const relationSelection = useMemo(() => makeSelection("relation", relationLayer, relationSelectedId, pastDays, anchorDate, -pastDays), [relationLayer, relationSelectedId, pastDays, anchorDate]);
+   const activeSelection = activeMode === "source" ? sourceSelection : targetSelection;
+
+  const { data: selectionSummary, loading: summaryLoading, error: summaryError } = useApi(
+    ({ signal }) => {
+      if (!activeSelection) return Promise.resolve(null);
+      const { start, end } = rangeFromPastDays(pastDays);
+      return api.selectionSummary(
+        activeSelection.layer,
+        activeSelection.id,
+        start,
+        end,
+        { signal }
+      );
+    },
+    [activeSelection?.mode, activeSelection?.layer, activeSelection?.id, pastDays]
+  );
 
   useEffect(() => {
     onSelectionChange?.({
       activeMode,
       inactiveMode: "target",
       anchorDate,
+      inactiveMode: activeMode === "source" ? "target" : "source",
       source: sourceSelection,
       target: targetSelection,
+      summary: selectionSummary,
+      summaryLoading,
+      summaryError,
       relation: relationSelection,
     });
-  }, [activeMode, anchorDate, sourceSelection, targetSelection, relationSelection, onSelectionChange]);
+  }, [
+    activeMode,
+    anchorDate, sourceSelection,
+    targetSelection,
+    selectionSummary,
+    summaryLoading,
+    summaryError,
+    relationSelection, onSelectionChange,
+  ]);
 
   // Close calendar when clicking outside
   useEffect(() => {
