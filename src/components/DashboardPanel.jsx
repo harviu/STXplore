@@ -1,6 +1,6 @@
 import Panel from "./Panel.jsx";
 
-export default function DashboardPanel({ selection, inactiveSelection }) {
+export default function DashboardPanel({ mode, selection, inactiveSelection }) {
   const hasActive = Boolean(selection);
   const hasInactive = Boolean(inactiveSelection);
 
@@ -32,7 +32,7 @@ export default function DashboardPanel({ selection, inactiveSelection }) {
               </p>
             ) : (
               <p style={{ opacity: 0.8, margin: 0 }}>
-                <strong>Source</strong> selection not chosen yet.
+                <strong>{mode === "source" ? (<span>Source</span>):(<span>Relation</span>)}</strong> selection not chosen yet.
               </p>
             )}
 

@@ -35,12 +35,12 @@ export default function App() {
           </div>
 
           <div className="sideCell">
-            <SidePanel selection={activeSelection} summary={state.summary} summaryLoading={state.summaryLoading} summaryError={state.summaryError}/>
+            <SidePanel selection={activeSelection} inactiveSelection={inactiveSelection} summary={state.summary} summaryLoading={state.summaryLoading} summaryError={state.summaryError}/>
           </div>
         </section>
 
         <section className="dashRow">
-          <DashboardPanel selection={activeSelection} inactiveSelection={inactiveSelection}/>
+          <DashboardPanel mode={state.activeMode} selection={activeSelection} inactiveSelection={inactiveSelection}/>
           {/*<HealthCheck />*/}
         </section>
       </main>
