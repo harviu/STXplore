@@ -82,6 +82,7 @@ export default function MapPanel({ onSelectionChange }) {
   const layer = activeMode === "source" ? sourceLayer : relationLayer;
   const setLayer = activeMode === "source" ? setSourceLayer : setRelationLayer;
 
+  //The community/beat/district ID that's currently selected on the source/relation map
   const selectedId = activeMode === "source" ? sourceSelectedId : relationSelectedId;
   const setSelectedId = activeMode === "source" ? setSourceSelectedId : setRelationSelectedId;
 
@@ -164,10 +165,10 @@ export default function MapPanel({ onSelectionChange }) {
     [activeSelection?.mode, activeSelection?.layer, activeSelection?.id, pastDays]
   );
 
+  // inactiveMode is always target, can later rework all components to no longer need inactiveMode
   useEffect(() => {
     onSelectionChange?.({
       activeMode,
-      inactiveMode: "target",
       anchorDate,
       source: sourceSelection,
       target: targetSelection,
@@ -255,6 +256,9 @@ export default function MapPanel({ onSelectionChange }) {
             </div>
           )}
         </div>
+
+        <hr style={{ width: "100%", margin: "12px 0", opacity: 0.8 }} />
+
         <div style={{ display: "flex", flexDirection: "row", width: "100%", height: "100%"}}>
           {/* Source/Relation Map */}
           <div style={{ flex: "1 1 auto", flexDirection: "column", padding: "0 8px", display: "flex", alignItems: "center" }}>
@@ -398,6 +402,7 @@ export default function MapPanel({ onSelectionChange }) {
               )}
             </div>
           </div>
+
           {/* Target Map */}
           <div style={{ flex: "1 1 auto", flexDirection: "column", padding: "0 8px", display: "flex", alignItems: "center" }}>
             {/* Controls */}
