@@ -8,7 +8,7 @@ export default function SidePanel({
   summaryError,
 }) {
   return (
-    <Panel title="Current Selection" fill style={{ minHeight: 0, maxHeight: "625px" }}>
+    <Panel title="Current Selection" fill style={{ minHeight: 0, maxHeight: "95%" }}>
       <div
         style={{
           padding: "5%",
