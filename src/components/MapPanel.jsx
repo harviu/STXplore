@@ -220,6 +220,9 @@ export default function MapPanel({ onSelectionChange }) {
 
   const { ref: mapWrapRef, size } = useResizeObserverSize();
 
+  const thirtyDaysAgo = new Date();
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
   return (
     <Panel title="Crime Map" fill style={{ minHeight: 0, maxHeight: "95%" }}>
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", height: "85%"}}>
@@ -264,6 +267,9 @@ export default function MapPanel({ onSelectionChange }) {
                   if (date) {
                     setAnchorDate(date.toISOString().slice(0, 10));
                     setCalendarOpen(false);
+                    if (thirtyDaysAgo < date) {
+                      setSecondaryMode("target");
+                    }
                   }
                 }}
                 navLayout="around"
@@ -430,12 +436,16 @@ export default function MapPanel({ onSelectionChange }) {
               <button onClick={() => setSecondaryMode("target")} disabled={secondaryMode === "target"}>
                 Target
               </button>
-              <button onClick={() => setSecondaryMode("actual")} disabled={secondaryMode === "actual"}>
-                Actual
-              </button>
-              <button onClick={() => setSecondaryMode("error")} disabled={secondaryMode === "error"}>
-                Error
-              </button>
+              {thirtyDaysAgo > new Date(anchorDate) ? (
+                <div>
+                  <button onClick={() => setSecondaryMode("actual")} disabled={secondaryMode === "actual"}>
+                    Actual
+                  </button>
+                  <button onClick={() => setSecondaryMode("error")} disabled={secondaryMode === "error"}>
+                    Error
+                  </button>
+                </div>
+              ):(<></>)}
 
               <span style={{ opacity: 0.5, padding: "0 8px" }}>|</span>
 
