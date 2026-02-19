@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState, useEffect } from "react";
+import { useMemo, useRef, useState, useEffect, act } from "react";
 import Panel from "./Panel.jsx";
 import MapBoxMap from "./MapBoxMap.jsx";
 import { BOUNDARY_GEO, getBoundaryId, getBoundaryLabel } from "../lib/boundaries.js";
@@ -156,10 +156,11 @@ export default function MapPanel({ onSelectionChange }) {
   }
 
   const sourceSelection = useMemo(() => makeSelection("source", sourceLayer, sourceSelectedId, pastDays, anchorDate, -pastDays), [sourceLayer, sourceSelectedId, pastDays, anchorDate]);
-
-  const targetSelection = useMemo(() => makeSelection("target", targetLayer, targetSelectedId, futureDays, anchorDate, futureDays),[targetLayer, targetSelectedId, futureDays, anchorDate]);
-
   const relationSelection = useMemo(() => makeSelection("relation", relationLayer, relationSelectedId, pastDays, anchorDate, -pastDays), [relationLayer, relationSelectedId, pastDays, anchorDate]);
+  const targetSelection = useMemo(() => makeSelection("target", targetLayer, targetSelectedId, futureDays, anchorDate, futureDays),[targetLayer, targetSelectedId, futureDays, anchorDate]);
+  const actualSelection = useMemo(() => makeSelection("actual", actualLayer, actualSelectedId, futureDays, anchorDate, futureDays),[actualLayer, actualSelectedId, futureDays, anchorDate]);
+  const errorSelection = useMemo(() => makeSelection("error", errorLayer, errorSelectedId, futureDays, anchorDate, futureDays),[errorLayer, errorSelectedId, futureDays, anchorDate]);
+
    const activeSelection = activeMode === "source" ? sourceSelection : targetSelection;
 
   const { data: selectionSummary, loading: summaryLoading, error: summaryError } = useApi(
@@ -188,6 +189,8 @@ export default function MapPanel({ onSelectionChange }) {
       summaryLoading,
       summaryError,
       relation: relationSelection,
+      actual: actualSelection,
+      error: errorSelection,
     });
   }, [
     activeMode,
@@ -197,7 +200,10 @@ export default function MapPanel({ onSelectionChange }) {
     selectionSummary,
     summaryLoading,
     summaryError,
-    relationSelection, onSelectionChange,
+    relationSelection,
+    actualSelection,
+    errorSelection,
+    onSelectionChange,
   ]);
 
   // Close calendar when clicking outside

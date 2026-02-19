@@ -40,7 +40,7 @@ export default function App() {
         </section>
 
         <section className="dashRow">
-          <DashboardPanel mode={state.activeMode} selection={activeSelection} inactiveSelection={secondarySelection}/>
+          <DashboardPanel mode={state.activeMode} selection={activeSelection} inactiveMode={state.secondaryMode} inactiveSelection={secondarySelection}/>
           {/*<HealthCheck />*/}
         </section>
       </main>

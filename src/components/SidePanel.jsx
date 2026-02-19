@@ -84,7 +84,7 @@ export default function SidePanel({
         ): !selection ? (
           <div>
             <div>
-              <strong>Target Selection:</strong>
+              {inactiveSelection.mode === "target" ? (<strong>Target Selection:</strong>) : inactiveSelection.mode === "actual" ? (<strong>Actual Selection:</strong>) : (<strong>Error Map Selection:</strong>)}
             </div>
             <div>
               <strong>Mode:</strong> {inactiveSelection.mode}
@@ -209,7 +209,7 @@ export default function SidePanel({
             <hr style={{ margin: "12px 0", opacity: 0.7 }} />
             <div>
               <div>
-                <strong>Target Selection:</strong>
+                {inactiveSelection.mode === "target" ? (<strong>Target Selection:</strong>) : inactiveSelection.mode === "actual" ? (<strong>Actual Selection:</strong>) : (<strong>Error Map Selection:</strong>)}
               </div>
               <div>
                 <strong>Mode:</strong> {inactiveSelection.mode}
