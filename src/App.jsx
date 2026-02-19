@@ -9,6 +9,7 @@ import HealthCheck from "./components/ApiHealthCheck.jsx";
 export default function App() {
   const [state, setState] = useState({
     activeMode: "source",
+    secondaryMode: "target",
     source: null,
     target: null,
     summary: null,
@@ -17,6 +18,7 @@ export default function App() {
   });
 
   const activeSelection = state[state.activeMode];
+  const secondarySelection = state[state.secondaryMode];
   console.log("state.summary =", state.summary);
 
 
@@ -33,12 +35,12 @@ export default function App() {
           </div>
 
           <div className="sideCell">
-            <SidePanel selection={activeSelection} inactiveSelection={state.target} summary={state.summary} summaryLoading={state.summaryLoading} summaryError={state.summaryError}/>
+            <SidePanel selection={activeSelection} inactiveSelection={secondarySelection} summary={state.summary} summaryLoading={state.summaryLoading} summaryError={state.summaryError}/>
           </div>
         </section>
 
         <section className="dashRow">
-          <DashboardPanel mode={state.activeMode} selection={activeSelection} inactiveSelection={state.target}/>
+          <DashboardPanel mode={state.activeMode} selection={activeSelection} inactiveSelection={secondarySelection}/>
           {/*<HealthCheck />*/}
         </section>
       </main>

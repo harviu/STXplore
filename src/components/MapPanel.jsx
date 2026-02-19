@@ -53,16 +53,21 @@ function useResizeObserverSize() {
 
 export default function MapPanel({ onSelectionChange }) {
   const [activeMode, setActiveMode] = useState("source"); // "source" | "relation"
+  const [secondaryMode, setSecondaryMode] = useState("target"); // "target" | "actual" | "error"
 
   //community, beat, or district for each map
   const [sourceLayer, setSourceLayer] = useState("community");
-  const [targetLayer, setTargetLayer] = useState("community");
+  const [targetLayer, setTargetLayer] = useState("community"); //target is the prexicted layer
   const [relationLayer, setRelationLayer] = useState("community");
+  const [actualLayer, setActualLayer] = useState("community");
+  const [errorLayer, setErrorLayer] = useState("community"); // actual - predicted layer
 
   // Selected boundary IDs for each map
   const [sourceSelectedId, setSourceSelectedId] = useState(null);
   const [targetSelectedId, setTargetSelectedId] = useState(null);
   const [relationSelectedId, setRelationSelectedId] = useState(null);
+  const [actualSelectedId, setActualSelectedId] = useState(null);
+  const [errorSelectedId, setErrorSelectedId] = useState(null);
 
   //date sliders
   const [pastDays, setPastDays] = useState(90);
@@ -81,12 +86,19 @@ export default function MapPanel({ onSelectionChange }) {
   // Bind controls to the active entity
   const layer = activeMode === "source" ? sourceLayer : relationLayer;
   const setLayer = activeMode === "source" ? setSourceLayer : setRelationLayer;
+  //then for the target map 
+  const secondaryLayer = secondaryMode === "target" ? targetLayer : secondaryMode === "actual" ? actualLayer : errorLayer;
+  const setSecondaryLayer = secondaryMode === "target" ? setTargetLayer : secondaryMode === "actual" ? setActualLayer : setErrorLayer;
 
   //The community/beat/district ID that's currently selected on the source/relation map
   const selectedId = activeMode === "source" ? sourceSelectedId : relationSelectedId;
   const setSelectedId = activeMode === "source" ? setSourceSelectedId : setRelationSelectedId;
+  //and the one for the target/actual/error map
+  const secondarySelectedId = secondaryMode === "target" ? targetSelectedId : secondaryMode === "actual" ? actualSelectedId : errorSelectedId;
+  const setSecondarySelectedId = secondaryMode === "target" ? setTargetSelectedId : secondaryMode === "actual" ? setActualSelectedId : setErrorSelectedId;
 
   const geo = BOUNDARY_GEO[layer];
+  const secondaryGeo = BOUNDARY_GEO[secondaryLayer];
 
   const getId = useMemo(() => (f) => getBoundaryId(layer, f), [layer]);
   const getLabel = useMemo(() => (f) => getBoundaryLabel(layer, f), [layer]);
@@ -165,10 +177,10 @@ export default function MapPanel({ onSelectionChange }) {
     [activeSelection?.mode, activeSelection?.layer, activeSelection?.id, pastDays]
   );
 
-  // inactiveMode is always target, can later rework all components to no longer need inactiveMode
   useEffect(() => {
     onSelectionChange?.({
       activeMode,
+      secondaryMode,
       anchorDate,
       source: sourceSelection,
       target: targetSelection,
@@ -179,6 +191,7 @@ export default function MapPanel({ onSelectionChange }) {
     });
   }, [
     activeMode,
+    secondaryMode,
     anchorDate, sourceSelection,
     targetSelection,
     selectionSummary,
@@ -408,8 +421,14 @@ export default function MapPanel({ onSelectionChange }) {
             {/* Controls */}
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
               <strong>Map:</strong>
-              <button disabled>
+              <button onClick={() => setSecondaryMode("target")} disabled={secondaryMode === "target"}>
                 Target
+              </button>
+              <button onClick={() => setSecondaryMode("actual")} disabled={secondaryMode === "actual"}>
+                Actual
+              </button>
+              <button onClick={() => setSecondaryMode("error")} disabled={secondaryMode === "error"}>
+                Error
               </button>
 
               <span style={{ opacity: 0.5, padding: "0 8px" }}>|</span>
@@ -418,11 +437,11 @@ export default function MapPanel({ onSelectionChange }) {
               <label>
                 <input
                   type="radio"
-                  name="targetLayer"
-                  checked={targetLayer === "community"}
+                  name="secondaryLayer"
+                  checked={secondaryLayer === "community"}
                   onChange={() => {
-                    setTargetLayer("community");
-                    setTargetSelectedId(null);
+                    setSecondaryLayer("community");
+                    setSecondarySelectedId(null);
                   }}
                 />
                 Community
@@ -430,11 +449,11 @@ export default function MapPanel({ onSelectionChange }) {
               <label>
                 <input
                   type="radio"
-                  name="targetLayer"
-                  checked={targetLayer === "beat"}
+                  name="secondaryLayer"
+                  checked={secondaryLayer === "beat"}
                   onChange={() => {
-                    setTargetLayer("beat");
-                    setTargetSelectedId(null);
+                    setSecondaryLayer("beat");
+                    setSecondarySelectedId(null);
                   }}
                 />
                 Beat
@@ -442,11 +461,11 @@ export default function MapPanel({ onSelectionChange }) {
               <label>
                 <input
                   type="radio"
-                  name="targetLayer"
-                  checked={targetLayer === "district"}
+                  name="secondaryLayer"
+                  checked={secondaryLayer === "district"}
                   onChange={() => {
-                    setTargetLayer("district");
-                    setTargetSelectedId(null);
+                    setSecondaryLayer("district");
+                    setSecondarySelectedId(null);
                   }}
                 />
                 District
@@ -488,11 +507,11 @@ export default function MapPanel({ onSelectionChange }) {
                   <MapBoxMap
                     width={Math.max(0, Math.floor(size.width / 2))}
                     height={size.height}
-                    geo={BOUNDARY_GEO[targetLayer]}
+                    geo={secondaryGeo}
                     crimeCounts={null}
-                    layer={targetLayer}
-                    selectedId={targetSelectedId}
-                    onSelectId={setTargetSelectedId}
+                    layer={secondaryLayer}
+                    selectedId={secondarySelectedId}
+                    onSelectId={setSecondarySelectedId}
                     onHover={setHover}
                   />
                 </div>
