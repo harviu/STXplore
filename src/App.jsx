@@ -5,21 +5,25 @@ import MapPanel from "./components/MapPanel.jsx";
 import SidePanel from "./components/SidePanel.jsx";
 import DashboardPanel from "./components/DashboardPanel.jsx";
 import HealthCheck from "./components/ApiHealthCheck.jsx";
+import { SelectionState } from "react-day-picker";
 
 export default function App() {
   const [state, setState] = useState({
     activeMode: "source",
     secondaryMode: "target",
+    anchorDate: null,
+
     source: null,
+    relation: null,
     target: null,
-    summary: null,
-    summaryLoading: null,
-    summaryError: "",
+    actual: null,
+    error: null,
+    left : { selection: null, summary: null, loading: false, error: null, range: null},
+    right: { selection: null, summary: null, loading: false, error: null, range: null}
   });
 
   const activeSelection = state[state.activeMode];
   const secondarySelection = state[state.secondaryMode];
-  console.log("state.summary =", state.summary);
 
 
   return (
@@ -35,7 +39,7 @@ export default function App() {
           </div>
 
           <div className="sideCell">
-            <SidePanel selection={activeSelection} inactiveSelection={secondarySelection} summary={state.summary} summaryLoading={state.summaryLoading} summaryError={state.summaryError}/>
+            <SidePanel left={state?.left} right={state?.right}/>
           </div>
         </section>
 

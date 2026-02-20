@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState, useEffect, act } from "react";
+import { useMemo, useRef, useState, useEffect } from "react";
 import Panel from "./Panel.jsx";
 import MapBoxMap, { CHICAGO_ZOOM } from "./MapBoxMap.jsx";
 import { BOUNDARY_GEO, getBoundaryId, getBoundaryLabel } from "../lib/boundaries.js";
@@ -16,14 +16,18 @@ function toYYYYMMDD(d) {
   return `${yyyy}-${mm}-${dd}`;
 }
 
-function rangeFromPastDays(pastDays, anchorDate, futureDays){
-  const start = new Date(anchorDate);
+function sourceRange(pastDays, anchorISO) {
+  const start = new Date(anchorISO);
   start.setDate(start.getDate() - pastDays);
-  const end = new Date(anchorDate);
-  end.setDate(end.getDate() + futureDays);
-  return { start: toYYYYMMDD(start), end: toYYYYMMDD(end) };
+  const end = new Date(anchorISO);
+  return {start: toYYYYMMDD(start), end: toYYYYMMDD(end) };
 }
-
+ function targetRange(futureDays, anchorISO){
+  const start = new Date(anchorISO);
+  const end = new Date(anchorISO);
+  end.setDate(end.getDate() + futureDays);
+  return {start: toYYYYMMDD(start), end: toYYYYMMDD(end)};
+ }
 
 function todayISO() {
   return new Date().toISOString().slice(0, 10);
@@ -31,7 +35,7 @@ function todayISO() {
 
 function useResizeObserverSize() {
   const ref = useRef(null);
-  const [size, setSize] = useState({ width: 900, height: 650 });
+  const [size, setSize] = useState({ width: 0, height: 0 });
 
   useEffect(() => {
     const el = ref.current;
@@ -164,21 +168,50 @@ export default function MapPanel({ onSelectionChange }) {
   const actualSelection = useMemo(() => makeSelection("actual", actualLayer, actualSelectedId, futureDays, anchorDate, futureDays),[actualLayer, actualSelectedId, futureDays, anchorDate]);
   const errorSelection = useMemo(() => makeSelection("error", errorLayer, errorSelectedId, futureDays, anchorDate, futureDays),[errorLayer, errorSelectedId, futureDays, anchorDate]);
 
-   const activeSelection = activeMode === "source" ? sourceSelection : targetSelection;
+  //Chooses what selection should drive the Left map summary
+  const leftSelection = activeMode === "source" ? sourceSelection: relationSelection;
 
-  const { data: selectionSummary, loading: summaryLoading, error: summaryError } = useApi(
+  //Chooses what selection should drive the Right map summary
+  const rightSelection = secondaryMode === "target" ? targetSelection : secondaryMode === "actual" ? actualSelection : errorSelection;
+
+  const {
+    data: leftSummary,
+    loading: leftSummaryLoading,
+    error: leftSummaryError,
+  } = useApi (
     ({ signal }) => {
-      if (!activeSelection) return Promise.resolve(null);
-      const { start, end } = rangeFromPastDays(pastDays, anchorDate, futureDays);
-      return api.selectionSummary(
-        activeSelection.layer,
-        activeSelection.id,
-        start,
-        end,
-        { signal }
-      );
+      if (!leftSelection) return Promise.resolve(null);
+
+      const { start, end } = sourceRange(pastDays, anchorDate);
+      return api.selectionSummary(leftSelection.layer, leftSelection.id, start, end, { signal });
     },
-    [activeSelection?.mode, activeSelection?.layer, activeSelection?.id, pastDays]
+    [
+      leftSelection?.mode,
+      leftSelection?.layer,
+      leftSelection?.id,
+      pastDays,
+      anchorDate,
+    ]
+  );
+
+  const {
+    data: rightSummary,
+    loading: rightSummaryLoading,
+    error: rightSummaryError,
+  } = useApi (
+    ({ signal }) => {
+      if (!rightSelection) return Promise.resolve(null);
+
+      const { start, end } = targetRange(futureDays, anchorDate);
+      return api.selectionSummary(rightSelection.layer, rightSelection.id, start, end, { signal });
+    },
+    [
+      rightSelection?.mode,
+      rightSelection?.layer,
+      rightSelection?.id,
+      futureDays,
+      anchorDate,
+    ]
   );
 
   const { data: dateRange } = useApi(({ signal }) => api.dateRange({ signal }), []);
@@ -201,26 +234,52 @@ export default function MapPanel({ onSelectionChange }) {
       activeMode,
       secondaryMode,
       anchorDate,
+
+      //selections
       source: sourceSelection,
-      target: targetSelection,
-      summary: selectionSummary,
-      summaryLoading,
-      summaryError,
       relation: relationSelection,
+      target: targetSelection,
       actual: actualSelection,
       error: errorSelection,
+      //summaries (split)
+      left: {
+        selection: leftSelection,
+        summary: leftSummary,
+        loading: leftSummaryLoading,
+        error: leftSummaryError,
+        range: sourceRange(pastDays, anchorDate),
+      },
+      right: {
+        selection: rightSelection,
+        summary: rightSummary,
+        loading: rightSummaryLoading,
+        error: rightSummaryError,
+        range: targetRange(futureDays, anchorDate),
+      },
     });
   }, [
     activeMode,
     secondaryMode,
-    anchorDate, sourceSelection,
-    targetSelection,
-    selectionSummary,
-    summaryLoading,
-    summaryError,
+    anchorDate,
+
+    sourceSelection,
     relationSelection,
+    targetSelection,
     actualSelection,
     errorSelection,
+
+    leftSelection,
+    leftSummary,
+    leftSummaryLoading,
+    leftSummaryError,
+    pastDays,
+
+    rightSelection,
+    rightSummary,
+    rightSummaryLoading,
+    rightSummaryError,
+    futureDays,
+
     onSelectionChange,
   ]);
 
@@ -236,7 +295,15 @@ export default function MapPanel({ onSelectionChange }) {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [calendarOpen]);
 
-  const { ref: mapWrapRef, size } = useResizeObserverSize();
+  const { ref: leftMapWrapRef, size: leftSize } = useResizeObserverSize();
+  const { ref: rightMapWrapRef, size: rightSize } = useResizeObserverSize();
+  useEffect(() => {
+  console.log("LEFT size", leftSize);
+}, [leftSize]);
+
+useEffect(() => {
+  console.log("RIGHT size", rightSize);
+}, [rightSize]);
 
   const thirtyDaysAgo = new Date();
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
@@ -420,7 +487,7 @@ export default function MapPanel({ onSelectionChange }) {
               }}
             >
               <div
-                ref={mapWrapRef}
+                ref={leftMapWrapRef}
                 style={{
                   display: "flex",
                   flex: "1 1 auto",
@@ -440,8 +507,8 @@ export default function MapPanel({ onSelectionChange }) {
                   }}
                 >
                   <MapBoxMap
-                    width={Math.max(0, Math.floor(size.width / 2))}
-                    height={size.height}
+                    width={leftSize.width}
+                    height={leftSize.height}
                     geo={geo}
                     crimeCounts={crimeCounts}
                     layer={layer}
@@ -571,7 +638,7 @@ export default function MapPanel({ onSelectionChange }) {
               }}
             >
               <div
-                ref={mapWrapRef}
+                ref={rightMapWrapRef}
                 style={{
                   display: "flex",
                   flex: "1 1 auto",
@@ -591,8 +658,8 @@ export default function MapPanel({ onSelectionChange }) {
                   }}
                 >
                   <MapBoxMap
-                    width={Math.max(0, Math.floor(size.width / 2))}
-                    height={size.height}
+                    width={rightSize.width}
+                    height={rightSize.height}
                     geo={secondaryGeo}
                     crimeCounts={null}
                     layer={secondaryLayer}

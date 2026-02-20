@@ -1,32 +1,44 @@
 import Panel from "./Panel.jsx";
 
-export default function SidePanel({
-  selection,
-  inactiveSelection,
-  summary,
-  summaryLoading,
-  summaryError,
-}) {
+function titleForMode(mode) {
+  switch (mode) {
+    case "source":
+      return "Source Selection";
+    case "relation":
+      return "Relation Selection";
+    case "target":
+      return "Target Selection";
+    case "actual":
+      return "Actual Selection";
+    case "error":
+      return "Error Map Selection";
+    default:
+      return "Selection";
+  }
+}
+
+function SelectionBlock({ heading, payload, showApi = true }) {
+  // payload shape: { selection, summary, loading, error, range }
+  const selection = payload?.selection ?? null;
+  const summary = payload?.summary ?? null;
+  const loading = !!payload?.loading;
+  const error = payload?.error ?? null;
+  const range = payload?.range ?? null;
+
   return (
-    <Panel title="Current Selection" fill style={{ minHeight: 0, maxHeight: "95%" }}>
-      <div
-        style={{
-          padding: "5%",
-          boxSizing: "border-box",
-          overflow: "auto",
-          flex: 1,
-          minHeight: 0,
-        }}
-      >
-        {!selection && !inactiveSelection ? (
-          <p style={{ opacity: 0.8, marginTop: 0 }}>Click a boundary to see details.</p>
-        ) : !inactiveSelection ? (
-          <div>
+    <div style={{ marginBottom: 16 }}>
+      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between" }}>
+        <strong>{heading}</strong>
+        {selection?.mode ? <span style={{ opacity: 0.75, fontSize: 12 }}>{selection.mode}</span> : null}
+      </div>
+
+      {!selection ? (
+        <p style={{ opacity: 0.8, marginTop: 8 }}>Click a boundary to see details.</p>
+      ) : (
+        <>
+          <div style={{ marginTop: 8 }}>
             <div>
-              {selection.mode === "source" ? (<strong>Source Selection:</strong>) : (<strong>Relation Selection:</strong>)}
-            </div>
-            <div>
-              <strong>Mode:</strong> {selection.mode}
+              <strong>{titleForMode(selection.mode)}:</strong>
             </div>
             <div>
               <strong>Layer:</strong> {selection.layer}
@@ -40,236 +52,77 @@ export default function SidePanel({
             <div>
               <strong>Days:</strong> {selection.days}
             </div>
-
-            <hr style={{ margin: "12px 0", opacity: 0.2 }} />
-
-            <div>
-              <strong>API:</strong>{" "}
-              {summaryLoading
-                ? "Loading..."
-                : summaryError
-                ? `Error: ${summaryError}`
-                : "OK"}
-            </div>
-
-            {summary && (
-              <pre
-                style={{
-                  whiteSpace: "pre-wrap",
-                  fontSize: 12,
-                  marginTop: 8,
-                }}
-              >
-                {JSON.stringify(summary, null, 2)}
-              </pre>
-            )}
-
-            <hr style={{ margin: "12px 0", opacity: 0.2 }} />
-
-            <details>
-              <summary style={{ cursor: "pointer" }}>Raw properties</summary>
-              <pre
-                style={{
-                  whiteSpace: "pre-wrap",
-                  fontSize: 12,
-                  maxHeight: 240,
-                  overflow: "auto",
-                  marginTop: 8,
-                }}
-              >
-                {JSON.stringify(selection.feature?.properties ?? {}, null, 2)}
-              </pre>
-            </details>
           </div>
-        ): !selection ? (
-          <div>
-            <div>
-              {inactiveSelection.mode === "target" ? (<strong>Target Selection:</strong>) : inactiveSelection.mode === "actual" ? (<strong>Actual Selection:</strong>) : (<strong>Error Map Selection:</strong>)}
-            </div>
-            <div>
-              <strong>Mode:</strong> {inactiveSelection.mode}
-            </div>
-            <div>
-              <strong>Layer:</strong> {inactiveSelection.layer}
-            </div>
-            <div>
-              <strong>ID:</strong> {inactiveSelection.id}
-            </div>
-            <div>
-              <strong>Name:</strong> {inactiveSelection.name}
-            </div>
-            <div>
-              <strong>Days:</strong> {inactiveSelection.days}
-            </div>
 
-            <hr style={{ margin: "12px 0", opacity: 0.2 }} />
+          {showApi ? (
+            <>
+              <hr style={{ margin: "12px 0", opacity: 0.2 }} />
 
-            {/* Future Target loading
-            <div>
-              <strong>API:</strong>{" "}
-              {summaryLoading
-                ? "Loading..."
-                : summaryError
-                ? `Error: ${summaryError}`
-                : "OK"}
-            </div>
+              <div>
+                <strong>API:</strong>{" "}
+                {loading ? "Loading..." : error ? `Error: ${String(error)}` : "OK"}
+              </div>
 
-            {summary && (
-              <pre
-                style={{
-                  whiteSpace: "pre-wrap",
-                  fontSize: 12,
-                  marginTop: 8,
-                }}
-              >
-                {JSON.stringify(summary, null, 2)}
-              </pre>
-            )}
+              {summary && (
+                <pre
+                  style={{
+                    whiteSpace: "pre-wrap",
+                    fontSize: 12,
+                    marginTop: 8,
+                  }}
+                >
+                  {JSON.stringify(summary, null, 2)}
+                </pre>
+              )}
+            </>
+          ) : null}
 
-            <hr style={{ margin: "12px 0", opacity: 0.2 }} />
-            */}
+          <hr style={{ margin: "12px 0", opacity: 0.2 }} />
 
-            <details>
-              <summary style={{ cursor: "pointer" }}>Raw properties</summary>
-              <pre
-                style={{
-                  whiteSpace: "pre-wrap",
-                  fontSize: 12,
-                  maxHeight: 240,
-                  overflow: "auto",
-                  marginTop: 8,
-                }}
-              >
-                {JSON.stringify(inactiveSelection.feature?.properties ?? {}, null, 2)}
-              </pre>
-            </details>
-          </div>
+          <details>
+            <summary style={{ cursor: "pointer" }}>Raw properties</summary>
+            <pre
+              style={{
+                whiteSpace: "pre-wrap",
+                fontSize: 12,
+                maxHeight: 240,
+                overflow: "auto",
+                marginTop: 8,
+              }}
+            >
+              {JSON.stringify(selection.feature?.properties ?? {}, null, 2)}
+            </pre>
+          </details>
+        </>
+      )}
+    </div>
+  );
+}
+
+export default function SidePanel({ left, right }) {
+  const hasAnySelection = !!left?.selection || !!right?.selection;
+
+  return (
+    <Panel title="Current Selection" fill style={{ minHeight: 0, maxHeight: "95%" }}>
+      <div
+        style={{
+          padding: "5%",
+          boxSizing: "border-box",
+          overflow: "auto",
+          flex: 1,
+          minHeight: 0,
+        }}
+      >
+        {!hasAnySelection ? (
+          <p style={{ opacity: 0.8, marginTop: 0 }}>
+            Click a boundary on either map to see details.
+          </p>
         ) : (
-          <div>
-            <div>
-              <div>
-                {selection.mode === "source" ? (<strong>Source Selection:</strong>) : (<strong>Relation Selection:</strong>)}
-              </div>
-              <div>
-                <strong>Mode:</strong> {selection.mode}
-              </div>
-              <div>
-                <strong>Layer:</strong> {selection.layer}
-              </div>
-              <div>
-                <strong>ID:</strong> {selection.id}
-              </div>
-              <div>
-                <strong>Name:</strong> {selection.name}
-              </div>
-              <div>
-                <strong>Days:</strong> {selection.days}
-              </div>
-
-              <hr style={{ margin: "12px 0", opacity: 0.2 }} />
-
-              <div>
-                <strong>API:</strong>{" "}
-                {summaryLoading
-                  ? "Loading..."
-                  : summaryError
-                  ? `Error: ${summaryError}`
-                  : "OK"}
-              </div>
-
-              {summary && (
-                <pre
-                  style={{
-                    whiteSpace: "pre-wrap",
-                    fontSize: 12,
-                    marginTop: 8,
-                  }}
-                >
-                  {JSON.stringify(summary, null, 2)}
-                </pre>
-              )}
-
-              <hr style={{ margin: "12px 0", opacity: 0.2 }} />
-
-              <details>
-                <summary style={{ cursor: "pointer" }}>Raw properties</summary>
-                <pre
-                  style={{
-                    whiteSpace: "pre-wrap",
-                    fontSize: 12,
-                    maxHeight: 240,
-                    overflow: "auto",
-                    marginTop: 8,
-                  }}
-                >
-                  {JSON.stringify(selection.feature?.properties ?? {}, null, 2)}
-                </pre>
-              </details>
-            </div>
+          <>
+            <SelectionBlock heading="Left Map" payload={left} showApi={true} />
             <hr style={{ margin: "12px 0", opacity: 0.7 }} />
-            <div>
-              <div>
-                {inactiveSelection.mode === "target" ? (<strong>Target Selection:</strong>) : inactiveSelection.mode === "actual" ? (<strong>Actual Selection:</strong>) : (<strong>Error Map Selection:</strong>)}
-              </div>
-              <div>
-                <strong>Mode:</strong> {inactiveSelection.mode}
-              </div>
-              <div>
-                <strong>Layer:</strong> {inactiveSelection.layer}
-              </div>
-              <div>
-                <strong>ID:</strong> {inactiveSelection.id}
-              </div>
-              <div>
-                <strong>Name:</strong> {inactiveSelection.name}
-              </div>
-              <div>
-                <strong>Days:</strong> {inactiveSelection.days}
-              </div>
-
-              <hr style={{ margin: "12px 0", opacity: 0.2 }} />
-
-              {/* Future Target loading
-              <div>
-                <strong>API:</strong>{" "}
-                {summaryLoading
-                  ? "Loading..."
-                  : summaryError
-                  ? `Error: ${summaryError}`
-                  : "OK"}
-              </div>
-
-              {summary && (
-                <pre
-                  style={{
-                    whiteSpace: "pre-wrap",
-                    fontSize: 12,
-                    marginTop: 8,
-                  }}
-                >
-                  {JSON.stringify(summary, null, 2)}
-                </pre>
-              )}
-
-              <hr style={{ margin: "12px 0", opacity: 0.2 }} />
-              */}
-
-              <details>
-                <summary style={{ cursor: "pointer" }}>Raw properties</summary>
-                <pre
-                  style={{
-                    whiteSpace: "pre-wrap",
-                    fontSize: 12,
-                    maxHeight: 240,
-                    overflow: "auto",
-                    marginTop: 8,
-                  }}
-                >
-                  {JSON.stringify(inactiveSelection.feature?.properties ?? {}, null, 2)}
-                </pre>
-              </details>
-            </div>
-          </div>
+            <SelectionBlock heading="Right Map" payload={right} showApi={true} />
+          </>
         )}
       </div>
     </Panel>

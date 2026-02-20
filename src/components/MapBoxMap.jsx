@@ -227,9 +227,12 @@ export default function MapBoxMap({
 
   useEffect(() => {
     const map = mapRef.current;
-    if (map && width > 0 && height > 0) {
+    if(!map) return;
+    if (width <= 0 || height <= 0) return;
+
+    requestAnimationFrame(() => {
       map.resize();
-    }
+    });
   }, [width, height]);
 
   useEffect(() => {
@@ -296,8 +299,8 @@ export default function MapBoxMap({
         style={{
           width: "100%",
           height: "100%",
-          minWidth: width,
-          minHeight: height,
+          minWidth: `${width}px`,
+          minHeight: `${height}px`,
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
@@ -318,10 +321,8 @@ export default function MapBoxMap({
     <div
       ref={containerRef}
       style={{
-        width: "100%",
-        height: "100%",
-        minWidth: width,
-        minHeight: height,
+        width: `${width}px`,
+        height: `${height}px`,
       }}
     />
   );
