@@ -22,6 +22,8 @@ export async function request(path, { signal, method = "GET", body, headers } = 
 export const api = {
   health: (opts) => request("/api/health", opts),
 
+  dateRange: (opts) => request("/api/date-range", opts),
+
   selectionSummary: (layer, id, start, end, opts) =>
     request(
       `/api/selection-summary?layer=${encodeURIComponent(layer)}&id=${encodeURIComponent(

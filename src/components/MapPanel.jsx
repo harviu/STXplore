@@ -73,7 +73,7 @@ export default function MapPanel({ onSelectionChange }) {
   const [pastDays, setPastDays] = useState(90);
   const [futureDays, setFutureDays] = useState(30);
 
-  // Anchor date for "today" — default is current date; user can pick another via calendar
+  // Anchor date — defaults to latest date in dataset once loaded; user can pick another via calendar
   const [anchorDate, setAnchorDate] = useState(() => todayISO());
   const [calendarOpen, setCalendarOpen] = useState(false);
   const calendarRef = useRef(null);
@@ -178,6 +178,21 @@ export default function MapPanel({ onSelectionChange }) {
     [activeSelection?.mode, activeSelection?.layer, activeSelection?.id, pastDays]
   );
 
+  const { data: dateRange } = useApi(({ signal }) => api.dateRange({ signal }), []);
+
+  // Disable dates after the latest date in the DB. Use start of next day (local) so "after" disables that day and all later.
+  const maxDataDate = useMemo(() => {
+    if (!dateRange?.max) return new Date(); // fallback: at least disable future if API not loaded
+    const dateOnly = dateRange.max.slice(0, 10); // in case API returns "YYYY-MM-DD HH:mm:ss"
+    const [y, m, d] = dateOnly.split("-").map(Number);
+    return new Date(y, m - 1, d + 1); // 00:00:00 on the day after max
+  }, [dateRange?.max]);
+
+  // Default anchor date to latest date in dataset when date range loads (store date-only, no time)
+  useEffect(() => {
+    if (dateRange?.max) setAnchorDate(dateRange.max.slice(0, 10));
+  }, [dateRange?.max]);
+
   useEffect(() => {
     onSelectionChange?.({
       activeMode,
@@ -243,7 +258,7 @@ export default function MapPanel({ onSelectionChange }) {
               fontSize: "inherit",
             }}
           >
-            {anchorDate}
+            {anchorDate?.slice(0, 10) ?? anchorDate}
           </button>
           {calendarOpen && (
             <div
@@ -262,6 +277,7 @@ export default function MapPanel({ onSelectionChange }) {
               <DayPicker
                 mode="single"
                 autoFocus
+                defaultMonth={anchorDate ? new Date(anchorDate) : undefined}
                 selected={anchorDate ? new Date(anchorDate + "T12:00:00") : undefined}
                 onSelect={(date) => {
                   if (date) {
@@ -272,8 +288,9 @@ export default function MapPanel({ onSelectionChange }) {
                     }
                   }
                 }}
-                navLayout="around"
                 startMonth={new Date(2001, 0)}
+                disabled={{ before: new Date(2001, 3, 2), after: new Date((dateRange?.max) + "T12:00:00") }}
+                navLayout="around"
                 showOutsideDays
                 animate
                 captionLayout="dropdown"
