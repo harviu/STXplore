@@ -3,8 +3,8 @@ import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { getBoundaryId, getBoundaryLabel } from "../lib/boundaries.js";
 
-const CHICAGO_CENTER = [-87.65, 41.85];
-const CHICAGO_ZOOM = 10;
+export const CHICAGO_CENTER = [-87.70, 41.85];
+export const CHICAGO_ZOOM = 9;
 const BOUNDARIES_SOURCE_ID = "boundaries";
 const BOUNDARIES_LAYER_ID = "boundaries-fill";
 const BOUNDARIES_SELECTED_LAYER_ID = "boundaries-selected";
@@ -63,9 +63,11 @@ export default function MapBoxMap({
   selectedId = null,
   onSelectId = null,
   onHover = null,
+  recenterTrigger = null,
 }) {
   const containerRef = useRef(null);
   const mapRef = useRef(null);
+  const initialRecenterDoneRef = useRef(false);
   const geoRef = useRef(geo);
   const crimeCountsRef = useRef(crimeCounts);
   const layerRef = useRef(layer);
@@ -199,7 +201,25 @@ export default function MapBoxMap({
     });
 
     mapRef.current = map;
+    const container = containerRef.current;
+
+    // Recenter when the container first gets real dimensions (after layout).
+    // Initial map creation often runs when the div is 0-sized, so the view is wrong.
+    const ro = new ResizeObserver(() => {
+      if (initialRecenterDoneRef.current) return;
+      const m = mapRef.current;
+      if (!m) return;
+      const rect = container.getBoundingClientRect();
+      if (rect.width > 0 && rect.height > 0) {
+        initialRecenterDoneRef.current = true;
+        m.resize();
+        m.jumpTo({ center: CHICAGO_CENTER, zoom: CHICAGO_ZOOM });
+      }
+    });
+    ro.observe(container);
+
     return () => {
+      ro.disconnect();
       map.remove();
       mapRef.current = null;
     };
@@ -260,6 +280,14 @@ export default function MapBoxMap({
       selectedId ?? "",
     ]);
   }, [selectedId]);
+
+  // Recenter to Chicago when parent triggers (e.g. "Recenter" button)
+  useEffect(() => {
+    if (recenterTrigger == null) return;
+    const map = mapRef.current;
+    if (!map) return;
+    map.flyTo({ center: CHICAGO_CENTER, zoom: CHICAGO_ZOOM });
+  }, [recenterTrigger]);
 
   const token = getMapboxToken().trim();
   if (!token) {

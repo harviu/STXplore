@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState, useEffect, act } from "react";
 import Panel from "./Panel.jsx";
-import MapBoxMap from "./MapBoxMap.jsx";
+import MapBoxMap, { CHICAGO_ZOOM } from "./MapBoxMap.jsx";
 import { BOUNDARY_GEO, getBoundaryId, getBoundaryLabel } from "../lib/boundaries.js";
 import { indexById } from "../lib/indexById.js";
 import { loadDummyCrimeCounts } from "../lib/dummyCrimeData.js";
@@ -79,6 +79,9 @@ export default function MapPanel({ onSelectionChange }) {
   const calendarRef = useRef(null);
 
   const [hover, setHover] = useState(null);
+
+  // Increment to recenter both maps to CHICAGO_ZOOM
+  const [recenterTrigger, setRecenterTrigger] = useState(0);
   
   // Crime counts state (using dummy data for visualization)
   const [crimeCounts, setCrimeCounts] = useState(null);
@@ -241,62 +244,111 @@ export default function MapPanel({ onSelectionChange }) {
   return (
     <Panel title="Crime Map" fill style={{ minHeight: 0, maxHeight: "95%" }}>
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", height: "85%"}}>
-        {/* Date Picker */}
-        <strong>Anchor date:</strong>
-        <div ref={calendarRef} style={{ position: "relative", display: "inline-block" }}>
-          <button
-            type="button"
-            onClick={() => setCalendarOpen((open) => !open)}
-            title="Pick start date (anchor for source/target days)"
+        {/* Top toolbar: Anchor date + Recenter */}
+        <div
+          style={{
+            display: "flex",
+            flexWrap: "wrap",
+            alignItems: "center",
+            gap: 16,
+            rowGap: 10,
+            width: "100%",
+            padding: "10px 0 6px",
+            justifyContent: "center",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <strong style={{ fontWeight: 600, opacity: 0.95 }}>Anchor date</strong>
+            <div ref={calendarRef} style={{ position: "relative" }}>
+              <button
+                type="button"
+                onClick={() => setCalendarOpen((open) => !open)}
+                title="Pick start date (anchor for source/target days)"
+                style={{
+                  padding: "6px 14px",
+                  cursor: "pointer",
+                  border: "1px solid rgba(255,255,255,0.25)",
+                  borderRadius: 8,
+                  background: "rgba(255,255,255,0.1)",
+                  color: "inherit",
+                  fontSize: "inherit",
+                  fontWeight: 500,
+                  minWidth: 120,
+                }}
+              >
+                {anchorDate?.slice(0, 10) ?? anchorDate}
+              </button>
+              {calendarOpen && (
+                <div
+                  style={{
+                    position: "absolute",
+                    top: "100%",
+                    left: 0,
+                    marginTop: 6,
+                    zIndex: 1000,
+                    background: "var(--panel-bg, #1e1e1e)",
+                    borderRadius: 8,
+                    boxShadow: "0 4px 20px rgba(0,0,0,0.4)",
+                    padding: 8,
+                  }}
+                >
+                  <DayPicker
+                    mode="single"
+                    autoFocus
+                    defaultMonth={anchorDate ? new Date(anchorDate) : undefined}
+                    selected={anchorDate ? new Date(anchorDate + "T12:00:00") : undefined}
+                    onSelect={(date) => {
+                      if (date) {
+                        setAnchorDate(date.toISOString().slice(0, 10));
+                        setCalendarOpen(false);
+                        if (thirtyDaysAgo < date) {
+                          setSecondaryMode("target");
+                        }
+                      }
+                    }}
+                    startMonth={new Date(2001, 0)}
+                    disabled={{ before: new Date(2001, 3, 2), after: new Date((dateRange?.max) + "T12:00:00") }}
+                    navLayout="around"
+                    showOutsideDays
+                    animate
+                    captionLayout="dropdown"
+                  />
+                </div>
+              )}
+            </div>
+          </div>
+
+          <span
             style={{
-              padding: "4px 10px",
-              cursor: "pointer",
-              border: "1px solid rgba(255,255,255,0.3)",
-              borderRadius: 6,
-              background: "rgba(255,255,255,0.08)",
-              color: "inherit",
-              fontSize: "inherit",
+              width: 1,
+              height: 22,
+              background: "rgba(255,255,255,0.2)",
+              borderRadius: 1,
+              flexShrink: 0,
             }}
-          >
-            {anchorDate?.slice(0, 10) ?? anchorDate}
-          </button>
-          {calendarOpen && (
-            <div
+            aria-hidden
+          />
+
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <strong style={{ fontWeight: 600, opacity: 0.95 }}>Recenter</strong>
+            <button
+              type="button"
+              onClick={() => setRecenterTrigger((t) => t + 1)}
+              title={`Recenter both maps to Chicago (zoom ${CHICAGO_ZOOM})`}
               style={{
-                position: "absolute",
-                top: "100%",
-                left: 0,
-                marginTop: 4,
-                zIndex: 1000,
-                background: "var(--panel-bg, #1e1e1e)",
+                padding: "6px 14px",
+                cursor: "pointer",
+                border: "1px solid rgba(255,255,255,0.25)",
                 borderRadius: 8,
-                boxShadow: "0 4px 20px rgba(0,0,0,0.4)",
-                padding: 8,
+                background: "rgba(255,255,255,0.1)",
+                color: "inherit",
+                fontSize: "inherit",
+                fontWeight: 500,
               }}
             >
-              <DayPicker
-                mode="single"
-                autoFocus
-                defaultMonth={anchorDate ? new Date(anchorDate) : undefined}
-                selected={anchorDate ? new Date(anchorDate + "T12:00:00") : undefined}
-                onSelect={(date) => {
-                  if (date) {
-                    setAnchorDate(date.toISOString().slice(0, 10));
-                    setCalendarOpen(false);
-                    if (thirtyDaysAgo < date) {
-                      setSecondaryMode("target");
-                    }
-                  }
-                }}
-                startMonth={new Date(2001, 0)}
-                disabled={{ before: new Date(2001, 3, 2), after: new Date((dateRange?.max) + "T12:00:00") }}
-                navLayout="around"
-                showOutsideDays
-                animate
-                captionLayout="dropdown"
-              />
-            </div>
-          )}
+              Recenter maps
+            </button>
+          </div>
         </div>
 
         <hr style={{ width: "100%", margin: "12px 0", opacity: 0.8 }} />
@@ -396,6 +448,7 @@ export default function MapPanel({ onSelectionChange }) {
                     selectedId={selectedId}
                     onSelectId={setSelectedId}
                     onHover={setHover}
+                    recenterTrigger={recenterTrigger}
                   />
                 </div>
               </div>
@@ -546,6 +599,7 @@ export default function MapPanel({ onSelectionChange }) {
                     selectedId={secondarySelectedId}
                     onSelectId={setSecondarySelectedId}
                     onHover={setHover}
+                    recenterTrigger={recenterTrigger}
                   />
                 </div>
               </div>
