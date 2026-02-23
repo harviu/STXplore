@@ -87,6 +87,9 @@ function SelectionBlock({ heading, payload, showApi = true }) {
                     <strong>Total Crimes:</strong> {summary.total_crimes}
                   </div>
                   {summary.top_types?.[0] ? (<div>
+                    <br />
+                    <strong>Top Crimes:</strong>
+                    <br />
                     <strong>{summary.top_types?.[0]?.primary_type}:</strong> {summary.top_types?.[0]?.count}
                   </div>) : null}
                   {summary.top_types?.[1] ? (<div>
