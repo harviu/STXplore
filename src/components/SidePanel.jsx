@@ -71,7 +71,51 @@ function SelectionBlock({ heading, payload, showApi = true }) {
                     marginTop: 8,
                   }}
                 >
-                  {JSON.stringify(summary, null, 2)}
+                  <div>
+                    <strong>Layer:</strong> {summary.layer}
+                  </div>
+                  <div>
+                    <strong>ID:</strong> {summary.id}
+                  </div>
+                  <div>
+                    <strong>Starting Date:</strong> {summary.start}
+                  </div>
+                  <div>
+                    <strong>Ending Date:</strong> {summary.end}
+                  </div>
+                  <div>
+                    <strong>Total Crimes:</strong> {summary.total_crimes}
+                  </div>
+                  {summary.top_types?.[0] ? (<div>
+                    <strong>{summary.top_types?.[0]?.primary_type}:</strong> {summary.top_types?.[0]?.count}
+                  </div>) : null}
+                  {summary.top_types?.[1] ? (<div>
+                    <strong>{summary.top_types?.[1]?.primary_type}:</strong> {summary.top_types?.[1]?.count}
+                  </div>) : null}
+                  {summary.top_types?.[2] ? (<div>
+                    <strong>{summary.top_types?.[2]?.primary_type}:</strong> {summary.top_types?.[2]?.count}
+                  </div>) : null}
+                  {summary.top_types?.[3] ? (<div>
+                    <strong>{summary.top_types?.[3]?.primary_type}:</strong> {summary.top_types?.[3]?.count}
+                  </div>) : null}
+                  {summary.top_types?.[4] ? (<div>
+                    <strong>{summary.top_types?.[4]?.primary_type}:</strong> {summary.top_types?.[4]?.count}
+                  </div>) : null}
+                  {summary.top_types?.[5] ? (<div>
+                    <strong>{summary.top_types?.[5]?.primary_type}:</strong> {summary.top_types?.[5]?.count}
+                  </div>) : null}
+                  {summary.top_types?.[6] ? (<div>
+                    <strong>{summary.top_types?.[6]?.primary_type}:</strong> {summary.top_types?.[6]?.count}
+                  </div>) : null}
+                  {summary.top_types?.[7] ? (<div>
+                    <strong>{summary.top_types?.[7]?.primary_type}:</strong> {summary.top_types?.[7]?.count}
+                  </div>) : null}
+                  {summary.top_types?.[8] ? (<div>
+                    <strong>{summary.top_types?.[8]?.primary_type}:</strong> {summary.top_types?.[8]?.count}
+                  </div>) : null}
+                  {summary.top_types?.[9] ? (<div>
+                    <strong>{summary.top_types?.[9]?.primary_type}:</strong> {summary.top_types?.[9]?.count}
+                  </div>) : null}
                 </pre>
               )}
             </>
