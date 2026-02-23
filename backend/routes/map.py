@@ -8,7 +8,7 @@ router = APIRouter(tags=["map"])
 @router.get("/map/counts")
 def map_counts( # type: ignore
     start: str = Query(..., description="YYYY-MM-DD (inclusive)"),
-    end: str = Query(..., description="YYYY-MM-DD (exclusive)"),
+    end: str = Query(..., description="YYYY-MM-DD (inclusive)"),
     db: Session = Depends(get_db),
  ) :
     sql = text("""

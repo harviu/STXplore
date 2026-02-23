@@ -31,4 +31,12 @@ export const api = {
       )}&start=${encodeURIComponent(start)}&end=${encodeURIComponent(end)}`,
       opts
     ),
+  
+  mapTotals: (layer, start, end, opts) =>
+    request(
+      `/api/map/totals?layer=${encodeURIComponent(layer)}&start=${encodeURIComponent(
+        start
+      )}&end=${encodeURIComponent(end)}`,
+      opts
+    ),
 };

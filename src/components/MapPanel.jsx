@@ -9,6 +9,29 @@ import "react-day-picker/style.css";
 import { api } from "../lib/api.js";
 import { useApi } from "../hooks/useApi.js";
 
+const UI_TO_API_LAYER = {
+  community: "community_area",
+  beat: "beat",
+  district: "district",
+};
+
+function responseToCounts(resp){
+  // backend returns { start, end, date: [{ feature_id, count }, ...]}
+  const rows = resp?.data ?? [];
+  const out = {};
+  for (const r of rows) {
+    if (r?.feature_id == null) continue;
+    out[String(r.feature_id)] = Number(r.count) || 0;
+  }
+  return out;
+}
+
+function addDaysISO(iso, days) {
+  const d = new Date(iso);
+  d.setDate(d.getDate() + days);
+  return toYYYYMMDD(d);
+}
+
 function toYYYYMMDD(d) {
   const yyyy = d.getFullYear();
   const mm = String(d.getMonth() + 1).padStart(2, "0");
@@ -17,16 +40,14 @@ function toYYYYMMDD(d) {
 }
 
 function sourceRange(pastDays, anchorISO) {
-  const start = new Date(anchorISO);
-  start.setDate(start.getDate() - pastDays);
-  const end = new Date(anchorISO);
-  return {start: toYYYYMMDD(start), end: toYYYYMMDD(end) };
+  const start = addDaysISO(anchorISO, -pastDays);
+  const end = addDaysISO(anchorISO, 1);
+  return { start, end: end}
 }
  function targetRange(futureDays, anchorISO){
-  const start = new Date(anchorISO);
-  const end = new Date(anchorISO);
-  end.setDate(end.getDate() + futureDays);
-  return {start: toYYYYMMDD(start), end: toYYYYMMDD(end)};
+  const start = anchorISO;
+  const end = addDaysISO(anchorISO, futureDays + 1);
+  return { start, end: end};
  }
 
 function todayISO() {
@@ -109,6 +130,25 @@ export default function MapPanel({ onSelectionChange }) {
 
   const getId = useMemo(() => (f) => getBoundaryId(layer, f), [layer]);
   const getLabel = useMemo(() => (f) => getBoundaryLabel(layer, f), [layer]);
+
+  //Get Data for HeatMap
+  const {
+    data: leftTotalsResp,
+    loading: leftTotalsLoading,
+    error: leftTotalsError,
+  } = useApi(
+    ({ signal }) => {
+      const { start, end } = sourceRange(pastDays, anchorDate);
+      const apiLayer = UI_TO_API_LAYER[layer];
+      return api.mapTotals(apiLayer, start, end, { signal });
+    },
+    [layer, pastDays, anchorDate]
+  );
+
+  const leftCrimeCounts = useMemo(
+    () => responseToCounts(leftTotalsResp),
+    [leftTotalsResp]
+  );
 
   // Load dummy crime counts for source mode
   useEffect(() => {
@@ -511,7 +551,7 @@ useEffect(() => {
                     width={leftSize.width}
                     height={leftSize.height}
                     geo={geo}
-                    crimeCounts={crimeCounts}
+                    crimeCounts={leftCrimeCounts}
                     layer={layer}
                     selectedId={selectedId}
                     onSelectId={setSelectedId}

@@ -5,7 +5,8 @@ import { useEffect, useState } from "react";
  * - standardizes loading/data/error
  * - cancels stale requests automatically
  */
-export function useApi(makePromise, deps) {
+export function useApi(makePromise, deps, options = {}) {
+  const { keepPreviousData = true} = options;
   const [data, setData] = useState(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -16,8 +17,10 @@ export function useApi(makePromise, deps) {
 
     setLoading(true);
     setError("");
+    if (!keepPreviousData) setData(null);
 
-    makePromise({ signal: controller.signal })
+    Promise.resolve()
+      .then(() => makePromise({ signal: controller.signal }))
       .then((d) => {
         if (alive) setData(d);
       })
@@ -28,14 +31,12 @@ export function useApi(makePromise, deps) {
         setData(null);
       })
       .finally(() => {
-        if (alive) setLoading(false);
+        if(alive) setLoading(false);
       });
-
-    return () => {
-      alive = false;
-      controller.abort();
-    };
+      return () => {
+        alive = false;
+        controller.abort();
+      };
   }, deps);
-
   return { data, error, loading };
 }

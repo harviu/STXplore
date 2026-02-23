@@ -20,15 +20,28 @@ const CHOROPLETH_STOPS = [
   "#bd0026", // dark red (high)
 ];
 
+function hasAnyCounts(crimeCounts){
+  if (!crimeCounts) return false;
+  if(crimeCounts instanceof Map) return crimeCounts.size > 0;
+  return Object.keys(crimeCounts).length > 0;
+}
+
+function getCount(crimeCounts, id) {
+  if (!crimeCounts) return 0;
+  const key = String(id);
+  if (crimeCounts instanceof Map) return crimeCounts.get(key) ?? crimeCounts.get(id) ?? 0;
+  return crimeCounts[key] ?? crimeCounts[id] ?? 0;
+}
+
 function buildMergedGeo(geo, crimeCounts, layer) {
   if (!geo?.features?.length) return { mergedGeo: geo, minCount: 0, maxCount: 1 };
-  const hasCounts = crimeCounts && crimeCounts.size > 0;
+  const hasCounts = hasAnyCounts(crimeCounts);
   const features = geo.features.map((f) => {
     const id = getBoundaryId(layer, f);
-    const count = hasCounts ? (crimeCounts.get(id) ?? 0) : 0;
+    const count = hasCounts ? getCount(crimeCounts, id) : 0;
     return {
       ...f,
-      properties: { ...f.properties, boundary_id: id, count },
+      properties: { ...f.properties, boundary_id: String(id), count },
     };
   });
   const counts = features.map((f) => f.properties.count);
@@ -42,9 +55,8 @@ function buildMergedGeo(geo, crimeCounts, layer) {
 }
 
 function getFillColorPaint(crimeCounts, minCount, maxCount) {
-  if (!crimeCounts || crimeCounts.size === 0) {
-    return "#e07c3c";
-  }
+  const any = hasAnyCounts(crimeCounts);
+  if (!any) return "#e07c3c";
   const range = maxCount - minCount || 1;
   const stops = CHOROPLETH_STOPS.map((color, i) => {
     const t = i / (CHOROPLETH_STOPS.length - 1);
@@ -163,8 +175,9 @@ export default function MapBoxMap({
       });
       if (features.length > 0 && onSelectIdRef.current) {
         const feature = features[0];
-        const id = feature.properties?.boundary_id ?? getBoundaryId(layerRef.current, feature);
-        const current = selectedIdRef.current;
+        const idRaw = feature.properties?.boundary_id ?? getBoundaryId(layerRef.current, feature);
+        const id = String(idRaw);
+        const current = selectedIdRef.current == null ? null : String(selectedIdRef.current);
         onSelectIdRef.current(id === current ? null : id);
       }
     };
