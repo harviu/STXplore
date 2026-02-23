@@ -48,7 +48,7 @@ export default function DashboardPanel({ mode, selection, inactiveMode, inactive
                 <div>
                   {/* Source Map Stats */}
                   <p style={{ opacity: 0.95, margin: 0 }}>
-                    <strong>{cFL(selection.mode)}</strong> ready to compute stats for{" "}
+                    <strong>{cFL(selection.mode)}:</strong> Current stats for{" "}
                     <strong>{selection.name}</strong>.
                     </p>
                     {summary && (

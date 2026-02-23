@@ -111,6 +111,24 @@ export default function MapBoxMap({
     [geo, crimeCounts, layer]
   );
 
+useEffect(() => {
+  if (!geo?.features?.length || !crimeCounts) return;
+
+  const sampleIds = geo.features.slice(0, 10).map((f) => String(getBoundaryId(layer, f)));
+  console.log(`[${layer}] sample feature ids:`, sampleIds);
+
+  // check how many of those ids exist in crimeCounts
+  const hits = sampleIds.map((id) => {
+    const v =
+      crimeCounts instanceof Map
+        ? crimeCounts.get(id)
+        : crimeCounts[id];
+    return [id, v];
+  });
+
+  console.log(`[${layer}] sample count lookups:`, hits);
+}, [geo, crimeCounts, layer]);
+
   const fillColorPaint = useMemo(
     () => getFillColorPaint(crimeCounts, minCount, maxCount),
     [crimeCounts, minCount, maxCount]

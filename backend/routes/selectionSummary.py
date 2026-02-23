@@ -21,7 +21,13 @@ def selection_summary(  # type: ignore
     col = col_map.get(layer)
     if not col:
         raise HTTPException(status_code=400, detail="Invalid layer (use community|beat|district)")
-
+    # Normalize beat id's: allow frontend to send "0735" but DB stores "735"
+    if layer == "beat":
+        try:
+            id = str(int(id)) # "0735" -> "735"
+        except Exception:
+            id = id.lstrip("0") or "0"
+    
     params = {"start": start, "end": end, "id": id}
 
     total_sql = text(f"""
