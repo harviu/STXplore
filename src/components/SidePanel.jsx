@@ -54,7 +54,7 @@ function SelectionBlock({ heading, payload, showApi = true }) {
             </div>
           </div>
 
-          {showApi ? (
+          {showApi && selection.mode !== "target" ? (
             <>
               <hr style={{ margin: "12px 0", opacity: 0.2 }} />
 

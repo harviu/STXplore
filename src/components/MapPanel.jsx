@@ -579,6 +579,7 @@ useEffect(() => {
                   <button onClick={() => setSecondaryMode("actual")} disabled={secondaryMode === "actual"}>
                     Actual
                   </button>
+                  <span style={{ opacity: 0.5, padding: "0 4px" }}></span>
                   <button onClick={() => setSecondaryMode("error")} disabled={secondaryMode === "error"}>
                     Error
                   </button>
