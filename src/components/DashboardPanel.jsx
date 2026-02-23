@@ -1,6 +1,9 @@
 import Panel from "./Panel.jsx";
+import { select } from 'https://esm.sh/d3-selection';
+import { useRef, useEffect } from "react";
 
-export default function DashboardPanel({ mode, selection, inactiveMode, inactiveSelection }) {
+export default function DashboardPanel({ mode, selection, inactiveMode, inactiveSelection, activeSummary }) {
+  const barsRef = useRef();
   const hasActive = Boolean(selection);
   const hasInactive = Boolean(inactiveSelection);
 
@@ -8,6 +11,25 @@ export default function DashboardPanel({ mode, selection, inactiveMode, inactive
     if (!string) return ''; // Handle empty or null strings
     return string.charAt(0).toUpperCase() + string.slice(1);
   };
+
+  const summary = activeSummary?.top_types ?? null;
+
+  useEffect(() => { if (!summary) return;
+     const bars = select(barsRef.current);
+      bars.selectAll("rect").data(summary).join("rect").attr("height", 19).attr("width", d => d.count * 400/summary[0].count).attr("y", (d, i) => i * 20).attr("fill", "steelblue");
+      select('.labels').selectAll('text').data(summary).join('text').attr('y', function(d, i) {
+		    return i * 20 + 13;
+	    })
+	    .text(function(d) {
+		    return d.primary_type;
+	    }).attr("text-anchor", "end");
+      select('.counts').selectAll('text').data(summary).join('text').attr('y', function(d, i) {
+		    return i * 20 + 13;
+	    })
+	    .text(function(d) {
+		    return d.count;
+	    }).attr("text-anchor", "start");
+     }, [summary]);
 
   return (
     <Panel title="Dashboard">
@@ -28,7 +50,18 @@ export default function DashboardPanel({ mode, selection, inactiveMode, inactive
                   <p style={{ opacity: 0.95, margin: 0 }}>
                     <strong>{cFL(selection.mode)}</strong> ready to compute stats for{" "}
                     <strong>{selection.name}</strong>.
-                  </p>
+                    </p>
+                    {summary && (
+                      <div style={{ marginTop: 8 }}>
+                        <strong>Top Crime Types:</strong>
+                        <svg width="760" height="240">
+                          <g className="bars" ref={barsRef} transform="translate(210, 30)"></g>
+                          <g className="labels" transform="translate(198, 30)" style={{fill: "white"}}></g>
+                          <g className="counts" transform="translate(220, 32)" style={{fill: "white"}}></g>
+                        </svg>
+                      </div>
+                    )}
+                  
                 </div>
               ) : hasActive && selection.mode === "relation" ? (
                 <div>
