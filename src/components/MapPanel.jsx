@@ -423,56 +423,57 @@ useEffect(() => {
 
         <div style={{ display: "flex", flexDirection: "row", width: "100%", height: "100%"}}>
           {/* Source/Relation Map */}
-          <div style={{ flex: "1 1 auto", flexDirection: "column", padding: "0 8px", display: "flex", alignItems: "center" }}>
+          <div style={{ flex: "1", flexDirection: "column", padding: "1em", display: "flex", alignItems: "center" }}>
             {/* Controls */}
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-              <strong>Map:</strong>
-              <button onClick={() => setActiveMode("source")} disabled={activeMode === "source"}>
-                Source
-              </button>
-              <button onClick={() => setActiveMode("relation")} disabled={activeMode === "relation"}>
-                Relation
-              </button>
-
-              <span style={{ opacity: 0.5, padding: "0 8px" }}>|</span>
-
-              <strong>Layer:</strong>
-              <label>
-                <input
-                  type="radio"
-                  name="layer"
-                  checked={layer === "community"}
-                  onChange={() => {
-                    setLayer("community");
-                    setSelectedId(null);
-                  }}
-                />
-                Community
-              </label>
-              <label>
-                <input
-                  type="radio"
-                  name="layer"
-                  checked={layer === "beat"}
-                  onChange={() => {
-                    setLayer("beat");
-                    setSelectedId(null);
-                  }}
-                />
-                Beat
-              </label>
-              <label>
-                <input
-                  type="radio"
-                  name="layer"
-                  checked={layer === "district"}
-                  onChange={() => {
-                    setLayer("district");
-                    setSelectedId(null);
-                  }}
-                />
-                District
-              </label>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8, alignItems: "flex-start", width: "100%" }}>
+              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                <strong>Map:</strong>
+                <button onClick={() => setActiveMode("source")} disabled={activeMode === "source"}>
+                  Source
+                </button>
+                <button onClick={() => setActiveMode("relation")} disabled={activeMode === "relation"}>
+                  Relation
+                </button>
+              </div>
+              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                <strong>Layer:</strong>
+                <label>
+                  <input
+                    type="radio"
+                    name="layer"
+                    checked={layer === "community"}
+                    onChange={() => {
+                      setLayer("community");
+                      setSelectedId(null);
+                    }}
+                  />
+                  Community
+                </label>
+                <label>
+                  <input
+                    type="radio"
+                    name="layer"
+                    checked={layer === "beat"}
+                    onChange={() => {
+                      setLayer("beat");
+                      setSelectedId(null);
+                    }}
+                  />
+                  Beat
+                </label>
+                <label>
+                  <input
+                    type="radio"
+                    name="layer"
+                    checked={layer === "district"}
+                    onChange={() => {
+                      setLayer("district");
+                      setSelectedId(null);
+                    }}
+                  />
+                  District
+                </label>
+              </div>
             </div>
             <div
               style={{
@@ -482,6 +483,7 @@ useEffect(() => {
                 position: "relative",
                 padding: "2.5%",
                 boxSizing: "border-box",
+                width: "100%",
                 display: "flex",
                 flexDirection: "column",
                 gap: 10,
@@ -522,23 +524,7 @@ useEffect(() => {
               </div>
               
 
-              {/* Slider row */}
-              <div style={{ flex: "0 0 auto" }}>
-                <>
-                  <label htmlFor="pastDays">
-                    Source date: {pastDays} days before start ({anchorDate})
-                  </label>
-                  <input
-                    id="pastDays"
-                    type="range"
-                    min="1"
-                    max="90"
-                    value={pastDays}
-                    onChange={(e) => setPastDays(Number(e.target.value))}
-                    style={{ width: "100%" }}
-                  />
-                </>
-              </div>
+              
 
               {/* Tooltip */}
               {hover && (
@@ -567,64 +553,65 @@ useEffect(() => {
           </div>
 
           {/* Target Map */}
-          <div style={{ flex: "1 1 auto", flexDirection: "column", padding: "0 8px", display: "flex", alignItems: "center" }}>
+          <div style={{ flex: "1", flexDirection: "column", padding: "1em", display: "flex", alignItems: "center" }}>
             {/* Controls */}
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-              <strong>Map:</strong>
-              <button onClick={() => setSecondaryMode("target")} disabled={secondaryMode === "target"}>
-                Target
-              </button>
-              {thirtyDaysAgo > new Date(anchorDate) ? (
-                <div>
-                  <button onClick={() => setSecondaryMode("actual")} disabled={secondaryMode === "actual"}>
-                    Actual
-                  </button>
-                  <span style={{ opacity: 0.5, padding: "0 4px" }}></span>
-                  <button onClick={() => setSecondaryMode("error")} disabled={secondaryMode === "error"}>
-                    Error
-                  </button>
-                </div>
-              ):(<></>)}
-
-              <span style={{ opacity: 0.5, padding: "0 8px" }}>|</span>
-
-              <strong>Layer:</strong>
-              <label>
-                <input
-                  type="radio"
-                  name="secondaryLayer"
-                  checked={secondaryLayer === "community"}
-                  onChange={() => {
-                    setSecondaryLayer("community");
-                    setSecondarySelectedId(null);
-                  }}
-                />
-                Community
-              </label>
-              <label>
-                <input
-                  type="radio"
-                  name="secondaryLayer"
-                  checked={secondaryLayer === "beat"}
-                  onChange={() => {
-                    setSecondaryLayer("beat");
-                    setSecondarySelectedId(null);
-                  }}
-                />
-                Beat
-              </label>
-              <label>
-                <input
-                  type="radio"
-                  name="secondaryLayer"
-                  checked={secondaryLayer === "district"}
-                  onChange={() => {
-                    setSecondaryLayer("district");
-                    setSecondarySelectedId(null);
-                  }}
-                />
-                District
-              </label>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8, alignItems: "flex-start", width: "100%" }}>
+              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                <strong>Map:</strong>
+                <button onClick={() => setSecondaryMode("target")} disabled={secondaryMode === "target"}>
+                  Target
+                </button>
+                {thirtyDaysAgo > new Date(anchorDate) ? (
+                  <div>
+                    <button onClick={() => setSecondaryMode("actual")} disabled={secondaryMode === "actual"}>
+                      Actual
+                    </button>
+                    <span style={{ opacity: 0.5, padding: "0 4px" }}></span>
+                    <button onClick={() => setSecondaryMode("error")} disabled={secondaryMode === "error"}>
+                      Error
+                    </button>
+                  </div>
+                ):(<></>)}
+              </div>
+              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                <strong>Layer:</strong>
+                <label>
+                  <input
+                    type="radio"
+                    name="secondaryLayer"
+                    checked={secondaryLayer === "community"}
+                    onChange={() => {
+                      setSecondaryLayer("community");
+                      setSecondarySelectedId(null);
+                    }}
+                  />
+                  Community
+                </label>
+                <label>
+                  <input
+                    type="radio"
+                    name="secondaryLayer"
+                    checked={secondaryLayer === "beat"}
+                    onChange={() => {
+                      setSecondaryLayer("beat");
+                      setSecondarySelectedId(null);
+                    }}
+                  />
+                  Beat
+                </label>
+                <label>
+                  <input
+                    type="radio"
+                    name="secondaryLayer"
+                    checked={secondaryLayer === "district"}
+                    onChange={() => {
+                      setSecondaryLayer("district");
+                      setSecondarySelectedId(null);
+                    }}
+                  />
+                  District
+                </label>
+              </div>
             </div>
             <div
               style={{
@@ -634,6 +621,7 @@ useEffect(() => {
                 position: "relative",
                 padding: "2.5%",
                 boxSizing: "border-box",
+                width: "100%",
                 display: "flex",
                 flexDirection: "column",
                 gap: 10,
@@ -672,26 +660,6 @@ useEffect(() => {
                   />
                 </div>
               </div>
-              
-
-              {/* Slider row */}
-              <div style={{ flex: "0 0 auto" }}>
-                <>
-                  <label htmlFor="futureDays">
-                    Target date: {futureDays} days after start ({anchorDate})
-                  </label>
-                  <input
-                    id="futureDays"
-                    type="range"
-                    min="1"
-                    max="30"
-                    value={futureDays}
-                    onChange={(e) => setFutureDays(Number(e.target.value))}
-                    style={{ width: "100%" }}
-                  />
-                </>
-              </div>
-
               {/* Tooltip */}
               {hover && (
                 <div
@@ -716,6 +684,39 @@ useEffect(() => {
                 </div>
               )}
             </div>
+          </div>
+        </div>
+        {/*slider row*/}
+        <div style={{ display: "flex", flexDirection: "column", width: "100%", height: "10%"}}>
+          <div style={{ display: "flex", flexDirection: "column", width: "100%", height: "5%", justifyContent: "left" }}>
+            <label htmlFor="pastDays">
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, width: "50%" }}>
+              Source date: {pastDays} days before start ({anchorDate})
+              <input
+                id="pastDays"
+                type="range"
+                min="1"
+                max="90"
+                value={pastDays}
+                onChange={(e) => setPastDays(Number(e.target.value))}
+                style={{ width: "100%" }}
+              />
+              </div>
+            </label>
+            <label htmlFor="futureDays">
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, width: "50%" }}>
+              Target date: {futureDays} days after start ({anchorDate})
+              <input
+                id="futureDays"
+                type="range"
+                min="1"
+                max="30"
+                value={futureDays}
+                onChange={(e) => setFutureDays(Number(e.target.value))}
+                style={{ width: "100%" }}
+              />
+              </div>
+            </label>
           </div>
         </div>
       </div>
