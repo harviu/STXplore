@@ -305,7 +305,8 @@ useEffect(() => {
   console.log("RIGHT size", rightSize);
 }, [rightSize]);
 
-  const thirtyDaysAgo = new Date();
+  const thirtyDaysAgo = new Date(); // fallback to today if max date not loaded yet
+  if (maxDataDate) thirtyDaysAgo.setTime(maxDataDate.getTime());
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
   return (
