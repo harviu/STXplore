@@ -123,23 +123,6 @@ function SelectionBlock({ heading, payload, showApi = true }) {
               )}
             </>
           ) : null}
-
-          <hr style={{ margin: "12px 0", opacity: 0.2 }} />
-
-          <details>
-            <summary style={{ cursor: "pointer" }}>Raw properties</summary>
-            <pre
-              style={{
-                whiteSpace: "pre-wrap",
-                fontSize: 12,
-                maxHeight: 240,
-                overflow: "auto",
-                marginTop: 8,
-              }}
-            >
-              {JSON.stringify(selection.feature?.properties ?? {}, null, 2)}
-            </pre>
-          </details>
         </>
       )}
     </div>
