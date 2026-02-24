@@ -81,7 +81,7 @@ export default function DashboardPanel({ mode, selection, inactiveMode, inactive
             <div style={{ display: "flex", flex: "1 1 auto", flexDirection: "column", alignItems: "center", width: "100%", gap: 8 }}>
               {hasInactive ? (
                 <p  style={{ opacity: 0.9, margin: 0 }}>
-                  <strong>{cFL(inactiveSelection.mode)}</strong> ready to compute stats for{" "}
+                  <strong>{cFL(inactiveSelection.mode)}</strong> ready to {inactiveSelection.mode === "target" ? "predict" : "compute"} stats for{" "}
                   <strong>{inactiveSelection.name}</strong>.
                 </p>
               ) : (

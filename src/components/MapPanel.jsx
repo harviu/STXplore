@@ -551,7 +551,7 @@ useEffect(() => {
                 >
                   <MapBoxMap
                     width={leftSize.width}
-                    height={leftSize.width}
+                    height={leftSize.height}
                     geo={geo}
                     crimeCounts={leftCrimeCounts}
                     layer={layer}
@@ -623,7 +623,7 @@ useEffect(() => {
                   </div>
                 </label>
               </div>
-            </div>) : (<div style={{height: "10%"}}></div>)}
+            </div>) : null}
           </div>
 
           {/* Target Map */}
@@ -723,7 +723,7 @@ useEffect(() => {
                 >
                   <MapBoxMap
                     width={rightSize.width}
-                    height={rightSize.width}
+                    height={rightSize.height}
                     geo={secondaryGeo}
                     crimeCounts={null}
                     layer={secondaryLayer}
@@ -758,6 +758,7 @@ useEffect(() => {
                 </div>
               )}
             </div>
+            {activeMode === "source" ? (<div style={{ display: "flex", flexDirection: "column", width: "100%", height: "10%"}}></div>): null}
           </div>
         </div>
       </div>
