@@ -461,7 +461,7 @@ useEffect(() => {
 
         <hr style={{ width: "100%", margin: "12px 0", opacity: 0.8 }} />
 
-        <div style={{ display: "flex", flexDirection: "row", width: "100%", height: "100%"}}>
+        <div style={{ display: "flex", flexDirection: "row", width: "100%", height: "100%", flexWrap: "wrap"}}>
           {/* Source/Relation Map */}
           <div style={{ flex: "1", flexDirection: "column", padding: "1em", display: "flex", alignItems: "center" }}>
             {/* Controls */}
@@ -726,7 +726,8 @@ useEffect(() => {
             </div>
           </div>
         </div>
-        {/*slider row*/}
+        {/*slider row(only appears on source)*/}
+        {activeMode === "source" ? (
         <div style={{ display: "flex", flexDirection: "column", width: "100%", height: "10%"}}>
           <div style={{ display: "flex", flexDirection: "column", width: "100%", height: "5%", justifyContent: "left" }}>
             <label htmlFor="pastDays">
@@ -758,7 +759,7 @@ useEffect(() => {
               </div>
             </label>
           </div>
-        </div>
+        </div>) : (<div style={{height: "10%"}}></div>)}
       </div>
     </Panel>
   );
