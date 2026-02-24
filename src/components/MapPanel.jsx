@@ -471,7 +471,8 @@ useEffect(() => {
                 <button onClick={() => setActiveMode("source")} disabled={activeMode === "source"}>
                   Source
                 </button>
-                <button onClick={() => setActiveMode("relation")} disabled={activeMode === "relation"}>
+                <button onClick={() => setActiveMode("relation")} disabled={activeMode === "relation"} style={{fontSize:"0.65rem"}}>
+                  Model-Level <br/>
                   Relation
                 </button>
               </div>
