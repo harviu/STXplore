@@ -551,7 +551,7 @@ useEffect(() => {
                 >
                   <MapBoxMap
                     width={leftSize.width}
-                    height={leftSize.height}
+                    height={leftSize.width}
                     geo={geo}
                     crimeCounts={leftCrimeCounts}
                     layer={layer}
@@ -590,6 +590,40 @@ useEffect(() => {
                 </div>
               )}
             </div>
+            {/*slider row(only appears on source)*/}
+            {activeMode === "source" ? (
+            <div style={{ display: "flex", flexDirection: "column", width: "100%", height: "10%"}}>
+              <div style={{ display: "flex", flexDirection: "column", width: "100%", height: "5%", justifyContent: "left" }}>
+                <label htmlFor="pastDays">
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, width: "100%" }}>
+                  Source date: {pastDays} days before start ({anchorDate})
+                  <input
+                    id="pastDays"
+                    type="range"
+                    min="1"
+                    max="90"
+                    value={pastDays}
+                    onChange={(e) => setPastDays(Number(e.target.value))}
+                    style={{ width: "100%" }}
+                  />
+                  </div>
+                </label>
+                <label htmlFor="futureDays">
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, width: "100%" }}>
+                  Target date: {futureDays} days after start ({anchorDate})
+                  <input
+                    id="futureDays"
+                    type="range"
+                    min="1"
+                    max="30"
+                    value={futureDays}
+                    onChange={(e) => setFutureDays(Number(e.target.value))}
+                    style={{ width: "100%" }}
+                  />
+                  </div>
+                </label>
+              </div>
+            </div>) : (<div style={{height: "10%"}}></div>)}
           </div>
 
           {/* Target Map */}
@@ -689,7 +723,7 @@ useEffect(() => {
                 >
                   <MapBoxMap
                     width={rightSize.width}
-                    height={rightSize.height}
+                    height={rightSize.width}
                     geo={secondaryGeo}
                     crimeCounts={null}
                     layer={secondaryLayer}
@@ -726,40 +760,6 @@ useEffect(() => {
             </div>
           </div>
         </div>
-        {/*slider row(only appears on source)*/}
-        {activeMode === "source" ? (
-        <div style={{ display: "flex", flexDirection: "column", width: "100%", height: "10%"}}>
-          <div style={{ display: "flex", flexDirection: "column", width: "100%", height: "5%", justifyContent: "left" }}>
-            <label htmlFor="pastDays">
-              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, width: "50%" }}>
-              Source date: {pastDays} days before start ({anchorDate})
-              <input
-                id="pastDays"
-                type="range"
-                min="1"
-                max="90"
-                value={pastDays}
-                onChange={(e) => setPastDays(Number(e.target.value))}
-                style={{ width: "100%" }}
-              />
-              </div>
-            </label>
-            <label htmlFor="futureDays">
-              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, width: "50%" }}>
-              Target date: {futureDays} days after start ({anchorDate})
-              <input
-                id="futureDays"
-                type="range"
-                min="1"
-                max="30"
-                value={futureDays}
-                onChange={(e) => setFutureDays(Number(e.target.value))}
-                style={{ width: "100%" }}
-              />
-              </div>
-            </label>
-          </div>
-        </div>) : (<div style={{height: "10%"}}></div>)}
       </div>
     </Panel>
   );
