@@ -26,7 +26,7 @@ function SelectionBlock({ heading, payload, showApi = true }) {
   const range = payload?.range ?? null;
 
   return (
-    <div style={{ marginBottom: 16 }}>
+    <div>
       <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between" }}>
         <strong>{heading}</strong>
         {selection?.mode ? <span style={{ opacity: 0.75, fontSize: 12 }}>{selection.mode}</span> : null}
@@ -133,7 +133,7 @@ export default function SidePanel({ left, right }) {
   const hasAnySelection = !!left?.selection || !!right?.selection;
 
   return (
-    <Panel title="Current Selection" fill style={{ minHeight: 0, maxHeight: "95%" }}>
+    <Panel title="Current Selection" fill style={{ minHeight: 0}}>
       <div
         style={{
           padding: "5%",

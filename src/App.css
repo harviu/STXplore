@@ -52,7 +52,6 @@ body {
   display: grid;
   grid-template-columns: 4fr 1fr; /* 80/20 */
   gap: 12px;
-  height: calc(100vh - 72px - 24px); /* header + main padding-ish */
   min-height: 650px;
   overflow: visible;
 }
@@ -66,11 +65,12 @@ body {
 }
 
 .sideCell {
-  overflow: auto;
+  overflow: visible;
 }
 
 /* Dashboard: full width, natural height (no cap) */
 .dashRow {
   width: 100%;
+  padding-top: 1cm;
 }
 

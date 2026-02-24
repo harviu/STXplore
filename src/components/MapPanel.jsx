@@ -350,7 +350,7 @@ useEffect(() => {
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
   return (
-    <Panel title="Crime Map" fill style={{ minHeight: 0, maxHeight: "95%" }}>
+    <Panel title="Crime Map" fill style={{ minHeight: 0 }}>
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", height: "85%"}}>
         {/* Top toolbar: Anchor date + Recenter */}
         <div
