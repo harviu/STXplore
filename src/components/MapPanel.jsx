@@ -461,7 +461,7 @@ useEffect(() => {
 
         <hr style={{ width: "100%", margin: "12px 0", opacity: 0.8 }} />
 
-        <div style={{ display: "flex", flexDirection: "row", width: "100%", height: "100%", flexWrap: "wrap"}}>
+        <div style={{ display: "flex", flex: "1 1 auto", flexDirection: "row", width: "100%", height: "100%", flexWrap: "wrap"}}>
           {/* Source/Relation Map */}
           <div style={{ flex: "1", flexDirection: "column", padding: "1em", display: "flex", alignItems: "center" }}>
             {/* Controls */}
@@ -546,6 +546,7 @@ useEffect(() => {
                   style={{
                     flex: "1 1 auto",
                     minHeight: 0,
+                    height: "100%",
                     position: "relative",
                     overflow: "hidden",
                   }}
@@ -710,21 +711,22 @@ useEffect(() => {
                   flexDirection: "row",
                   gap: 16,
                   height: "100%",
-                  minHeight: 0,
+                  minHeight: 100,
                 }}
               >
                 {/* Map area 2*/}
                 <div
                   style={{
                     flex: "1 1 auto",
-                    minHeight: 0,
+                    minHeight: 100,
+                    height: "100%",
                     position: "relative",
-                    overflow: "hidden",
+                    overflow: "visible",
                   }}
                 >
                   <MapBoxMap
                     width={rightSize.width}
-                    height={rightSize.height}
+                    height={leftSize.height} //Maps should be the same height, so use leftSize.height for both to prevent collapse when wrapping
                     geo={secondaryGeo}
                     crimeCounts={null}
                     layer={secondaryLayer}
@@ -759,7 +761,6 @@ useEffect(() => {
                 </div>
               )}
             </div>
-            {activeMode === "source" ? (<div style={{ display: "flex", flexDirection: "column", width: "100%", height: "10%"}}></div>): null}
           </div>
         </div>
       </div>
