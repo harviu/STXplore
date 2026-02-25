@@ -62,6 +62,7 @@ function sourceRange(pastDays, anchorISO) {
   const end = addDaysISO(anchorISO, 1);
   return { start, end: end}
 }
+
  function targetRange(futureDays, anchorISO){
   const start = anchorISO;
   const end = addDaysISO(anchorISO, futureDays + 1);
@@ -206,7 +207,7 @@ export default function MapPanel({ onSelectionChange }) {
     };
   }, [hover?.which, hover?.id, hover?.layer, pastDays, anchorDate]);
 
-  //Get Data for HeatMap
+  //Get Data for Source HeatMap
   const {
     data: leftTotalsResp,
     loading: leftTotalsLoading,
@@ -223,6 +224,24 @@ export default function MapPanel({ onSelectionChange }) {
   const leftCrimeCounts = useMemo(
     () => responseToCounts(leftTotalsResp),
     [leftTotalsResp]
+  );
+
+  //Get Data for Actual Heatmap
+  const {
+    data: rightTotalsResp,
+    loading: rightTotalsLoading,
+    error: rightTotalsError,
+  } = useApi(
+    ({ signal }) => {
+      const { start, end } = targetRange(futureDays, anchorDate);
+      const apiLayer = UI_TO_API_LAYER[secondaryLayer];
+      return api.mapTotals(apiLayer, start, end, { signal });
+    },
+    [secondaryLayer, anchorDate, futureDays]
+  );
+  const rightCrimeCounts = useMemo(
+    () => responseToCounts(rightTotalsResp),
+    [rightTotalsResp]
   );
 
   // Load dummy crime counts for source mode
@@ -776,7 +795,7 @@ useEffect(() => {
                     width={rightSize.width}
                     height={leftSize.height} //Maps should be the same height, so use leftSize.height for both to prevent collapse when wrapping
                     geo={secondaryGeo}
-                    crimeCounts={null}
+                    crimeCounts={secondaryMode === "actual" ? rightCrimeCounts : null}
                     layer={secondaryLayer}
                     selectedId={secondarySelectedId}
                     onSelectId={setSecondarySelectedId}
