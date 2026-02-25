@@ -1,6 +1,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { select, geoPath, geoMercator } from "d3";
+import Slider from "@mui/material/Slider";
 
 import comm from "../../data/Chicago-Data/Boundries/CommAreas_20250306/chicagoComm.json";
 import beat from "../../data/Chicago-Data/Boundries/PoliceBeatDec2012_20250225/beats.json";
@@ -36,8 +37,8 @@ function SourceMap() {
   //Slider to select past day
   const [sliderValue, setSliderValue] = useState(90);
 
-  const handleSlider = (event) => {
-    setSliderValue(event.target.value);
+  const handleSlider = (_event, value) => {
+    setSliderValue(value);
   };
 
   const mapChange = (event) => {
@@ -221,8 +222,20 @@ function SourceMap() {
         )}
       </div>
       <div className="slider">
-        <label htmlFor="sliderBar"> View {sliderValue} days ago</label>
-        <input type="range" id="sliderBar" min="1" max="90" value={sliderValue} onChange={handleSlider}/>
+        <label htmlFor="sliderBar">View {sliderValue} days ago</label>
+        <Slider
+          id="sliderBar"
+          aria-label="Days ago"
+          value={sliderValue}
+          onChange={handleSlider}
+          valueLabelDisplay="auto"
+          getAriaValueText={(v) => `${v} days ago`}
+          step={5}
+          marks
+          min={1}
+          max={90}
+          sx={{ maxWidth: 360, mt: 1 }}
+        />
       </div>
     </>
   );

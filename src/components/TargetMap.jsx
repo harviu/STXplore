@@ -1,6 +1,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { select, geoPath, geoMercator } from "d3";
+import Slider from "@mui/material/Slider";
 
 import comm from "../../data/Chicago-Data/Boundries/CommAreas_20250306/chicagoComm.json";
 import beat from "../../data/Chicago-Data/Boundries/PoliceBeatDec2012_20250225/beats.json";
@@ -36,8 +37,8 @@ function TargetMap() {
   //Slider for future date
   const [futureSliderValue, setFutureSliderValue] = useState(30);
 
-  const handleFutureSlider = (event) => {
-    setFutureSliderValue(event.target.value);
+  const handleFutureSlider = (_event, value) => {
+    setFutureSliderValue(value);
   };
 
   const mapChange = (event) => {
@@ -221,9 +222,21 @@ function TargetMap() {
         )}
       </div>
       <div className="futureSlider">
-          <label htmlFor="futureSliderBar"> Predict {futureSliderValue} days from now</label>
-          <input type="range" id="futureSliderBar" min="1" max="30" value={futureSliderValue} onChange={handleFutureSlider}/>
-        </div>
+        <label htmlFor="futureSliderBar">Predict {futureSliderValue} days from now</label>
+        <Slider
+          id="futureSliderBar"
+          aria-label="Days from now"
+          value={futureSliderValue}
+          onChange={handleFutureSlider}
+          valueLabelDisplay="auto"
+          getAriaValueText={(v) => `${v} days from now`}
+          step={5}
+          marks
+          min={1}
+          max={30}
+          sx={{ maxWidth: 360, mt: 1 }}
+        />
+      </div>
     </>
   );
 }

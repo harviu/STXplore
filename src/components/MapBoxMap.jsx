@@ -4,7 +4,7 @@ import "mapbox-gl/dist/mapbox-gl.css";
 import { getBoundaryId, getBoundaryLabel } from "../lib/boundaries.js";
 
 export const CHICAGO_CENTER = [-87.70, 41.85];
-export const CHICAGO_ZOOM = 9;
+export const CHICAGO_ZOOM = 9.7;
 const BOUNDARIES_SOURCE_ID = "boundaries";
 const BOUNDARIES_LAYER_ID = "boundaries-fill";
 const BOUNDARIES_SELECTED_LAYER_ID = "boundaries-selected";

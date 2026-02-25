@@ -9,6 +9,10 @@ import "react-day-picker/style.css";
 import { api } from "../lib/api.js";
 import { useApi } from "../hooks/useApi.js";
 import TooltipMap from "./tooltipMap.jsx";
+import Slider from "@mui/material/Slider";
+import { createTheme, ThemeProvider } from "@mui/material/styles";
+
+const RTL_THEME = createTheme({ direction: "rtl" });
 
 const UI_TO_API_LAYER = {
   community: "community_area",
@@ -662,32 +666,63 @@ useEffect(() => {
             {/*slider row(only appears on source)*/}
             {activeMode === "source" ? (
             <div style={{ display: "flex", flexDirection: "column", width: "100%", height: "10%"}}>
-              <div style={{ display: "flex", flexDirection: "column", width: "100%", height: "5%", justifyContent: "left" }}>
+              <div style={{ display: "flex", flexDirection: "row", width: "100%", height: "5%", justifyContent: "left" }}>
                 <label htmlFor="pastDays">
                   <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, width: "100%" }}>
                   Source date: {pastDays} days before start ({anchorDate})
-                  <input
-                    id="pastDays"
-                    type="range"
-                    min="1"
-                    max="90"
-                    value={pastDays}
-                    onChange={(e) => setPastDays(Number(e.target.value))}
-                    style={{ width: "100%" }}
-                  />
+                  <ThemeProvider theme={RTL_THEME}>
+                    <div dir="rtl" style={{ width: "100%" }}>
+                      <Slider
+                        id="pastDays"
+                        aria-label="Days before start"
+                        value={pastDays}
+                        onChange={(_e, value) => setPastDays(value)}
+                        valueLabelDisplay="auto"
+                        getAriaValueText={(v) => `${v} days ago`}
+                        min={1}
+                        max={90}
+                        sx={{
+                          width: "100%",
+                          "& .MuiSlider-rail": { height: 10, borderRadius: 0, backgroundColor: "rgb(255, 255, 255)" },
+                          "& .MuiSlider-track": { height: 10, borderRadius: 0, backgroundColor: "rgb(100, 100, 255)" },
+                          "& .MuiSlider-thumb": { width: 22, height: 22, backgroundColor: "white", border: "3px solid rgb(92, 92, 92)", marginRight: -2.5 },
+                        }}
+                      />
+                    </div>
+                  </ThemeProvider>
                   </div>
                 </label>
+                <span
+                  style={{
+                    position: "relative",
+                    top: "100%",
+                    width: 2,
+                    height: 22,
+                    backgroundColor: "rgb(255, 255, 255)",
+                    borderRadius: 1,
+                    flexShrink: 0,
+                  }}
+                  aria-hidden
+                />
                 <label htmlFor="futureDays">
                   <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, width: "100%" }}>
                   Target date: {futureDays} days after start ({anchorDate})
-                  <input
+                  <Slider
                     id="futureDays"
-                    type="range"
-                    min="1"
-                    max="30"
+                    aria-label="Days after start"
                     value={futureDays}
-                    onChange={(e) => setFutureDays(Number(e.target.value))}
-                    style={{ width: "100%" }}
+                    onChange={(_e, value) => setFutureDays(value)}
+                    valueLabelDisplay="auto"
+                    getAriaValueText={(v) => `${v} days from now`}
+                    step={1}
+                    min={1}
+                    max={30}
+                    sx={{
+                      width: "100%",
+                      "& .MuiSlider-rail": { height: 10, borderRadius: 0, backgroundColor: "rgb(255, 255, 255)" },
+                      "& .MuiSlider-track": { height: 10, borderRadius: 0 , backgroundColor: "rgb(100, 100, 255)"},
+                      "& .MuiSlider-thumb": { width: 22, height: 22, backgroundColor: "white", border: "3px solid rgb(92, 92, 92)" },
+                    }}
                   />
                   </div>
                 </label>
