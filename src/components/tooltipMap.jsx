@@ -55,7 +55,7 @@ export default function TooltipMap({ days, height = 12 }) {
 
           const background =
             c === 0 || max === 0
-              ? "rgba(255,255,255,0.12)"
+              ? "rgba(255,255,255, 0.9)"
               : choroplethColor(c / max);
 
           return (
