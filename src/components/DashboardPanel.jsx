@@ -15,8 +15,14 @@ export default function DashboardPanel({ mode, selection, inactiveMode, inactive
 
   const summary = activeSummary?.top_types ?? null;
   const actual = inactiveSummary?.top_types ?? null;
-
-  console.log("Summary for Dashboard", actual);
+  
+  const combined = summary && actual ? (Object.values(summary.concat(actual).reduce((acc, {primary_type, count}) => {
+    acc[primary_type] = acc[primary_type] 
+    ? { ...acc[primary_type], count: acc[primary_type].count + count }
+    : { primary_type, count };
+  return acc;
+}, {})).sort((a, b) => b.count - a.count).slice(0, 10)) : null;
+  console.log("Combined Summary", combined);;
 
   useEffect(() => { if (!summary) return;
      const bars = select(barsRef.current);
@@ -63,8 +69,8 @@ export default function DashboardPanel({ mode, selection, inactiveMode, inactive
             <p style={{ opacity: 0.8 }}>Select a boundary to begin.</p>
           </div>
         ) : (
-         <div style={{ display: "flex", flex: "1 1 auto", flexDirection: "row", width: "100%", justifyContent: "space-between", flexWrap: "wrap", overflow: "visible", gap: 8}}>
-            <div style={{ display: "flex", flex: "1 1 auto", flexDirection: "column", alignItems: "center", width: "100%", gap: 8 }}>
+         <div style={{ display: "flex", flex: "1 1 430px", flexDirection: "row", width: "100%", justifyContent: "space-between", flexWrap: "wrap", overflow: "visible", gap: 8}}>
+            <div style={{ display: "flex", flex: "1 1 430px", flexDirection: "column", alignItems: "center", width: "100%", gap: 8 }}>
               {hasActive && selection.mode === "source"? (
                 <div>
                   {/* Source Map Stats */}
@@ -76,7 +82,7 @@ export default function DashboardPanel({ mode, selection, inactiveMode, inactive
                       <div style={{ marginTop: 8 }}>
                         <strong>Top Crime Types:</strong>
                         <br/>
-                        <svg width="560" height="240">
+                        <svg width="430" height="240">
                           <g className="bars" ref={barsRef} transform="translate(210, 30)"></g>
                           <g className="labels" transform="translate(198, 30)" style={{fill: "white"}}></g>
                           <g className="counts" transform="translate(220, 32)" style={{fill: "white"}}></g>
@@ -99,8 +105,7 @@ export default function DashboardPanel({ mode, selection, inactiveMode, inactive
                 </p>
               )}
             </div>
-            <hr style={{ width: "100%" }}></hr>
-            <div style={{ display: "flex", flex: "1 1 auto", flexDirection: "column", alignItems: "center", width: "100%", gap: 8 }}>
+            <div style={{ display: "flex", flex: "1 1 430px", flexDirection: "column", alignItems: "center", width: "100%", gap: 8 }}>
               {hasInactive ? (inactiveSelection.mode === "actual" ? (
                 <div>
                   <p  style={{ opacity: 0.9, margin: 0 }}>
@@ -111,7 +116,7 @@ export default function DashboardPanel({ mode, selection, inactiveMode, inactive
                       <div style={{ marginTop: 8 }}>
                         <strong>Top Crime Types:</strong>
                         <br/>
-                        <svg width="560" height="240">
+                        <svg width="430" height="240">
                           <g className="actualBars" ref={actualBarsRef} transform="translate(210, 30)"></g>
                           <g className="actualLabels" transform="translate(198, 30)" style={{fill: "white"}}></g>
                           <g className="actualCounts" transform="translate(220, 32)" style={{fill: "white"}}></g>
