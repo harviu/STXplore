@@ -190,6 +190,8 @@ export default function MapBoxMap({
       if (onHoverRef.current) {
         if (features.length > 0) {
           const feature = features[0];
+          const idRaw = feature.properties?.boundary_id ?? getBoundaryId(layerRef.current, feature);
+          const id = String(idRaw);
           const count = feature.properties?.count ?? 0;
           let text = getBoundaryLabel(layerRef.current, feature);
           if (crimeCountsRef.current != null) {
@@ -199,6 +201,8 @@ export default function MapBoxMap({
             x: e.originalEvent.clientX,
             y: e.originalEvent.clientY,
             text,
+            id,
+            layer: layerRef.current,
           });
         } else {
           onHoverRef.current(null);

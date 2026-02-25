@@ -8,12 +8,30 @@ import { DayPicker } from "react-day-picker";
 import "react-day-picker/style.css";
 import { api } from "../lib/api.js";
 import { useApi } from "../hooks/useApi.js";
+import TooltipMap from "./tooltipMap.jsx";
 
 const UI_TO_API_LAYER = {
   community: "community_area",
   beat: "beat",
   district: "district",
 };
+
+function isoRangeDays(startISO, endISO) {
+  const out = [];
+  const d = new Date(startISO + "T00:00:00");
+  const end = new Date(endISO + "T00:00:00");
+  while (d < end) {
+    out.push(toYYYYMMDD(d));
+    d.setDate(d.getDate() + 1);
+  }
+  return out;
+}
+
+function fillDaily(start, end, rows) {
+  const by = new Map((rows ?? []).map((r) => [r.date, Number(r.count) || 0]));
+  const dates = isoRangeDays(start, end);
+  return dates.map((dt) => ({ date: dt, count: by.get(dt) ?? 0 }));
+}
 
 function responseToCounts(resp){
   // backend returns { start, end, date: [{ feature_id, count }, ...]}
@@ -130,6 +148,63 @@ export default function MapPanel({ onSelectionChange }) {
 
   const getId = useMemo(() => (f) => getBoundaryId(layer, f), [layer]);
   const getLabel = useMemo(() => (f) => getBoundaryLabel(layer, f), [layer]);
+
+  //Tooltip Map
+  const [hoverDaily, setHoverDaily] = useState(null);
+  const [hoverDailyLoading, setHoverDailyLoading] = useState(false);
+
+  const hoverCacheRef = useRef(new Map()); // key -> filled daily array
+  const hoverAbortRef = useRef(null);
+  const hoverTimerRef = useRef(null);
+  
+  useEffect(() => {
+    // Only build the strip for Left map hover
+    if (!hover || hover.which !== "left" || !hover.id || !hover.layer) {
+      setHoverDaily(null);
+      setHoverDailyLoading(false);
+      return;
+    }
+
+    const { start, end } = sourceRange(pastDays, anchorDate);
+    const key = `${hover.layer}:${hover.id}:${start}:${end}`;
+
+    const cached = hoverCacheRef.current.get(key);
+    if (cached) {
+      setHoverDaily(cached);
+      setHoverDailyLoading(false);
+      return;
+    }
+
+    if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
+
+    hoverTimerRef.current = setTimeout(() => {
+      if (hoverAbortRef.current) hoverAbortRef.current.abort();
+      const ac = new AbortController();
+      hoverAbortRef.current = ac;
+
+      setHoverDaily(null);
+      setHoverDailyLoading(true);
+
+      api
+        .selectionDaily(hover.layer, hover.id, start, end, { signal: ac.signal })
+        .then((data) => {
+          const filled = fillDaily(start, end, data?.daily).slice(0, 90);
+          hoverCacheRef.current.set(key, filled);
+          setHoverDaily(filled);
+          setHoverDailyLoading(false);
+        })
+        .catch((err) => {
+          if (err?.name === "AbortError") return;
+          console.error("selectionDaily failed:", err);
+          setHoverDaily(null);
+          setHoverDailyLoading(false);
+        });
+    }, 200);
+
+    return () => {
+      if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
+    };
+  }, [hover?.which, hover?.id, hover?.layer, pastDays, anchorDate]);
 
   //Get Data for HeatMap
   const {
@@ -559,38 +634,11 @@ useEffect(() => {
                     layer={layer}
                     selectedId={selectedId}
                     onSelectId={setSelectedId}
-                    onHover={setHover}
+                    onHover={(h) => setHover(h ? { ...h, which: "left" } : null)}
                     recenterTrigger={recenterTrigger}
                   />
                 </div>
               </div>
-              
-
-              
-
-              {/* Tooltip */}
-              {hover && (
-                <div
-                  style={{
-                    position: "fixed",
-                    left: hover.x + 12,
-                    top: hover.y + 12,
-                    background: "rgba(0,0,0,0.8)",
-                    color: "white",
-                    padding: "6px 8px",
-                    borderRadius: 6,
-                    fontSize: 12,
-                    pointerEvents: "none",
-                    maxWidth: 280,
-                    zIndex: 9999,
-                    whiteSpace: "nowrap",
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                  }}
-                >
-                  {hover.text}
-                </div>
-              )}
             </div>
             {/*slider row(only appears on source)*/}
             {activeMode === "source" ? (
@@ -732,7 +780,7 @@ useEffect(() => {
                     layer={secondaryLayer}
                     selectedId={secondarySelectedId}
                     onSelectId={setSecondarySelectedId}
-                    onHover={setHover}
+                    onHover={(h) => setHover(h ? { ...h, which: "right" } : null)}
                     recenterTrigger={recenterTrigger}
                   />
                 </div>
@@ -744,20 +792,37 @@ useEffect(() => {
                     position: "fixed",
                     left: hover.x + 12,
                     top: hover.y + 12,
-                    background: "rgba(0,0,0,0.8)",
+                    background: "rgba(0,0,0,0.85)",
                     color: "white",
-                    padding: "6px 8px",
+                    padding: "8px 10px",
                     borderRadius: 6,
                     fontSize: 12,
                     pointerEvents: "none",
-                    maxWidth: 280,
                     zIndex: 9999,
-                    whiteSpace: "nowrap",
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
+                    width: "420px",
+                    maxWidth: "calc(100vw-24px)",
+                  }}
+                >
+                  <div
+                    style={{
+                      fontWeight: 600,
+                      whiteSpace: "nowrap",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
                   }}
                 >
                   {hover.text}
+                </div>
+                {hover.which === "left" && (
+                  <>
+                  {hoverDailyLoading && (
+                    <div style={{ margintop: 6, opacity: 0.75 }}>Loading...</div>
+                  )}
+                  {!hoverDailyLoading && hoverDaily && hoverDaily.length > 0 && (
+                    <TooltipMap days={hoverDaily}/>
+                  )}
+                  </>
+                )}
                 </div>
               )}
             </div>
