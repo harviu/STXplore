@@ -16,6 +16,7 @@
     "d3": "^7.9.0",
     "date-fns": "^4.1.0",
     "mapbox-gl": "^3.18.1",
+    "numpy": "^0.0.1",
     "react": "^19.2.0",
     "react-day-picker": "^9.13.2",
     "react-dom": "^19.2.0"
