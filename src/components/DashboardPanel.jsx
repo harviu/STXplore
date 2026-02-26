@@ -99,6 +99,14 @@ export default function DashboardPanel({ mode, selection, inactiveMode, inactive
                     <strong>{selection.name}</strong>.
                   </p>
                 </div>
+              ) : hasActive && selection.mode === "instance" ? (
+                <div>
+                  {/* Instance Map Stats */}
+                  <p style={{ opacity: 0.9, margin: 0 }}>
+                    <strong>{cFL(selection.mode)}-level</strong> ready to compute stats for{" "}
+                    <strong>{selection.name}</strong>.
+                  </p>
+                </div>
               ) : (
                 <p style={{ opacity: 0.8, margin: 0 }}>
                   {mode === "source" ? (<strong>Source</strong>):(<strong>Relation</strong>)} selection not chosen yet.

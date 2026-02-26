@@ -6,6 +6,8 @@ function titleForMode(mode) {
       return "Source Selection";
     case "relation":
       return "Relation Selection";
+    case "instance":
+      return "Instance Selection";
     case "target":
       return "Target Selection";
     case "actual":

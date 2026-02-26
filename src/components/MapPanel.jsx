@@ -100,20 +100,22 @@ function useResizeObserverSize() {
 }
 
 export default function MapPanel({ onSelectionChange }) {
-  const [activeMode, setActiveMode] = useState("source"); // "source" | "relation"
+  const [activeMode, setActiveMode] = useState("source"); // "source" | "relation" | "instance"
   const [secondaryMode, setSecondaryMode] = useState("target"); // "target" | "actual" | "error"
 
   //community, beat, or district for each map
   const [sourceLayer, setSourceLayer] = useState("community");
-  const [targetLayer, setTargetLayer] = useState("community"); //target is the prexicted layer
   const [relationLayer, setRelationLayer] = useState("community");
+  const [instanceLayer, setInstanceLayer] = useState("community");
+  const [targetLayer, setTargetLayer] = useState("community"); //target is the prexicted layer
   const [actualLayer, setActualLayer] = useState("community");
   const [errorLayer, setErrorLayer] = useState("community"); // actual - predicted layer
 
   // Selected boundary IDs for each map
   const [sourceSelectedId, setSourceSelectedId] = useState(null);
-  const [targetSelectedId, setTargetSelectedId] = useState(null);
   const [relationSelectedId, setRelationSelectedId] = useState(null);
+  const [instanceSelectedId, setInstanceSelectedId] = useState(null);
+  const [targetSelectedId, setTargetSelectedId] = useState(null);
   const [actualSelectedId, setActualSelectedId] = useState(null);
   const [errorSelectedId, setErrorSelectedId] = useState(null);
 
@@ -135,15 +137,15 @@ export default function MapPanel({ onSelectionChange }) {
   const [crimeCounts, setCrimeCounts] = useState(null);
 
   // Bind controls to the active entity
-  const layer = activeMode === "source" ? sourceLayer : relationLayer;
-  const setLayer = activeMode === "source" ? setSourceLayer : setRelationLayer;
+  const layer = activeMode === "source" ? sourceLayer : activeMode === "relation" ? relationLayer : instanceLayer;
+  const setLayer = activeMode === "source" ? setSourceLayer : activeMode === "relation" ? setRelationLayer : setInstanceLayer;
   //then for the target map 
   const secondaryLayer = secondaryMode === "target" ? targetLayer : secondaryMode === "actual" ? actualLayer : errorLayer;
   const setSecondaryLayer = secondaryMode === "target" ? setTargetLayer : secondaryMode === "actual" ? setActualLayer : setErrorLayer;
 
   //The community/beat/district ID that's currently selected on the source/relation map
-  const selectedId = activeMode === "source" ? sourceSelectedId : relationSelectedId;
-  const setSelectedId = activeMode === "source" ? setSourceSelectedId : setRelationSelectedId;
+  const selectedId = activeMode === "source" ? sourceSelectedId : activeMode === "relation" ? relationSelectedId : instanceSelectedId;
+  const setSelectedId = activeMode === "source" ? setSourceSelectedId : activeMode === "relation" ? setRelationSelectedId : setInstanceSelectedId;
   //and the one for the target/actual/error map
   const secondarySelectedId = secondaryMode === "target" ? targetSelectedId : secondaryMode === "actual" ? actualSelectedId : errorSelectedId;
   const setSecondarySelectedId = secondaryMode === "target" ? setTargetSelectedId : secondaryMode === "actual" ? setActualSelectedId : setErrorSelectedId;
@@ -302,12 +304,13 @@ export default function MapPanel({ onSelectionChange }) {
 
   const sourceSelection = useMemo(() => makeSelection("source", sourceLayer, sourceSelectedId, pastDays, anchorDate, -pastDays), [sourceLayer, sourceSelectedId, pastDays, anchorDate]);
   const relationSelection = useMemo(() => makeSelection("relation", relationLayer, relationSelectedId, pastDays, anchorDate, -pastDays), [relationLayer, relationSelectedId, pastDays, anchorDate]);
+  const instanceSelection = useMemo(() => makeSelection("instance", instanceLayer, instanceSelectedId, pastDays, anchorDate, -pastDays), [instanceLayer, instanceSelectedId, pastDays, anchorDate]);
   const targetSelection = useMemo(() => makeSelection("target", targetLayer, targetSelectedId, futureDays, anchorDate, futureDays),[targetLayer, targetSelectedId, futureDays, anchorDate]);
   const actualSelection = useMemo(() => makeSelection("actual", actualLayer, actualSelectedId, futureDays, anchorDate, futureDays),[actualLayer, actualSelectedId, futureDays, anchorDate]);
   const errorSelection = useMemo(() => makeSelection("error", errorLayer, errorSelectedId, futureDays, anchorDate, futureDays),[errorLayer, errorSelectedId, futureDays, anchorDate]);
 
   //Chooses what selection should drive the Left map summary
-  const leftSelection = activeMode === "source" ? sourceSelection: relationSelection;
+  const leftSelection = activeMode === "source" ? sourceSelection: activeMode === "relation" ? relationSelection : instanceSelection;
 
   //Chooses what selection should drive the Right map summary
   const rightSelection = secondaryMode === "target" ? targetSelection : secondaryMode === "actual" ? actualSelection : errorSelection;
@@ -376,6 +379,7 @@ export default function MapPanel({ onSelectionChange }) {
       //selections
       source: sourceSelection,
       relation: relationSelection,
+      instance: instanceSelection,
       target: targetSelection,
       actual: actualSelection,
       error: errorSelection,
@@ -402,6 +406,7 @@ export default function MapPanel({ onSelectionChange }) {
 
     sourceSelection,
     relationSelection,
+    instanceSelection,
     targetSelection,
     actualSelection,
     errorSelection,
@@ -572,6 +577,9 @@ useEffect(() => {
                 <button onClick={() => setActiveMode("relation")} disabled={activeMode === "relation"} style={{fontSize:"0.65rem"}}>
                   Model-Level <br/>
                   Relation
+                </button>
+                <button onClick={() => setActiveMode("instance")} disabled={activeMode === "instance"} style={{fontSize:"0.65rem"}}>
+                  Instance <br/> Level
                 </button>
               </div>
               <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
