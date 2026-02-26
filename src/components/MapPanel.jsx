@@ -665,12 +665,32 @@ useEffect(() => {
             </div>
             {/*slider row(only appears on source)*/}
             {activeMode === "source" ? (
-            <div style={{ display: "flex", flexDirection: "column", width: "100%", height: "10%"}}>
-              <div style={{ display: "flex", flexDirection: "row", width: "100%", height: "5%", justifyContent: "left" }}>
-                <label htmlFor="pastDays">
-                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, width: "100%" }}>
-                  Source date: {pastDays} days before start ({anchorDate})
-                  <ThemeProvider theme={RTL_THEME}>
+            <div style={{ display: "flex", flex:"1 1 auto", flexDirection: "column", width: "100%", height: "10%"}}>
+              <div style={{ display: "flex", flex: "1 1 auto", flexDirection: "row", width: "100%", height: "100%", justifyContent: "left" }}>
+                <label htmlFor="pastDays" style={{flex: 1}}>
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, width: "100%" , height: "100%" }}>
+                  Source date: {pastDays} days before start <br/> ({anchorDate})
+                  </div>
+                </label>
+                <span
+                  style={{
+                    top: "100%",
+                    width: 2,
+                    height: "100%",
+                    backgroundColor: "rgb(255, 255, 255)",
+                    borderRadius: 1,
+                    flexShrink: 0,
+                  }}
+                  aria-hidden
+                />
+                <label htmlFor="futureDays" style={{flex: 1}}>
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, width: "100%", height: "100%" }}>
+                  <span style={{alignSelf: "center"}}>Target date: {futureDays} days after start <br/>({anchorDate})</span>
+                  </div>
+                </label>
+              </div>
+              <div style={{ display: "flex", flexDirection: "row", width: "100%", height: "100%", justifyContent: "left" }}>
+                <ThemeProvider theme={RTL_THEME}>
                     <div dir="rtl" style={{ width: "100%" }}>
                       <Slider
                         id="pastDays"
@@ -690,24 +710,19 @@ useEffect(() => {
                       />
                     </div>
                   </ThemeProvider>
-                  </div>
-                </label>
-                <span
+                  <span
                   style={{
                     position: "relative",
                     top: "100%",
                     width: 2,
                     height: 22,
-                    backgroundColor: "rgb(255, 255, 255)",
+                    backgroundColor: "rgb(255, 255, 255, 0.0)",
                     borderRadius: 1,
                     flexShrink: 0,
                   }}
                   aria-hidden
                 />
-                <label htmlFor="futureDays">
-                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, width: "100%" }}>
-                  Target date: {futureDays} days after start ({anchorDate})
-                  <Slider
+                <Slider
                     id="futureDays"
                     aria-label="Days after start"
                     value={futureDays}
@@ -724,8 +739,6 @@ useEffect(() => {
                       "& .MuiSlider-thumb": { width: 22, height: 22, backgroundColor: "white", border: "3px solid rgb(92, 92, 92)" },
                     }}
                   />
-                  </div>
-                </label>
               </div>
             </div>) : null}
           </div>
