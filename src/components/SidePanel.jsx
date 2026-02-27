@@ -141,7 +141,7 @@ export default function SidePanel({ left, right }) {
     <Panel title="Current Selection" fill style={{ minHeight: 0}}>
       <div
         style={{
-          padding: "5%",
+          padding: 12,
           boxSizing: "border-box",
           overflow: "auto",
           flex: 1,

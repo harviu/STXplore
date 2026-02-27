@@ -111,6 +111,7 @@ function useResizeObserverSize() {
 }
 
 export default function MapPanel({ onSelectionChange }) {
+  const MAP_H = "clamp(450px, 55vh, 550px)";
   const [activeMode, setActiveMode] = useState("source"); // "source" | "relation" | "instance"
   const [secondaryMode, setSecondaryMode] = useState("target"); // "target" | "actual" | "error"
 
@@ -668,6 +669,14 @@ useEffect(() => {
           {/* Source/Relation Map */}
           <div style={{ flex: "1", flexDirection: "column", padding: "1em", display: "flex", alignItems: "center" }}>
             {/* Controls */}
+            <div
+              style={{
+                width: "100%",
+                marginTop: 6,
+                marginBottom: 6,
+                minHeight: 25,
+              }}
+            />
             <div style={{ display: "flex", flexDirection: "column", gap: 8, alignItems: "flex-start", width: "100%" }}>
               <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                 <strong>Map:</strong>
@@ -743,9 +752,9 @@ useEffect(() => {
                 {/* Map area 1*/}
                 <div
                   style={{
-                    flex: "1 1 auto",
-                    minHeight: 0,
-                    overflow: "visible",
+                    height: MAP_H,
+                    width: "100%",
+                    overflow: "hidden",
                   }}
                 >
                   <MapBoxMap
@@ -846,24 +855,35 @@ useEffect(() => {
             {/* Controls */}
             <div style={{ display: "flex", flexDirection: "column", gap: 8, alignItems: "flex-start", width: "100%" }}>
               {/* Model Level Relation Messages */}
-              {activeMode === "relation" && secondaryMode === "target" && (
-                <div style={{ width: "100%", marginTop: 6, marginBottom: 6, fontSize: 13, fontWeight: 500, color: relationError ? "#ff6b6b" : "#ccc", }} >
-                  {relationLoading && "Loading model-level relation..."}
-                  {!relationLoading && relationError && relationError}
-                  {!relationLoading && !relationError && relationSelectedId && (
-                    <>Showing relation from Community Area {relationSelectedId}</>
-                  )}
+                <div
+                  style={{
+                    width: "100%",
+                    marginTop: 6,
+                    marginBottom: 6,
+                    minHeight: 18, // reserves a line even when empty
+                    fontSize: 13,
+                    fontWeight: 500,
+                    color: relationError ? "#ff6b6b" : "#ccc",
+                  }}
+                >
+                  {activeMode === "relation" && secondaryMode === "target" ? (
+                    <>
+                      {relationLoading && "Loading model-level relation..."}
+                      {!relationLoading && relationError && relationError}
+                      {!relationLoading && !relationError && relationSelectedId && (
+                        <>Showing relation from Community Area {relationSelectedId}</>
+                      )}
+                    </>
+                  ) : null}
                 </div>
-              )}
               <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                 <strong>Map:</strong>
                 <button onClick={() => setSecondaryMode("target")} disabled={secondaryMode === "target"}>
-                  Target (relation results)
-                </button>
+                  Target                </button>
                 {thirtyDaysAgo > new Date(anchorDate) ? (
                   <div>
                     <button onClick={() => setSecondaryMode("actual")} disabled={secondaryMode === "actual"}>
-                      Actual (crime counts)
+                      Actual
                     </button>
                     <span style={{ opacity: 0.5, padding: "0 4px" }}></span>
                     <button onClick={() => setSecondaryMode("error")} disabled={secondaryMode === "error"}>
@@ -932,9 +952,9 @@ useEffect(() => {
                 {/* Map area 2*/}
                 <div
                   style={{
-                    flex: "1 1 auto",
-                    minHeight: 0,
-                    overflow: "visible",
+                    height: MAP_H,
+                    width: "100%",
+                    overflow: "hidden",
                   }}
                 >
                   <MapBoxMap

@@ -1,11 +1,28 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import "./App.css";
 
 import MapPanel from "./components/MapPanel.jsx";
 import SidePanel from "./components/SidePanel.jsx";
 import DashboardPanel from "./components/DashboardPanel.jsx";
-import HealthCheck from "./components/ApiHealthCheck.jsx";
-import { SelectionState } from "react-day-picker";
+
+function useMediaQuery(query) {
+  const [matches, setMatches] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return window.matchMedia(query).matches;
+  });
+
+  useEffect(() => {
+    const mql = window.matchMedia(query);
+    const handler = (e) => setMatches(e.matches);
+    mql.addEventListener?.("change", handler) ?? mql.addListener(handler);
+    setMatches(mql.matches);
+    return () => {
+      mql.removeEventListener?.("change", handler) ?? mql.removeListener(handler);
+    };
+  }, [query]);
+
+  return matches;
+}
 
 export default function App() {
   const [state, setState] = useState({
@@ -19,13 +36,44 @@ export default function App() {
     target: null,
     actual: null,
     error: null,
-    left : { selection: null, summary: null, loading: false, error: null, range: null},
-    right: { selection: null, summary: null, loading: false, error: null, range: null}
+
+    left: { selection: null, summary: null, loading: false, error: null, range: null },
+    right: { selection: null, summary: null, loading: false, error: null, range: null },
   });
 
   const activeSelection = state[state.activeMode];
   const secondarySelection = state[state.secondaryMode];
 
+  const mapCellRef = useRef(null);
+  const [mapCellHeight, setMapCellHeight] = useState(null);
+  const isStacked = useMediaQuery("(max-width: 900px)");
+
+  useEffect(() => {
+    const el = mapCellRef.current;
+    if (!el) return;
+
+    let raf = 0;
+    const ro = new ResizeObserver(() => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => {
+        const rect = el.getBoundingClientRect();
+        const h = Math.max(0, Math.round(rect.height));
+        setMapCellHeight((prev) => (prev === h ? prev : h));
+      });
+    });
+
+    ro.observe(el);
+    return () => {
+      cancelAnimationFrame(raf);
+      ro.disconnect();
+    };
+  }, []);
+
+  const sideCellStyle = isStacked
+    ? { height: "auto", overflow: "visible" }
+    : mapCellHeight != null
+      ? { height: `${mapCellHeight}px`, overflow: "hidden" } // SidePanel will scroll inside
+      : { height: "auto", overflow: "visible" };
 
   return (
     <div className="app">
@@ -35,18 +83,24 @@ export default function App() {
 
       <main className="appMain">
         <section className="topRow">
-          <div className="mapCell">
+          <div className="mapCell" ref={mapCellRef}>
             <MapPanel onSelectionChange={setState} />
           </div>
 
-          <div className="sideCell">
-            <SidePanel left={state?.left} right={state?.right}/>
+          <div className="sideCell" style={sideCellStyle}>
+            <SidePanel left={state?.left} right={state?.right} />
           </div>
         </section>
 
         <section className="dashRow">
-          <DashboardPanel mode={state.activeMode} selection={activeSelection} inactiveMode={state.secondaryMode} inactiveSelection={secondarySelection} activeSummary={state.left?.summary} inactiveSummary={state.right?.summary}/>
-          {/*<HealthCheck />*/}
+          <DashboardPanel
+            mode={state.activeMode}
+            selection={activeSelection}
+            inactiveMode={state.secondaryMode}
+            inactiveSelection={secondarySelection}
+            activeSummary={state.left?.summary}
+            inactiveSummary={state.right?.summary}
+          />
         </section>
       </main>
     </div>
