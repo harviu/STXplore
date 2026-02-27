@@ -681,14 +681,7 @@ useEffect(() => {
                   </div>
                 </label>
                 <span
-                  style={{
-                    top: "100%",
-                    width: 2,
-                    height: "100%",
-                    backgroundColor: "rgb(255, 255, 255)",
-                    borderRadius: 1,
-                    flexShrink: 0,
-                  }}
+                  
                   aria-hidden
                 />
                 <label htmlFor="futureDays" style={{flex: 1}}>
@@ -711,25 +704,34 @@ useEffect(() => {
                         max={90}
                         sx={{
                           width: "100%",
-                          "& .MuiSlider-rail": { height: 10, borderRadius: 0, backgroundColor: "rgb(255, 255, 255)" },
-                          "& .MuiSlider-track": { height: 10, borderRadius: 0, backgroundColor: "rgb(100, 100, 255)" },
+                          "& .MuiSlider-rail": { height: 10, borderRadius: 0, backgroundColor: "rgb(255, 255, 255)", strokeWidth: 2},
+                          "& .MuiSlider-track": { height: 10, borderRadius: 0, backgroundColor: "rgb(100, 100, 255)", strokeWidth: 2},
                           "& .MuiSlider-thumb": { width: 22, height: 22, backgroundColor: "white", border: "3px solid rgb(92, 92, 92)", marginRight: -2.5 },
                         }}
                       />
                     </div>
                   </ThemeProvider>
-                  <span
+                  <div
                   style={{
-                    position: "relative",
-                    top: "100%",
-                    width: 2,
-                    height: 22,
-                    backgroundColor: "rgb(255, 255, 255, 0.0)",
-                    borderRadius: 1,
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
                     flexShrink: 0,
+                    minWidth: 12,
                   }}
+                  title={`Anchor date: ${anchorDate}`}
                   aria-hidden
-                />
+                >
+                  <div
+                    style={{
+                      width: 4,
+                      minHeight: 32,
+                      backgroundColor: "rgb(92, 92, 92)",
+                      borderRadius: 2,
+                    }}
+                  />
+                  <span style={{ fontSize: 10, color: "rgb(92, 92, 92)", marginTop: 2 }}></span>
+                </div>
                 <Slider
                     id="futureDays"
                     aria-label="Days after start"

@@ -39,7 +39,15 @@ export const api = {
       )}&end=${encodeURIComponent(end)}`,
       opts
     ),
-  
+
+  mapPredictions: (layer, start, end, opts) =>
+    request(
+      `/api/map/predictions?layer=${encodeURIComponent(layer)}&start=${encodeURIComponent(
+        start
+      )}&end=${encodeURIComponent(end)}`,
+      opts
+    ),
+
   selectionDaily: (layer, id, start, end, opts) =>
     request(
       `/api/selection-daily?layer=${encodeURIComponent(layer)}&id=${encodeURIComponent(
