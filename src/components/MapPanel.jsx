@@ -85,15 +85,26 @@ function useResizeObserverSize() {
     const el = ref.current;
     if (!el) return;
 
+    let raf = 0;
+
     const ro = new ResizeObserver(() => {
-      const rect = el.getBoundingClientRect();
-      const w = Math.max(0, Math.floor(rect.width));
-      const h = Math.max(0, Math.floor(rect.height));
-      setSize({ width: w, height: h });
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => {
+        const rect = el.getBoundingClientRect();
+        const w = Math.max(0, Math.floor(rect.width));
+        const h = Math.max(0, Math.floor(rect.height));
+        setSize((prev) => {
+          if (prev.width === w && prev.height === h) return prev;
+          return { width: w, height: h};
+        });
+      });
     });
 
     ro.observe(el);
-    return () => ro.disconnect();
+    return () => {
+      cancelAnimationFrame(raf);
+      ro.disconnect();
+    }
   }, []);
 
   return { ref, size };
@@ -163,6 +174,97 @@ export default function MapPanel({ onSelectionChange }) {
   const hoverCacheRef = useRef(new Map()); // key -> filled daily array
   const hoverAbortRef = useRef(null);
   const hoverTimerRef = useRef(null);
+
+  //Relation (model-level) counts for right map when activeMode === "relation"
+  const [relationCounts, setRelationCounts] = useState(null); // { "1": num, ... , "77" : num}
+  const [relationLoading, setRelationLoading] = useState(false);
+  const [relationError, setRelationError] = useState(null);
+
+  // Relation mode is community-only for now
+  useEffect(() => {
+    if (activeMode === "relation") {
+      setRelationLayer("community"); // left layer for relation tab
+      setSecondaryMode("target"); // ensure right map is on target tab
+      setTargetLayer("community"); // right layer for target tab
+    }
+  }, [activeMode]);
+
+  //Fetch relation weights only when in relation mode AND a community is selected
+  useEffect(() => {
+    // reset if not relation
+    if (activeMode !== "relation") {
+      setRelationCounts(null);
+      setRelationLoading(false);
+      setRelationError(null);
+      return;
+    }
+
+    // Only community layer
+    if (layer !== "community") {
+      setRelationCounts(null);
+      setRelationLoading(false);
+      setRelationError("Model-level relation is only available for community layer right now.");
+      return;
+    }
+
+    //reset if no commmunity selected 
+    if (!relationSelectedId) {
+      setRelationCounts(null);
+      setRelationLoading(false);
+      setRelationError(null);
+      return;
+    }
+
+    //Make right map clearly show the same selected community
+    setSecondaryMode("target");
+    setTargetLayer("community");
+    setTargetSelectedId(relationSelectedId);
+
+    // Guard rail for invalid community id's
+    const sourceIdx = Number(relationSelectedId) - 1; // "1..77" -> "0...76"
+    if (!Number.isFinite(sourceIdx) || sourceIdx < 0 || sourceIdx > 76) {
+      setRelationError("Invalid community id for relation mapping.");
+      setRelationCounts(null);
+      setRelationLoading(false);
+      return;
+    }
+    // fetch weights under valid conditions
+    let cancelled = false;
+    const ac = new AbortController();
+    setRelationLoading(true);
+    setRelationError(null);
+    api.relationalModel(sourceIdx, { signal: ac.signal })
+      .then((data) => {
+        //check if cancelled
+        if (cancelled) return;
+
+        // ensure valid array
+        const targets = data?.targets;
+        if(!Array.isArray(targets) || targets.length != 77) {
+          throw new Error("Relation API returned invalid targets array.")
+        }
+
+        // Convert targets [0..76] -> { "1": v0, ... , "77" : v76 }
+        const out = {};
+        for (let j = 0; j < 77; j++) out[String(j + 1)] = Number(targets[j]) || 0;
+        setRelationCounts(out);
+        setRelationLoading(false);
+      })
+      // handle errors
+      .catch((err) => {
+        if (err?.name === "AbortError") return;
+        if (cancelled) return;
+        console.error("relationModel failed:", err);
+        setRelationError(String(err?.message ?? err));
+        setRelationCounts(null);
+        setRelationLoading(false);
+      });
+      return () => {
+        cancelled = true;
+        ac.abort();
+      };
+  }, [activeMode, layer, relationSelectedId]);
+
   
   useEffect(() => {
     // Only build the strip for Left map hover
@@ -438,15 +540,13 @@ export default function MapPanel({ onSelectionChange }) {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [calendarOpen]);
 
-  const { ref: leftMapWrapRef, size: leftSize } = useResizeObserverSize();
-  const { ref: rightMapWrapRef, size: rightSize } = useResizeObserverSize();
-  useEffect(() => {
+ /* useEffect(() => {
   console.log("LEFT size", leftSize);
 }, [leftSize]);
 
 useEffect(() => {
   console.log("RIGHT size", rightSize);
-}, [rightSize]);
+}, [rightSize]);*/
 
   const thirtyDaysAgo = new Date(); // fallback to today if max date not loaded yet
   if (maxDataDate) thirtyDaysAgo.setTime(maxDataDate.getTime());
@@ -454,7 +554,7 @@ useEffect(() => {
 
   return (
     <Panel title="Crime Map" fill style={{ minHeight: 0 }}>
-      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", height: "85%"}}>
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", flex: "1 1 auto", minHeight: 0 }}>
         {/* Top toolbar: Anchor date + Recenter */}
         <div
           style={{
@@ -601,6 +701,8 @@ useEffect(() => {
                     type="radio"
                     name="layer"
                     checked={layer === "beat"}
+                    // disable when relation mode
+                    disabled={activeMode === "relation"}
                     onChange={() => {
                       setLayer("beat");
                       setSelectedId(null);
@@ -613,6 +715,8 @@ useEffect(() => {
                     type="radio"
                     name="layer"
                     checked={layer === "district"}
+                    // disable when relation mode
+                    disabled={activeMode === "relation"}
                     onChange={() => {
                       setLayer("district");
                       setSelectedId(null);
@@ -628,7 +732,7 @@ useEffect(() => {
                 minHeight: 0,
                 overflow: "hidden",
                 position: "relative",
-                padding: "2.5%",
+                padding: 12,
                 boxSizing: "border-box",
                 width: "100%",
                 display: "flex",
@@ -636,30 +740,15 @@ useEffect(() => {
                 gap: 10,
               }}
             >
-              <div
-                ref={leftMapWrapRef}
-                style={{
-                  display: "flex",
-                  flex: "1 1 auto",
-                  flexDirection: "row",
-                  gap: 16,
-                  height: "100%",
-                  minHeight: 0,
-                }}
-              >
                 {/* Map area 1*/}
                 <div
                   style={{
                     flex: "1 1 auto",
                     minHeight: 0,
-                    height: "100%",
-                    position: "relative",
-                    overflow: "hidden",
+                    overflow: "visible",
                   }}
                 >
                   <MapBoxMap
-                    width={leftSize.width}
-                    height={leftSize.height}
                     geo={geo}
                     crimeCounts={leftCrimeCounts}
                     layer={layer}
@@ -669,7 +758,6 @@ useEffect(() => {
                     recenterTrigger={recenterTrigger}
                   />
                 </div>
-              </div>
             </div>
             {/*slider row(only appears on source)*/}
             {activeMode === "source" ? (
@@ -757,15 +845,25 @@ useEffect(() => {
           <div style={{ flex: "1", flexDirection: "column", padding: "1em", display: "flex", alignItems: "center" }}>
             {/* Controls */}
             <div style={{ display: "flex", flexDirection: "column", gap: 8, alignItems: "flex-start", width: "100%" }}>
+              {/* Model Level Relation Messages */}
+              {activeMode === "relation" && secondaryMode === "target" && (
+                <div style={{ width: "100%", marginTop: 6, marginBottom: 6, fontSize: 13, fontWeight: 500, color: relationError ? "#ff6b6b" : "#ccc", }} >
+                  {relationLoading && "Loading model-level relation..."}
+                  {!relationLoading && relationError && relationError}
+                  {!relationLoading && !relationError && relationSelectedId && (
+                    <>Showing relation from Community Area {relationSelectedId}</>
+                  )}
+                </div>
+              )}
               <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                 <strong>Map:</strong>
                 <button onClick={() => setSecondaryMode("target")} disabled={secondaryMode === "target"}>
-                  Target
+                  Target (relation results)
                 </button>
                 {thirtyDaysAgo > new Date(anchorDate) ? (
                   <div>
                     <button onClick={() => setSecondaryMode("actual")} disabled={secondaryMode === "actual"}>
-                      Actual
+                      Actual (crime counts)
                     </button>
                     <span style={{ opacity: 0.5, padding: "0 4px" }}></span>
                     <button onClick={() => setSecondaryMode("error")} disabled={secondaryMode === "error"}>
@@ -793,6 +891,8 @@ useEffect(() => {
                     type="radio"
                     name="secondaryLayer"
                     checked={secondaryLayer === "beat"}
+                    // disable when using target as relation view
+                    disabled={activeMode === "relation" && secondaryMode === "target"}
                     onChange={() => {
                       setSecondaryLayer("beat");
                       setSecondarySelectedId(null);
@@ -805,6 +905,7 @@ useEffect(() => {
                     type="radio"
                     name="secondaryLayer"
                     checked={secondaryLayer === "district"}
+                    disabled={activeMode === "relation" && secondaryMode === "target"}
                     onChange={() => {
                       setSecondaryLayer("district");
                       setSecondarySelectedId(null);
@@ -820,7 +921,7 @@ useEffect(() => {
                 minHeight: 0,
                 overflow: "hidden",
                 position: "relative",
-                padding: "2.5%",
+                padding: 12,
                 boxSizing: "border-box",
                 width: "100%",
                 display: "flex",
@@ -828,32 +929,20 @@ useEffect(() => {
                 gap: 10,
               }}
             >
-              <div
-                ref={rightMapWrapRef}
-                style={{
-                  display: "flex",
-                  flex: "1 1 auto",
-                  flexDirection: "row",
-                  gap: 16,
-                  height: "100%",
-                  minHeight: 100,
-                }}
-              >
                 {/* Map area 2*/}
                 <div
                   style={{
                     flex: "1 1 auto",
-                    minHeight: 100,
-                    height: "100%",
-                    position: "relative",
+                    minHeight: 0,
                     overflow: "visible",
                   }}
                 >
                   <MapBoxMap
-                    width={rightSize.width}
-                    height={leftSize.height} //Maps should be the same height, so use leftSize.height for both to prevent collapse when wrapping
                     geo={secondaryGeo}
-                    crimeCounts={secondaryMode === "actual" ? rightCrimeCounts : null}
+                    crimeCounts={secondaryMode === "actual" ? rightCrimeCounts : (secondaryMode === "target" && activeMode === "relation")
+                      ? relationCounts
+                      : null
+                    }
                     layer={secondaryLayer}
                     selectedId={secondarySelectedId}
                     onSelectId={setSecondarySelectedId}
@@ -861,7 +950,6 @@ useEffect(() => {
                     recenterTrigger={recenterTrigger}
                   />
                 </div>
-              </div>
               {/* Tooltip */}
               {hover && (
                 <div
@@ -877,7 +965,7 @@ useEffect(() => {
                     pointerEvents: "none",
                     zIndex: 9999,
                     width: "420px",
-                    maxWidth: "calc(100vw-24px)",
+                    maxWidth: "calc(100vw - 24px)",
                   }}
                 >
                   <div

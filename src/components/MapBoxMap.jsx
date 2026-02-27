@@ -276,14 +276,19 @@ export default function MapBoxMap({
 
   // Resize the map when the width or height change
   useEffect(() => {
+    const container = containerRef.current;
     const map = mapRef.current;
-    if(!map) return;
-    if (width <= 0 || height <= 0) return;
-
-    requestAnimationFrame(() => {
-      map.resize();
+    if(!container || !map) return;
+    const ro = new ResizeObserver(() => {
+      //prevent resize spam from causing layout jitter
+      requestAnimationFrame(() => {
+        if (!mapRef.current) return;
+        mapRef.current.resize();
+      });
     });
-  }, [width, height]);
+    ro.observe(container);
+    return () => ro.disconnect();
+  }, []);
 
   // Draw the geo information onto Mapbox (layer, selected community, etc.)
   useEffect(() => {
@@ -375,8 +380,8 @@ export default function MapBoxMap({
     <div
       style={{
         position: "relative",
-        width: `${width}px`,
-        height: `${height}px`,
+        width: "100%",
+        height: "100%",
         pointerEvents: "none",
       }}
     >
