@@ -21,6 +21,23 @@ const CHOROPLETH_STOPS = [
   "#bd0026", // dark red (high)
 ];
 
+const LEGEND_TITLE = "Crime count";
+
+/** Build legend steps: array of { color, low, high } for vertical swatch legend */
+function getLegendSteps(minCount, maxCount) {
+  const range = maxCount - minCount || 1;
+  const step = range / CHOROPLETH_STOPS.length;
+  return CHOROPLETH_STOPS.map((color, i) => {
+    const low = minCount + i * step;
+    const high = i === CHOROPLETH_STOPS.length - 1 ? maxCount : minCount + (i + 1) * step;
+    return {
+      color,
+      low: Math.round(low),
+      high: Math.round(high),
+    };
+  });
+}
+
 //Boolean function to check if there are any crime counts
 function hasAnyCounts(crimeCounts){
   if (!crimeCounts) return false;
@@ -121,6 +138,11 @@ export default function MapBoxMap({
   const fillColorPaint = useMemo(
     () => getFillColorPaint(crimeCounts, minCount, maxCount),
     [crimeCounts, minCount, maxCount]
+  );
+
+  const legendSteps = useMemo(
+    () => getLegendSteps(minCount, maxCount),
+    [minCount, maxCount]
   );
 
   //Create the Mapbox
@@ -347,14 +369,75 @@ export default function MapBoxMap({
     );
   }
 
-  // The map container. Mapbox GL will take over this div and render the map inside it.
+  // The map container. Mapbox GL will take over this div; legend overlay on top.
+  // Wrapper has pointer-events: none so only the map receives clicks; map has pointer-events: auto.
   return (
     <div
-      ref={containerRef}
       style={{
+        position: "relative",
         width: `${width}px`,
         height: `${height}px`,
+        pointerEvents: "none",
       }}
-    />
+    >
+      <div
+        ref={containerRef}
+        style={{
+          position: "absolute",
+          inset: 0,
+          width: "100%",
+          height: "100%",
+          pointerEvents: "auto",
+        }}
+      />
+      <div
+        style={{
+          position: "absolute",
+          top: 10,
+          right: 10,
+          background: "white",
+          borderRadius: 4,
+          boxShadow: "0 1px 4px rgba(0,0,0,0.15)",
+          padding: "10px 12px",
+          fontFamily: "sans-serif",
+          fontSize: 12,
+          pointerEvents: "none",
+        }}
+      >
+        <div
+          style={{
+            fontWeight: 600,
+            marginBottom: 8,
+            color: "#333",
+          }}
+        >
+          {LEGEND_TITLE}
+        </div>
+        {legendSteps.map(({ color, low, high }, i) => (
+          <div
+            key={i}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              marginBottom: i < legendSteps.length - 1 ? 4 : 0,
+            }}
+          >
+            <div
+              style={{
+                width: 16,
+                height: 16,
+                backgroundColor: color,
+                borderRadius: 2,
+                flexShrink: 0,
+              }}
+            />
+            <span style={{ color: "#333" }}>
+              {low} – {high}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
