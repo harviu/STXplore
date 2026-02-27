@@ -3,14 +3,14 @@ import numpy as np
 from fastapi import APIRouter, Query
 
 router = APIRouter(tags=["Model Level Relation"])
-file_path = "../data/Chicago-Data/mi_result_io.npy"
+file_path = "data/Chicago-Data/mi_result_io.npy"
 
 loaded_array = np.load(file_path)
 if loaded_array.ndim != 4 or loaded_array.shape != (90, 77, 30, 77):
     raise RuntimeError(f"Unexpected tensor shape: {loaded_array.shape}")
 
 #Model level relation matrix (77x77)
-MODEL_MATRIX = loaded_array.mean(axis=(0, 2)).astype(loaded_array.float32)
+MODEL_MATRIX = loaded_array.mean(axis=(0, 2)).astype(np.float32)
 
 def normalize_row(v: np.ndarray) -> np.ndarray:
     v = v.astype(np.float32)
