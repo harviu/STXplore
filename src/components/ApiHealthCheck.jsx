@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { request } from "../lib/api";
 
+//Debugging for API. Not used but is kept for future development and testing purposes
 export default function HealthCheck() {
   const [data, setData] = useState(null);
   const [err, setErr] = useState("");

@@ -1,3 +1,4 @@
+//coloring for the box in tooltip
 const CHOROPLETH_STOPS = [
   "#ffffb2",
   "#fecc5c",
@@ -6,16 +7,19 @@ const CHOROPLETH_STOPS = [
   "#bd0026",
 ];
 
+//Converts hex color to rgb color
 function hexToRgb(hex) {
   const h = hex.replace("#", "");
   const n = parseInt(h, 16);
   return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 };
 }
 
+//simple linear interpolation 
 function lerp(a, b, t) {
   return a + (b - a) * t;
 }
 
+//linerly interpolates between two hex colors (gets middle values)
 function lerpColor(aHex, bHex, t) {
   const a = hexToRgb(aHex);
   const b = hexToRgb(bHex);
@@ -25,6 +29,7 @@ function lerpColor(aHex, bHex, t) {
   return `rgb(${r}, ${g}, ${b2})`;
 }
 
+//Assigns a color
 function choroplethColor(t) {
   const stops = CHOROPLETH_STOPS;
   const n = stops.length - 1;
@@ -35,6 +40,7 @@ function choroplethColor(t) {
   return lerpColor(stops[i], stops[i + 1], frac);
 }
 
+//The box component you see when you hover
 export default function TooltipMap({ days, height = 12 }) {
   const max = (days ?? []).reduce((m, d) => Math.max(m, d.count || 0), 0);
   const tickHeight = height + 8; // taller than bars

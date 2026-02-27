@@ -3,14 +3,15 @@ import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { getBoundaryId, getBoundaryLabel } from "../lib/boundaries.js";
 
-export const CHICAGO_CENTER = [-87.70, 41.85];
-export const CHICAGO_ZOOM = 9.7;
+export const CHICAGO_CENTER = [-87.70, 41.85]; // Approximate center of Chicago
+export const CHICAGO_ZOOM = 9.7; // Initial zoom level to show the whole city
 const BOUNDARIES_SOURCE_ID = "boundaries";
 const BOUNDARIES_LAYER_ID = "boundaries-fill";
 const BOUNDARIES_SELECTED_LAYER_ID = "boundaries-selected";
 
 const getMapboxToken = () => import.meta.env.VITE_MAPBOX_ACCESS_TOKEN ?? "";
 
+//array of colors for the choropleth map
 /** Yellow → orange → red choropleth colors */
 const CHOROPLETH_STOPS = [
   "#ffffb2", // light yellow (low)
@@ -20,12 +21,14 @@ const CHOROPLETH_STOPS = [
   "#bd0026", // dark red (high)
 ];
 
+//Boolean function to check if there are any crime counts
 function hasAnyCounts(crimeCounts){
   if (!crimeCounts) return false;
   if(crimeCounts instanceof Map) return crimeCounts.size > 0;
   return Object.keys(crimeCounts).length > 0;
 }
 
+//A getter for crime counts, returns crime count if it exists or 0
 function getCount(crimeCounts, id) {
   if (!crimeCounts) return 0;
   const key = String(id);
@@ -33,6 +36,7 @@ function getCount(crimeCounts, id) {
   return crimeCounts[key] ?? crimeCounts[id] ?? 0;
 }
 
+//Adds crime count data to map data
 function buildMergedGeo(geo, crimeCounts, layer) {
   if (!geo?.features?.length) return { mergedGeo: geo, minCount: 0, maxCount: 1 };
   const hasCounts = hasAnyCounts(crimeCounts);
@@ -54,6 +58,7 @@ function buildMergedGeo(geo, crimeCounts, layer) {
   };
 }
 
+//gives the coloring to the maps sections
 function getFillColorPaint(crimeCounts, minCount, maxCount) {
   const any = hasAnyCounts(crimeCounts);
   if (!any) return "#e07c3c";
@@ -66,6 +71,7 @@ function getFillColorPaint(crimeCounts, minCount, maxCount) {
   return ["interpolate", ["linear"], ["get", "count"], ...stops.flat()];
 }
 
+//The Mapbox component
 export default function MapBoxMap({
   width = 900,
   height = 650,
@@ -77,6 +83,7 @@ export default function MapBoxMap({
   onHover = null,
   recenterTrigger = null,
 }) {
+  //Hooks to ensure updates
   const containerRef = useRef(null);
   const mapRef = useRef(null);
   const initialRecenterDoneRef = useRef(false);
@@ -116,6 +123,7 @@ export default function MapBoxMap({
     [crimeCounts, minCount, maxCount]
   );
 
+  //Create the Mapbox
   useEffect(() => {
     if (!containerRef.current) return;
 
@@ -169,6 +177,7 @@ export default function MapBoxMap({
       }
     });
 
+    //handles clicking on layers
     const handleClick = (e) => {
       const features = map.queryRenderedFeatures(e.point, {
         layers: [BOUNDARIES_LAYER_ID],
@@ -182,6 +191,7 @@ export default function MapBoxMap({
       }
     };
 
+    //gets the community the user is hovering over
     const handleMouseMove = (e) => {
       const features = map.queryRenderedFeatures(e.point, {
         layers: [BOUNDARIES_LAYER_ID],
@@ -242,6 +252,7 @@ export default function MapBoxMap({
     };
   }, []);
 
+  // Resize the map when the width or height change
   useEffect(() => {
     const map = mapRef.current;
     if(!map) return;
@@ -252,6 +263,7 @@ export default function MapBoxMap({
     });
   }, [width, height]);
 
+  // Draw the geo information onto Mapbox (layer, selected community, etc.)
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !mergedGeo) return;
@@ -309,6 +321,7 @@ export default function MapBoxMap({
     map.flyTo({ center: CHICAGO_CENTER, zoom: CHICAGO_ZOOM });
   }, [recenterTrigger]);
 
+  //Make sure user can use Mapbox otherswise show message to add token in .env file. This should be for devs only, add a permanent token for production use.
   const token = getMapboxToken().trim();
   if (!token) {
     return (
@@ -334,6 +347,7 @@ export default function MapBoxMap({
     );
   }
 
+  // The map container. Mapbox GL will take over this div and render the map inside it.
   return (
     <div
       ref={containerRef}

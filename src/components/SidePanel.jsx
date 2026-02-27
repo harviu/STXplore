@@ -1,5 +1,6 @@
 import Panel from "./Panel.jsx";
 
+// convert mode to a title
 function titleForMode(mode) {
   switch (mode) {
     case "source":
@@ -19,6 +20,7 @@ function titleForMode(mode) {
   }
 }
 
+// subcomponent for showing details of a selection, including API status and summary if available
 function SelectionBlock({ heading, payload, showApi = true }) {
   // payload shape: { selection, summary, loading, error, range }
   const selection = payload?.selection ?? null;
@@ -131,6 +133,7 @@ function SelectionBlock({ heading, payload, showApi = true }) {
   );
 }
 
+//The main side panel holds the potential for two summaries, one for the source maps on the left and one for the target maps on the right.
 export default function SidePanel({ left, right }) {
   const hasAnySelection = !!left?.selection || !!right?.selection;
 

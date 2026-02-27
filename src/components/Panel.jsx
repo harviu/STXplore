@@ -1,4 +1,5 @@
 export default function Panel({ title, children, style, fill = false }) {
+  //Reuseable panel component to simplify repeated styling and structure
   return (
     <div
       style={{
