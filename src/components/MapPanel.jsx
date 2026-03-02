@@ -11,6 +11,7 @@ import { useApi } from "../hooks/useApi.js";
 import TooltipMap from "./tooltipMap.jsx";
 import Slider from "@mui/material/Slider";
 import { createTheme, ThemeProvider } from "@mui/material/styles";
+import { Tooltip } from "@mui/material";
 
 const RTL_THEME = createTheme({ direction: "rtl" });
 
@@ -49,7 +50,7 @@ function responseToCounts(resp){
 }
 
 function addDaysISO(iso, days) {
-  const d = new Date(iso);
+  const d = new Date(iso + "T00:00:00");
   d.setDate(d.getDate() + days);
   return toYYYYMMDD(d);
 }
@@ -63,13 +64,13 @@ function toYYYYMMDD(d) {
 
 function sourceRange(pastDays, anchorISO) {
   const start = addDaysISO(anchorISO, -pastDays);
-  const end = addDaysISO(anchorISO, 1);
-  return { start, end: end}
+  const end = anchorISO
+  return { start, end }
 }
 
  function targetRange(futureDays, anchorISO){
   const start = anchorISO;
-  const end = addDaysISO(anchorISO, futureDays + 1);
+  const end = addDaysISO(anchorISO, futureDays);
   return { start, end: end};
  }
 
@@ -273,16 +274,29 @@ export default function MapPanel({ onSelectionChange }) {
       };
   }, [activeMode, layer, relationSelectedId]);
 
-  
+  // allow hovering on both maps now 
   useEffect(() => {
-    // Only build the strip for Left map hover
-    if (!hover || hover.which !== "left" || !hover.id || !hover.layer) {
+    if (!hover || !hover.id || !hover.layer) {
       setHoverDaily(null);
       setHoverDailyLoading(false);
       return;
     }
 
-    const { start, end } = sourceRange(pastDays, anchorDate);
+    const isLeft = hover.which === "left";
+    const isRightActual = hover.which === "right" && secondaryMode === "actual";
+    if (!isLeft && !isRightActual) {
+      setHoverDaily(null);
+      setHoverDailyLoading(false);
+      return;
+    }
+
+    let start, end;
+    if (isLeft) {
+      ({ start, end } = sourceRange(pastDays, anchorDate));
+    } else {
+      ({ start, end} = targetRange(futureDays, anchorDate));
+    }
+
     const key = `${hover.layer}:${hover.id}:${start}:${end}`;
 
     const cached = hoverCacheRef.current.get(key);
@@ -305,10 +319,10 @@ export default function MapPanel({ onSelectionChange }) {
       api
         .selectionDaily(hover.layer, hover.id, start, end, { signal: ac.signal })
         .then((data) => {
-          const filled = fillDaily(start, end, data?.daily).slice(0, 90);
+          const filled = fillDaily(start, end, data?.daily);
           hoverCacheRef.current.set(key, filled);
           setHoverDaily(filled);
-          setHoverDailyLoading(false);
+          setHoverDailyLoading(null);
         })
         .catch((err) => {
           if (err?.name === "AbortError") return;
@@ -575,6 +589,8 @@ useEffect(() => {
   const thirtyDaysAgo = new Date(); // fallback to today if max date not loaded yet
   if (maxDataDate) thirtyDaysAgo.setTime(maxDataDate.getTime());
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+  const canShowActualError = maxDataDate && new Date(addDaysISO(anchorDate, futureDays) + "T00:00:00") <= maxDataDate;
 
   return (
     <Panel title="Crime Map" fill style={{ minHeight: 0 }}>
@@ -911,17 +927,17 @@ useEffect(() => {
                 <strong>Map:</strong>
                 <button onClick={() => setSecondaryMode("target")} disabled={secondaryMode === "target"}>
                   Target                </button>
-                {thirtyDaysAgo > new Date(anchorDate) && activeMode !== "relation" ? (
-                  <div>
-                    <button onClick={() => setSecondaryMode("actual")} disabled={secondaryMode === "actual"}>
-                      Actual
-                    </button>
-                    <span style={{ opacity: 0.5, padding: "0 4px" }}></span>
-                    <button onClick={() => setSecondaryMode("error")} disabled={secondaryMode === "error"}>
-                      Error
-                    </button>
-                  </div>
-                ):(<></>)}
+                  {canShowActualError && activeMode != "relation" ? (
+                    <div>
+                      <button onClick={ () => setSecondaryMode("actual")} disabled={secondaryMode === "actual"}>
+                        Actual
+                      </button>
+                      <span style={{ opacity: 0.5, padding: "0 4px" }}></span>
+                      <button onClick={() => setSecondaryMode("error")} disabled={secondaryMode === "error"}>
+                        Error
+                      </button>
+                      </div>
+                  ) : null}
               </div>
               <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                 <strong>Layer:</strong>
@@ -1033,16 +1049,20 @@ useEffect(() => {
                 >
                   {hover.text}
                 </div>
-                {hover.which === "left" && (
-                  <>
-                  {hoverDailyLoading && (
-                    <div style={{ margintop: 6, opacity: 0.75 }}>Loading...</div>
+                { (hover.which === "left" || 
+                  (hover.which === "right" && secondaryMode === "actual")) && (
+                    <>
+                      {hoverDailyLoading && (
+                        <div style={{ marginTop: 6, opacity: 0.75 }}>Loading...</div>
+                      )}
+                      {!hoverDailyLoading && hoverDaily && hoverDaily.length > 0 && (
+                        <TooltipMap
+                          days={hoverDaily}
+                          isRelationMap={activeMode === "relation"}
+                          />
+                      )}
+                    </>
                   )}
-                  {!hoverDailyLoading && hoverDaily && hoverDaily.length > 0 && (
-                    <TooltipMap days={hoverDaily} isRelationMap={activeMode === "relation"}/>
-                  )}
-                  </>
-                )}
                 </div>
               )}
             </div>
