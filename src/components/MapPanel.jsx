@@ -190,6 +190,13 @@ export default function MapPanel({ onSelectionChange }) {
     }
   }, [activeMode]);
 
+  // Instance-level map uses 4D array (community_source, average time) — community-only
+  useEffect(() => {
+    if (activeMode === "instance") {
+      setInstanceLayer("community");
+    }
+  }, [activeMode]);
+
   //Fetch relation weights only when in relation mode AND a community is selected
   useEffect(() => {
     // reset if not relation
@@ -316,7 +323,20 @@ export default function MapPanel({ onSelectionChange }) {
     };
   }, [hover?.which, hover?.id, hover?.layer, pastDays, anchorDate]);
 
-  //Get Data for Source HeatMap
+  // Instance-level map on source side: 4D array → per-community time-averaged (community_source, average time).
+  const {
+    data: instanceSourceResp,
+    loading: instanceSourceLoading,
+    error: instanceSourceError,
+  } = useApi(
+    ({ signal }) => {
+      if (activeMode !== "instance") return Promise.resolve(null);
+      return api.instanceLevelSource({ signal });
+    },
+    [activeMode]
+  );
+
+  //Get Data for Source HeatMap (used when activeMode is "source"; instance mode uses instanceSourceResp)
   const {
     data: leftTotalsResp,
     loading: leftTotalsLoading,
@@ -331,8 +351,11 @@ export default function MapPanel({ onSelectionChange }) {
   );
 
   const leftCrimeCounts = useMemo(
-    () => responseToCounts(leftTotalsResp),
-    [leftTotalsResp]
+    () =>
+      activeMode === "instance"
+        ? responseToCounts(instanceSourceResp)
+        : responseToCounts(leftTotalsResp),
+    [activeMode, instanceSourceResp, leftTotalsResp]
   );
 
   //Get Data for Actual Heatmap
@@ -766,7 +789,7 @@ useEffect(() => {
                   <MapBoxMap
                     geo={geo}
                     crimeCounts={activeMode === "relation" ? relationCounts :leftCrimeCounts}
-                    legendTitle={activeMode === "source" ? "Crime Count" : "Relation Weight"}
+                    legendTitle={activeMode === "source" ? "Crime Count" : activeMode === "instance" ? "Avg (time)" : "Relation Weight"}
                     layer={layer}
                     selectedId={selectedId}
                     onSelectId={setSelectedId}

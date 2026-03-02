@@ -29,3 +29,19 @@ def model_relation( # type: ignore
     if normalize:
         row = normalize_row(row)
     return {"source": source, "targets": row.tolist(), "normalized": normalize} # type: ignore
+
+
+# Instance-level map on source side: from 4D array, one value per source community (average over time).
+# 4D shape (90, 77, 30, 77) = (source_time, source_community, target_time, target_community).
+# "community_source, average time" = for each source community, mean over all time and target.
+INSTANCE_SOURCE_VALUES = loaded_array.mean(axis=(0, 2, 3)).astype(np.float32)  # (77,)
+
+
+@router.get("/instance_level_source")
+def instance_level_source():  # type: ignore
+    """Per source community, time-averaged value from the 4D tensor (for instance-level choropleth)."""
+    data = [
+        {"feature_id": str(j + 1), "count": float(INSTANCE_SOURCE_VALUES[j])}
+        for j in range(77)
+    ]
+    return {"layer": "community_area", "data": data}  # type: ignore

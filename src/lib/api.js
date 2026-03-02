@@ -56,7 +56,10 @@ export const api = {
       opts
     ),
 
-    relationalModel: (source, opts) =>
-      request(`/api/model_level_relation?source=${encodeURIComponent(source)}`, opts),
-    
+  relationalModel: (source, opts) =>
+    request(`/api/model_level_relation?source=${encodeURIComponent(source)}`, opts),
+
+  /** Instance-level map on source side: 4D array → per-community time-averaged value (community_source, average time). */
+  instanceLevelSource: (opts) =>
+    request("/api/instance_level_source", opts),
 };
