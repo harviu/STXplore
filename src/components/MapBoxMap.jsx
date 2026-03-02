@@ -62,7 +62,7 @@ function getCount(crimeCounts, id) {
 }
 
 //Adds crime count data to map data
-function buildMergedGeo(geo, crimeCounts, layer) {
+function buildMergedGeo(geo, crimeCounts, layer, isRelationMap = false) {
   if (!geo?.features?.length) return { mergedGeo: geo, minCount: 0, maxCount: 1 };
   const hasCounts = hasAnyCounts(crimeCounts);
   const features = geo.features.map((f) => {
@@ -75,7 +75,7 @@ function buildMergedGeo(geo, crimeCounts, layer) {
   });
   const counts = features.map((f) => f.properties.count);
   const minCount = counts.length ? Math.min(...counts) : 0;
-  const maxCount = counts.length ? Math.max(...counts, 0) : 1;
+  const maxCount = counts.length && isRelationMap ? Math.max(...counts, 0) : counts.length ? Math.max(...counts, 1) : 1;
   return {
     mergedGeo: { type: "FeatureCollection", features },
     minCount,
@@ -121,6 +121,8 @@ export default function MapBoxMap({
   const onSelectIdRef = useRef(onSelectId);
   const onHoverRef = useRef(onHover);
   const selectedIdRef = useRef(selectedId);
+  const isRelationMapRef = useRef(isRelationMap);
+  
   useEffect(() => {
     onSelectIdRef.current = onSelectId;
   }, [onSelectId]);
@@ -140,10 +142,13 @@ export default function MapBoxMap({
   useEffect(() => {
     layerRef.current = layer;
   }, [layer]);
+  useEffect(() => {
+    isRelationMapRef.current = isRelationMap;
+  }, [isRelationMap]);
 
   const { mergedGeo, minCount, maxCount } = useMemo(
-    () => buildMergedGeo(geo, crimeCounts, layer),
-    [geo, crimeCounts, layer]
+    () => buildMergedGeo(geo, crimeCounts, layer, isRelationMap),
+    [geo, crimeCounts, layer, isRelationMap]
   );
 
   const fillColorPaint = useMemo(
@@ -177,7 +182,7 @@ export default function MapBoxMap({
     map.on("load", () => {
       if (!map.getSource(BOUNDARIES_SOURCE_ID)) {
         const { mergedGeo: initial, minCount: minC, maxCount: maxC } =
-          buildMergedGeo(geoRef.current, crimeCountsRef.current, layerRef.current);
+          buildMergedGeo(geoRef.current, crimeCountsRef.current, layerRef.current, isRelationMapRef.current);
         const paint = getFillColorPaint(
           crimeCountsRef.current,
           minC,

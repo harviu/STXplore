@@ -969,7 +969,7 @@ useEffect(() => {
                 >
                   <MapBoxMap
                     geo={secondaryGeo}
-                    crimeCounts={secondaryMode === "actual" ? rightCrimeCounts : (secondaryMode === "target" && activeMode === "relation") ? relationCounts : null }
+                    crimeCounts={secondaryMode === "actual" ? rightCrimeCounts : null }
                     legendTitle={secondaryMode === "error" ? "Difference (actual - target)" : secondaryMode === "target" && activeMode === "relation" ? "Model Predicted Crime Count": secondaryMode === "target" ? "Predicted Crime Count" :"Crime Count"}
                     layer={secondaryLayer}
                     selectedId={secondarySelectedId}
