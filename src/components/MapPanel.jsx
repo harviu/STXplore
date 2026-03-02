@@ -705,6 +705,7 @@ useEffect(() => {
                   />
                   Community
                 </label>
+                {/* Turn off beat layer while ai does not read it. Remove the conditional once the AI can read the beat layer */}
                 {activeMode !== "relation" ? (
                   <label>
                     <input
@@ -721,6 +722,7 @@ useEffect(() => {
                     Beat
                   </label>
                 ):(<></>)}
+                {/* Turn off district layer while ai does not read it. Remove the conditional once the AI can read the district layer */}
                 {activeMode !== "relation" ? (
                   <label>
                     <input
@@ -912,6 +914,7 @@ useEffect(() => {
                   />
                   Community
                 </label>
+                {/* Turn off beat layer while ai does not read it. Remove the conditional once the AI can read the beat layer */}
                 {activeMode !== "relation" ? (
                   <label>
                     <input
@@ -928,6 +931,7 @@ useEffect(() => {
                     Beat
                   </label>
                 ):(<></>)}
+                {/* Turn off district layer while ai does not read it. Remove the conditional once the AI can read the district layer */}
                 {activeMode !== "relation" ? (
                   <label>
                     <input
