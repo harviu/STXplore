@@ -94,6 +94,7 @@ export default function MapBoxMap({
   height = 650,
   geo = null,
   crimeCounts = null,
+  legendTitle = LEGEND_TITLE,
   layer = "community",
   selectedId = null,
   onSelectId = null,
@@ -416,7 +417,7 @@ export default function MapBoxMap({
             color: "#333",
           }}
         >
-          {LEGEND_TITLE}
+          {legendTitle}
         </div>
         {legendSteps.map(({ color, low, high }, i) => (
           <div

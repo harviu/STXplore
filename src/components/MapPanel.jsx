@@ -760,6 +760,7 @@ useEffect(() => {
                   <MapBoxMap
                     geo={geo}
                     crimeCounts={leftCrimeCounts}
+                    legendTitle={activeMode === "source" ? "Crime Count" : "Relation Weight"}
                     layer={layer}
                     selectedId={selectedId}
                     onSelectId={setSelectedId}
@@ -959,10 +960,8 @@ useEffect(() => {
                 >
                   <MapBoxMap
                     geo={secondaryGeo}
-                    crimeCounts={secondaryMode === "actual" ? rightCrimeCounts : (secondaryMode === "target" && activeMode === "relation")
-                      ? relationCounts
-                      : null
-                    }
+                    crimeCounts={secondaryMode === "actual" ? rightCrimeCounts : (secondaryMode === "target" && activeMode === "relation") ? relationCounts : null }
+                    legendTitle={secondaryMode === "error" ? "Difference (actual - target)" : secondaryMode === "target" ? "Predicted Crime Count" :"Crime Count"}
                     layer={secondaryLayer}
                     selectedId={secondarySelectedId}
                     onSelectId={setSecondarySelectedId}

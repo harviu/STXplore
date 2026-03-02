@@ -25,7 +25,7 @@ export default function DashboardPanel({ mode, selection, inactiveMode, inactive
     : { primary_type, count };
   return acc;
 }, {})).sort((a, b) => b.count - a.count).slice(0, 10)) : null;
-  console.log("Combined Summary", combined);;
+  //console.log("Combined Summary", combined);;
 
   //maps the source data to the source map graph in source map stats below
   useEffect(() => { if (!summary) return;
