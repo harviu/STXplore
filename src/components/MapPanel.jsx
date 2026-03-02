@@ -770,6 +770,7 @@ useEffect(() => {
                     onSelectId={setSelectedId}
                     onHover={(h) => setHover(h ? { ...h, which: "left" } : null)}
                     recenterTrigger={recenterTrigger}
+                    isRelationMap={activeMode === "relation"}
                   />
                 </div>
             </div>

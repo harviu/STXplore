@@ -21,19 +21,27 @@ const CHOROPLETH_STOPS = [
   "#bd0026", // dark red (high)
 ];
 
+const RELATION_STOPS = [
+  "#0acaff", //light blue (low)
+  "#4ae4e4",
+  "#66c2a4",
+  "#2ca25f",
+  "#006d2c", //dark green (high)
+];
+
 const LEGEND_TITLE = "Crime count";
 
 /** Build legend steps: array of { color, low, high } for vertical swatch legend */
-function getLegendSteps(minCount, maxCount) {
-  const range = maxCount - minCount || 1;
-  const step = range / CHOROPLETH_STOPS.length;
-  return CHOROPLETH_STOPS.map((color, i) => {
+function getLegendSteps(minCount, maxCount, stops = CHOROPLETH_STOPS, isRelationMap = false) {
+  const range = maxCount - minCount || 0.001;
+  const step = range / stops.length;
+  return stops.map((color, i) => {
     const low = minCount + i * step;
-    const high = i === CHOROPLETH_STOPS.length - 1 ? maxCount : minCount + (i + 1) * step;
+    const high = minCount + (i + 1) * step;
     return {
       color,
-      low: Math.round(low),
-      high: Math.round(high),
+      low: !isRelationMap ? Math.round(low) : low,
+      high: !isRelationMap ? Math.round(high) : high,
     };
   });
 }
@@ -67,7 +75,7 @@ function buildMergedGeo(geo, crimeCounts, layer) {
   });
   const counts = features.map((f) => f.properties.count);
   const minCount = counts.length ? Math.min(...counts) : 0;
-  const maxCount = counts.length ? Math.max(...counts, 1) : 1;
+  const maxCount = counts.length ? Math.max(...counts, 0) : 1;
   return {
     mergedGeo: { type: "FeatureCollection", features },
     minCount,
@@ -76,16 +84,16 @@ function buildMergedGeo(geo, crimeCounts, layer) {
 }
 
 //gives the coloring to the maps sections
-function getFillColorPaint(crimeCounts, minCount, maxCount) {
+function getFillColorPaint(crimeCounts, minCount, maxCount, stops = CHOROPLETH_STOPS) {
   const any = hasAnyCounts(crimeCounts);
   if (!any) return "#e07c3c";
-  const range = maxCount - minCount || 1;
-  const stops = CHOROPLETH_STOPS.map((color, i) => {
-    const t = i / (CHOROPLETH_STOPS.length - 1);
+  const range = maxCount - minCount || 0.001;
+  const stopsArray = stops.map((color, i) => {
+    const t = i / (stops.length - 1);
     const value = minCount + t * range;
     return [value, color];
   });
-  return ["interpolate", ["linear"], ["get", "count"], ...stops.flat()];
+  return ["interpolate", ["linear"], ["get", "count"], ...stopsArray.flat()];
 }
 
 //The Mapbox component
@@ -100,7 +108,9 @@ export default function MapBoxMap({
   onSelectId = null,
   onHover = null,
   recenterTrigger = null,
+  isRelationMap = false,
 }) {
+  const stops = isRelationMap ? RELATION_STOPS : CHOROPLETH_STOPS;
   //Hooks to ensure updates
   const containerRef = useRef(null);
   const mapRef = useRef(null);
@@ -137,13 +147,13 @@ export default function MapBoxMap({
   );
 
   const fillColorPaint = useMemo(
-    () => getFillColorPaint(crimeCounts, minCount, maxCount),
-    [crimeCounts, minCount, maxCount]
+    () => getFillColorPaint(crimeCounts, minCount, maxCount, stops),
+    [crimeCounts, minCount, maxCount, stops]
   );
 
   const legendSteps = useMemo(
-    () => getLegendSteps(minCount, maxCount),
-    [minCount, maxCount]
+    () => getLegendSteps(minCount, maxCount, stops, isRelationMap),
+    [minCount, maxCount, stops, isRelationMap]
   );
 
   //Create the Mapbox
@@ -439,7 +449,7 @@ export default function MapBoxMap({
               }}
             />
             <span style={{ color: "#333" }}>
-              {low} – {high}
+              {isRelationMap ? low.toFixed(4) : low} – {isRelationMap ? high.toFixed(4) : high}
             </span>
           </div>
         ))}
