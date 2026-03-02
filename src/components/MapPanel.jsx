@@ -544,10 +544,10 @@ export default function MapPanel({ onSelectionChange }) {
  /* useEffect(() => {
   console.log("LEFT size", leftSize);
 }, [leftSize]);
-
+*/
 useEffect(() => {
-  console.log("RIGHT size", rightSize);
-}, [rightSize]);*/
+  console.log("relation count", relationCounts);
+}, [relationCounts]);
 
   const thirtyDaysAgo = new Date(); // fallback to today if max date not loaded yet
   if (maxDataDate) thirtyDaysAgo.setTime(maxDataDate.getTime());
@@ -683,7 +683,7 @@ useEffect(() => {
                 <button onClick={() => setActiveMode("source")} disabled={activeMode === "source"}>
                   Source
                 </button>
-                <button onClick={() => setActiveMode("relation")} disabled={activeMode === "relation"} style={{fontSize:"0.65rem"}}>
+                <button onClick={() => { setActiveMode("relation"); setSecondaryMode("target"); }} disabled={activeMode === "relation"} style={{fontSize:"0.65rem"}}>
                   Model-Level <br/>
                   Relation
                 </button>
@@ -705,34 +705,38 @@ useEffect(() => {
                   />
                   Community
                 </label>
-                <label>
-                  <input
-                    type="radio"
-                    name="layer"
-                    checked={layer === "beat"}
-                    // disable when relation mode
-                    disabled={activeMode === "relation"}
-                    onChange={() => {
-                      setLayer("beat");
-                      setSelectedId(null);
-                    }}
-                  />
-                  Beat
-                </label>
-                <label>
-                  <input
-                    type="radio"
-                    name="layer"
-                    checked={layer === "district"}
-                    // disable when relation mode
-                    disabled={activeMode === "relation"}
-                    onChange={() => {
-                      setLayer("district");
-                      setSelectedId(null);
-                    }}
-                  />
-                  District
-                </label>
+                {activeMode !== "relation" ? (
+                  <label>
+                    <input
+                      type="radio"
+                      name="layer"
+                      checked={layer === "beat"}
+                      // disable when relation mode
+                      disabled={activeMode === "relation"}
+                      onChange={() => {
+                        setLayer("beat");
+                        setSelectedId(null);
+                      }}
+                    />
+                    Beat
+                  </label>
+                ):(<></>)}
+                {activeMode !== "relation" ? (
+                  <label>
+                    <input
+                      type="radio"
+                      name="layer"
+                      checked={layer === "district"}
+                      // disable when relation mode
+                      disabled={activeMode === "relation"}
+                      onChange={() => {
+                        setLayer("district");
+                        setSelectedId(null);
+                      }}
+                    />
+                    District
+                  </label>
+                ):(<></>)}
               </div>
             </div>
             <div
@@ -759,7 +763,7 @@ useEffect(() => {
                 >
                   <MapBoxMap
                     geo={geo}
-                    crimeCounts={leftCrimeCounts}
+                    crimeCounts={activeMode === "relation" ? relationCounts :leftCrimeCounts}
                     legendTitle={activeMode === "source" ? "Crime Count" : "Relation Weight"}
                     layer={layer}
                     selectedId={selectedId}
@@ -881,7 +885,7 @@ useEffect(() => {
                 <strong>Map:</strong>
                 <button onClick={() => setSecondaryMode("target")} disabled={secondaryMode === "target"}>
                   Target                </button>
-                {thirtyDaysAgo > new Date(anchorDate) ? (
+                {thirtyDaysAgo > new Date(anchorDate) && activeMode !== "relation" ? (
                   <div>
                     <button onClick={() => setSecondaryMode("actual")} disabled={secondaryMode === "actual"}>
                       Actual
@@ -907,33 +911,37 @@ useEffect(() => {
                   />
                   Community
                 </label>
-                <label>
-                  <input
-                    type="radio"
-                    name="secondaryLayer"
-                    checked={secondaryLayer === "beat"}
-                    // disable when using target as relation view
-                    disabled={activeMode === "relation" && secondaryMode === "target"}
-                    onChange={() => {
-                      setSecondaryLayer("beat");
-                      setSecondarySelectedId(null);
-                    }}
-                  />
-                  Beat
-                </label>
-                <label>
-                  <input
-                    type="radio"
-                    name="secondaryLayer"
-                    checked={secondaryLayer === "district"}
-                    disabled={activeMode === "relation" && secondaryMode === "target"}
-                    onChange={() => {
-                      setSecondaryLayer("district");
-                      setSecondarySelectedId(null);
-                    }}
-                  />
-                  District
-                </label>
+                {activeMode !== "relation" ? (
+                  <label>
+                    <input
+                      type="radio"
+                      name="secondaryLayer"
+                      checked={secondaryLayer === "beat"}
+                      // disable when using target as relation view
+                      disabled={activeMode === "relation" && secondaryMode === "target"}
+                      onChange={() => {
+                        setSecondaryLayer("beat");
+                        setSecondarySelectedId(null);
+                      }}
+                    />
+                    Beat
+                  </label>
+                ):(<></>)}
+                {activeMode !== "relation" ? (
+                  <label>
+                    <input
+                      type="radio"
+                      name="secondaryLayer"
+                      checked={secondaryLayer === "district"}
+                      disabled={activeMode === "relation" && secondaryMode === "target"}
+                      onChange={() => {
+                        setSecondaryLayer("district");
+                        setSecondarySelectedId(null);
+                      }}
+                    />
+                    District
+                  </label>
+                ):(<></>)}
               </div>
             </div>
             <div
@@ -961,7 +969,7 @@ useEffect(() => {
                   <MapBoxMap
                     geo={secondaryGeo}
                     crimeCounts={secondaryMode === "actual" ? rightCrimeCounts : (secondaryMode === "target" && activeMode === "relation") ? relationCounts : null }
-                    legendTitle={secondaryMode === "error" ? "Difference (actual - target)" : secondaryMode === "target" ? "Predicted Crime Count" :"Crime Count"}
+                    legendTitle={secondaryMode === "error" ? "Difference (actual - target)" : secondaryMode === "target" && activeMode === "relation" ? "Model Predicted Crime Count": secondaryMode === "target" ? "Predicted Crime Count" :"Crime Count"}
                     layer={secondaryLayer}
                     selectedId={secondarySelectedId}
                     onSelectId={setSecondarySelectedId}

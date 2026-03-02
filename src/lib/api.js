@@ -57,6 +57,6 @@ export const api = {
     ),
 
     relationalModel: (source, opts) =>
-      request(`/api/relation/model?source=${encodeURIComponent(source)}`, opts),
+      request(`/api/model_level_relation?source=${encodeURIComponent(source)}`, opts),
     
 };
