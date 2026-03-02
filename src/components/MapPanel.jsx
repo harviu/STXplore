@@ -544,10 +544,10 @@ export default function MapPanel({ onSelectionChange }) {
  /* useEffect(() => {
   console.log("LEFT size", leftSize);
 }, [leftSize]);
-*/
+
 useEffect(() => {
   console.log("relation count", relationCounts);
-}, [relationCounts]);
+}, [relationCounts]);*/
 
   const thirtyDaysAgo = new Date(); // fallback to today if max date not loaded yet
   if (maxDataDate) thirtyDaysAgo.setTime(maxDataDate.getTime());
@@ -1012,7 +1012,7 @@ useEffect(() => {
                     <div style={{ margintop: 6, opacity: 0.75 }}>Loading...</div>
                   )}
                   {!hoverDailyLoading && hoverDaily && hoverDaily.length > 0 && (
-                    <TooltipMap days={hoverDaily}/>
+                    <TooltipMap days={hoverDaily} isRelationMap={activeMode === "relation"}/>
                   )}
                   </>
                 )}

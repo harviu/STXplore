@@ -242,8 +242,11 @@ export default function MapBoxMap({
           const id = String(idRaw);
           const count = feature.properties?.count ?? 0;
           let text = getBoundaryLabel(layerRef.current, feature);
-          if (crimeCountsRef.current != null) {
+          if (crimeCountsRef.current != null && !isRelationMapRef.current) {
             text += ` — ${count} crime${count !== 1 ? "s" : ""}`;
+          }
+          if (isRelationMapRef.current && crimeCountsRef.current) {
+            text += ` - ${count} relation`;
           }
           onHoverRef.current({
             x: e.originalEvent.clientX,

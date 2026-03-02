@@ -6,6 +6,13 @@ const CHOROPLETH_STOPS = [
   "#f03b20",
   "#bd0026",
 ];
+const RELATION_STOPS = [
+  "#0acaff", //light blue (low)
+  "#4ae4e4",
+  "#66c2a4",
+  "#2ca25f",
+  "#006d2c", //dark green (high)
+];
 
 //Converts hex color to rgb color
 function hexToRgb(hex) {
@@ -30,8 +37,8 @@ function lerpColor(aHex, bHex, t) {
 }
 
 //Assigns a color
-function choroplethColor(t) {
-  const stops = CHOROPLETH_STOPS;
+function choroplethColor(t, isRelationMap = false) {
+  const stops = isRelationMap ? RELATION_STOPS : CHOROPLETH_STOPS;
   const n = stops.length - 1;
   const x = Math.max(0, Math.min(1, t)) * n;
   const i = Math.floor(x);
@@ -41,7 +48,7 @@ function choroplethColor(t) {
 }
 
 //The box component you see when you hover
-export default function TooltipMap({ days, height = 12 }) {
+export default function TooltipMap({ days, height = 12, isRelationMap = false }) {
   const max = (days ?? []).reduce((m, d) => Math.max(m, d.count || 0), 0);
   const tickHeight = height + 8; // taller than bars
   const tickTop = -4; // extend above and below bar row
@@ -62,7 +69,7 @@ export default function TooltipMap({ days, height = 12 }) {
           const background =
             c === 0 || max === 0
               ? "rgba(255,255,255, 0.9)"
-              : choroplethColor(c / max);
+              : choroplethColor(c / max, isRelationMap);
 
           return (
             <div
