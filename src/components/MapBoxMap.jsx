@@ -1,10 +1,10 @@
-import { useEffect, useRef, useMemo } from "react";
+import { useEffect, useRef, useMemo, useState } from "react";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { getBoundaryId, getBoundaryLabel } from "../lib/boundaries.js";
 
 export const CHICAGO_CENTER = [-87.70, 41.84]; // Approximate center of Chicago
-export const CHICAGO_ZOOM = 9.3; // Initial zoom level to show the whole city
+export const CHICAGO_ZOOM = 9.1; // Initial zoom level to show the whole city
 const BOUNDARIES_SOURCE_ID = "boundaries";
 const BOUNDARIES_LAYER_ID = "boundaries-fill";
 const BOUNDARIES_SELECTED_LAYER_ID = "boundaries-selected";
@@ -128,6 +128,7 @@ export default function MapBoxMap({
   const onHoverRef = useRef(onHover);
   const selectedIdRef = useRef(selectedId);
   const isRelationMapRef = useRef(isRelationMap);
+  const [mapStyle, setMapStyle] = useState('streets');
   
   useEffect(() => {
     onSelectIdRef.current = onSelectId;
@@ -151,6 +152,41 @@ export default function MapBoxMap({
   useEffect(() => {
     isRelationMapRef.current = isRelationMap;
   }, [isRelationMap]);
+  useEffect(() => {
+  const map = mapRef.current;
+  if (!map) return;
+  map.setStyle(mapStyles[mapStyle]);
+  map.once('style.load', () => {
+    if (!map.getSource(BOUNDARIES_SOURCE_ID)) {
+      map.addSource(BOUNDARIES_SOURCE_ID, {
+        type: "geojson",
+        data: mergedGeo ?? { type: "FeatureCollection", features: [] },
+      });
+      
+      map.addLayer({
+        id: BOUNDARIES_LAYER_ID,
+        type: "fill",
+        source: BOUNDARIES_SOURCE_ID,
+        paint: {
+          "fill-color": fillColorPaint,
+          "fill-opacity": 0.65,
+          "fill-outline-color": "#ffffff",
+        },
+      });
+
+      map.addLayer({
+        id: BOUNDARIES_SELECTED_LAYER_ID,
+        type: "line",
+        source: BOUNDARIES_SOURCE_ID,
+        filter: ["==", ["get", "boundary_id"], selectedId ?? ""],
+        paint: {
+          "line-color": "#2563eb",
+          "line-width": 3,
+        },
+      });
+    }
+  });
+}, [mapStyle]);
 
   const { mergedGeo, minCount, maxCount } = useMemo(
     () => buildMergedGeo(geo, crimeCounts, layer, isRelationMap),
@@ -468,6 +504,41 @@ export default function MapBoxMap({
           </div>
         ))}
       </div>
+      {/* Style Selector Dropdown */}
+<div
+  style={{
+    position: "absolute",
+    top: 10,
+    left: 10,
+    background: "white",
+    borderRadius: 4,
+    boxShadow: "0 1px 4px rgba(0,0,0,0.15)",
+    padding: "8px",
+    pointerEvents: "auto",
+    zIndex: 1,
+  }}
+>
+  <select
+    id="map-style-select"
+    value={mapStyle}
+    onChange={(e) => setMapStyle(e.target.value)}
+    style={{
+      padding: "4px 8px",
+      borderRadius: "4px",
+      border: "1px solid #ccc",
+      fontSize: "13px",
+      cursor: "pointer",
+      outline: "none",
+      width: "120px"
+    }}
+  >
+    {Object.keys(mapStyles).map((styleKey) => (
+      <option key={styleKey} value={styleKey}>
+        {styleKey.charAt(0).toUpperCase() + styleKey.slice(1)}
+      </option>
+    ))}
+  </select>
+</div>
     </div>
   );
 }
