@@ -811,7 +811,7 @@ useEffect(() => {
                     onSelectId={setSelectedId}
                     onHover={(h) => setHover(h ? { ...h, which: "left" } : null)}
                     recenterTrigger={recenterTrigger}
-                    isRelationMap={activeMode === "relation"}
+                    isRelationMap={activeMode === "relation" || activeMode === "instance"}
                   />
                 </div>
             </div>
@@ -1058,7 +1058,7 @@ useEffect(() => {
                       {!hoverDailyLoading && hoverDaily && hoverDaily.length > 0 && (
                         <TooltipMap
                           days={hoverDaily}
-                          isRelationMap={activeMode === "relation"}
+                          isRelationMap={activeMode === "relation" || activeMode === "instance"}
                           />
                       )}
                     </>

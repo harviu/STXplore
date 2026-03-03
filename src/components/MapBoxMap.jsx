@@ -3,8 +3,8 @@ import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { getBoundaryId, getBoundaryLabel } from "../lib/boundaries.js";
 
-export const CHICAGO_CENTER = [-87.70, 41.85]; // Approximate center of Chicago
-export const CHICAGO_ZOOM = 9; // Initial zoom level to show the whole city
+export const CHICAGO_CENTER = [-87.70, 41.84]; // Approximate center of Chicago
+export const CHICAGO_ZOOM = 9.3; // Initial zoom level to show the whole city
 const BOUNDARIES_SOURCE_ID = "boundaries";
 const BOUNDARIES_LAYER_ID = "boundaries-fill";
 const BOUNDARIES_SELECTED_LAYER_ID = "boundaries-selected";
