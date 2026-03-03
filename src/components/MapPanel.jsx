@@ -745,7 +745,7 @@ useEffect(() => {
                   Community
                 </label>
                 {/* Turn off beat layer while ai does not read it. Remove the conditional once the AI can read the beat layer */}
-                {activeMode !== "relation" || activeMode === "instance" ? (
+                {!(activeMode === "relation" || activeMode === "instance") ? (
                   <label>
                     <input
                       type="radio"
@@ -762,7 +762,7 @@ useEffect(() => {
                   </label>
                 ):(<></>)}
                 {/* Turn off district layer while ai does not read it. Remove the conditional once the AI can read the district layer */}
-                {activeMode !== "relation" || activeMode === "instance" ? (
+                {!(activeMode === "relation" || activeMode === "instance") ? (
                   <label>
                     <input
                       type="radio"
@@ -954,7 +954,7 @@ useEffect(() => {
                   Community
                 </label>
                 {/* Turn off beat layer while ai does not read it. Remove the conditional once the AI can read the beat layer */}
-                {activeMode !== "relation" || activeMode === "instance" ? (
+                {!(activeMode === "relation" || activeMode === "instance") && secondaryMode !== "target" ? (
                   <label>
                     <input
                       type="radio"
@@ -971,7 +971,7 @@ useEffect(() => {
                   </label>
                 ):(<></>)}
                 {/* Turn off district layer while ai does not read it. Remove the conditional once the AI can read the district layer */}
-                {activeMode !== "relation" || activeMode === "instance" ? (
+                {!(activeMode === "relation" || activeMode === "instance") && secondaryMode !== "target" ? (
                   <label>
                     <input
                       type="radio"
