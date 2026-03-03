@@ -745,7 +745,7 @@ useEffect(() => {
                   Community
                 </label>
                 {/* Turn off beat layer while ai does not read it. Remove the conditional once the AI can read the beat layer */}
-                {activeMode !== "relation" ? (
+                {activeMode !== "relation" || activeMode === "instance" ? (
                   <label>
                     <input
                       type="radio"
@@ -762,7 +762,7 @@ useEffect(() => {
                   </label>
                 ):(<></>)}
                 {/* Turn off district layer while ai does not read it. Remove the conditional once the AI can read the district layer */}
-                {activeMode !== "relation" ? (
+                {activeMode !== "relation" || activeMode === "instance" ? (
                   <label>
                     <input
                       type="radio"
@@ -805,7 +805,7 @@ useEffect(() => {
                   <MapBoxMap
                     geo={geo}
                     crimeCounts={activeMode === "relation" ? relationCounts :leftCrimeCounts}
-                    legendTitle={activeMode === "source" ? "Crime Count" : activeMode === "instance" ? "Avg (time)" : "Relation Weight"}
+                    legendTitle={activeMode === "source" ? "Crime Count" : activeMode === "instance" ? "Avg (time)" : "Normalized Relation Weight"}
                     layer={layer}
                     selectedId={selectedId}
                     onSelectId={setSelectedId}
@@ -954,7 +954,7 @@ useEffect(() => {
                   Community
                 </label>
                 {/* Turn off beat layer while ai does not read it. Remove the conditional once the AI can read the beat layer */}
-                {activeMode !== "relation" ? (
+                {activeMode !== "relation" || activeMode === "instance" ? (
                   <label>
                     <input
                       type="radio"
@@ -971,7 +971,7 @@ useEffect(() => {
                   </label>
                 ):(<></>)}
                 {/* Turn off district layer while ai does not read it. Remove the conditional once the AI can read the district layer */}
-                {activeMode !== "relation" ? (
+                {activeMode !== "relation" || activeMode === "instance" ? (
                   <label>
                     <input
                       type="radio"

@@ -31,6 +31,12 @@ const RELATION_STOPS = [
 
 const LEGEND_TITLE = "Crime count";
 
+const mapStyles = {
+  streets: 'mapbox://styles/mapbox/streets-v12',
+  satellite: 'mapbox://styles/mapbox/satellite-streets-v12',
+  dark: 'mapbox://styles/mapbox/dark-v11'
+};
+
 /** Build legend steps: array of { color, low, high } for vertical swatch legend */
 function getLegendSteps(minCount, maxCount, stops = CHOROPLETH_STOPS, isRelationMap = false) {
   const range = maxCount - minCount || 0.001;
@@ -172,7 +178,7 @@ export default function MapBoxMap({
 
     const map = new mapboxgl.Map({
       container: containerRef.current,
-      style: "mapbox://styles/mapbox/streets-v12",
+      style: mapStyles.streets,
       center: CHICAGO_CENTER,
       zoom: CHICAGO_ZOOM,
     });
