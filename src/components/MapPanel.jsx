@@ -391,6 +391,8 @@ export default function MapPanel({ onSelectionChange }) {
   );
 
   // Load dummy crime counts for source mode
+  // NOT NEEDED ANYMORE, COMMENTING OUT
+  /*
   useEffect(() => {
     if (activeMode !== "relation") {//Is source
       setCrimeCounts(null);
@@ -416,6 +418,7 @@ export default function MapPanel({ onSelectionChange }) {
       mounted = false;
     };
   }, [activeMode, layer, pastDays]);
+  */
 
   function makeSelection(mode, layerX, idX, daysX, anchorISO, dateOffsetDays) {
     if (!idX) return null;

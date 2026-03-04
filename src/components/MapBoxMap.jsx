@@ -31,6 +31,7 @@ const RELATION_STOPS = [
 
 const LEGEND_TITLE = "Crime count";
 
+// Mapbox style URLs for different base map styles. More styles can be added here as needed.
 const mapStyles = {
   streets: 'mapbox://styles/mapbox/streets-v12',
   satellite: 'mapbox://styles/mapbox/satellite-streets-v12',
