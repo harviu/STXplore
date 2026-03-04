@@ -4,8 +4,7 @@ from sqlalchemy.orm import Session
 from backend.db.database import get_db
 
 router = APIRouter(tags=["date-range"])
-
-
+# Gets the range of dates from the datatable for disabling invalid dates in the date picker
 @router.get("/date-range")
 def date_range(db: Session = Depends(get_db)):
     row = db.execute(

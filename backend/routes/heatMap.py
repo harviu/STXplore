@@ -15,33 +15,22 @@ def map_totals(  # type: ignore
 ):
     # Layers are validated against a hard-coded allow-list 
     # So its safe to insert them into SQL identifiers
-    if layer not in ALLOWED_LAYERS:
-        return {"error": f"Invalid layer '{layer}'"}
-
+    if layer not in ALLOWED_LAYERS: return {"error": f"Invalid layer '{layer}'"}
     if layer == "beat":
         sql = text("""
-            SELECT
-              LPAD(beat::text, 4, '0') AS feature_id,
-              COUNT(*)::int AS count
+            SELECT LPAD(beat::text, 4, '0') AS feature_id, COUNT(*)::int AS count
             FROM crime_data
-            WHERE "date" >= :start
-              AND "date" <  :end
-              AND beat IS NOT NULL
+            WHERE "date" >= :start AND "date" <  :end AND beat IS NOT NULL
             GROUP BY 1
             ORDER BY 1;
         """)
     else:
         sql = text(f"""
-            SELECT
-              {layer} AS feature_id,
-              COUNT(*)::int AS count
+            SELECT {layer} AS feature_id, COUNT(*)::int AS count
             FROM crime_data
-            WHERE "date" >= :start
-              AND "date" <  :end
-              AND {layer} IS NOT NULL
+            WHERE "date" >= :start AND "date" <  :end AND {layer} IS NOT NULL
             GROUP BY {layer}
             ORDER BY {layer};
         """)
-
     rows = db.execute(sql, {"start": start, "end": end}).mappings().all()
     return {"layer": layer, "start": start, "end": end, "data": list(rows)}  # type: ignore
