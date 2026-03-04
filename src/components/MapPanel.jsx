@@ -725,12 +725,12 @@ useEffect(() => {
                 <button onClick={() => setActiveMode("source")} disabled={activeMode === "source"}>
                   Source
                 </button>
+                <button onClick={() => setActiveMode("instance")} disabled={activeMode === "instance"} style={{fontSize:"0.65rem"}}>
+                  Instance <br/> Level
+                </button>
                 <button onClick={() => { setActiveMode("relation"); setSecondaryMode("target"); }} disabled={activeMode === "relation"} style={{fontSize:"0.65rem"}}>
                   Model-Level <br/>
                   Relation
-                </button>
-                <button onClick={() => setActiveMode("instance")} disabled={activeMode === "instance"} style={{fontSize:"0.65rem"}}>
-                  Instance <br/> Level
                 </button>
               </div>
               <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
