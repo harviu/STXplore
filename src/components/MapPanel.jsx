@@ -337,7 +337,7 @@ export default function MapPanel({ onSelectionChange }) {
     };
   }, [hover?.which, hover?.id, hover?.layer, pastDays, anchorDate]);
 
-  // Instance-level map on source side: 4D array → per-community time-averaged (community_source, average time).
+  // Instance-level map on source side: 4D array → per-community time-averaged over slider date range.
   const {
     data: instanceSourceResp,
     loading: instanceSourceLoading,
@@ -345,9 +345,9 @@ export default function MapPanel({ onSelectionChange }) {
   } = useApi(
     ({ signal }) => {
       if (activeMode !== "instance") return Promise.resolve(null);
-      return api.instanceLevelSource({ signal });
+      return api.instanceLevelSource(pastDays, futureDays, { signal });
     },
-    [activeMode]
+    [activeMode, pastDays, futureDays]
   );
 
   //Get Data for Source HeatMap (used when activeMode is "source"; instance mode uses instanceSourceResp)
@@ -818,8 +818,8 @@ useEffect(() => {
                   />
                 </div>
             </div>
-            {/*slider row(only appears on source)*/}
-            {activeMode === "source" ? (
+            {/*slider row (source and instance use date range to slice data)*/}
+            {activeMode === "source" || activeMode === "instance" ? (
             <div style={{ display: "flex", flex:"1 1 auto", flexDirection: "column", width: "100%", height: "10%"}}>
               <div style={{ display: "flex", flex: "1 1 auto", flexDirection: "row", width: "100%", height: "100%", justifyContent: "left" }}>
                 <label htmlFor="pastDays" style={{flex: 1}}>

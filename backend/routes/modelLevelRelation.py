@@ -33,15 +33,23 @@ def model_relation( # type: ignore
 
 # Instance-level map on source side: from 4D array, one value per source community (average over time).
 # 4D shape (90, 77, 30, 77) = (source_time, source_community, target_time, target_community).
-# "community_source, average time" = for each source community, mean over all time and target.
-INSTANCE_SOURCE_VALUES = loaded_array.mean(axis=(0, 2, 3)).astype(np.float32)  # (77,)
+# Slice source_time by past_days (last N steps) and target_time by future_days (first N steps).
 
 
 @router.get("/instance_level_source")
-def instance_level_source():  # type: ignore
-    """Per source community, time-averaged value from the 4D tensor (for instance-level choropleth)."""
+def instance_level_source(
+    past_days: int = Query(90, ge=1, le=90, description="Source window: last N time steps"),
+    future_days: int = Query(30, ge=1, le=30, description="Target window: first N time steps"),
+):  # type: ignore
+    """Per source community, time-averaged value from the 4D tensor over the given date range (for instance-level choropleth)."""
+    # Source time: last past_days of 90 -> indices [90 - past_days, 90)
+    s0 = max(0, 90 - past_days)
+    # Target time: first future_days of 30 -> indices [0, future_days)
+    t1 = min(30, future_days)
+    sliced = loaded_array[s0:90, :, 0:t1, :]  # (past_days', 77, future_days', 77)
+    values = sliced.mean(axis=(0, 2, 3)).astype(np.float32)  # (77,)
     data = [
-        {"feature_id": str(j + 1), "count": float(INSTANCE_SOURCE_VALUES[j])}
+        {"feature_id": str(j + 1), "count": float(values[j])}
         for j in range(77)
     ]
     return {"layer": "community_area", "data": data}  # type: ignore
