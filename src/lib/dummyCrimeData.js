@@ -6,6 +6,7 @@ import { BOUNDARY_GEO, getBoundaryId } from './boundaries.js';
  * @param {number} daysAgo - Number of days to look back
  * @returns {Map<string, number>} Map of boundary ID to crime count
  */
+//This should be a placeholder until actual data is available, do not use for production purposes
 export function generateDummyCrimeCounts(layer, daysAgo) {
   const counts = new Map();
   
