@@ -15,10 +15,10 @@ MODEL_MATRIX = loaded_array.mean(axis=(0, 2)).astype(np.float32)
 def normalize_row(v: np.ndarray) -> np.ndarray:
     v = v.astype(np.float32)
     v = v - float(v.min())
-    s = float(v.sum())
-    if s <= 0:
+    max_val = float(v.max())
+    if max_val <= 0:
         return v
-    return v / s
+    return (v / max_val) * 100
 
 @router.get("/model_level_relation")
 def model_relation( # type: ignore
@@ -50,6 +50,10 @@ def instance_level_source(
     values = sliced.mean(axis=(0, 2, 3)).astype(np.float32)  # (77,)
     data = [
         {"feature_id": str(j + 1), "count": float(values[j])}
+def instance_level_source():  # type: ignore
+    """Per source community, time-averaged value from the 4D tensor (for instance-level choropleth)."""
+    data = [ # type: ignore
+        {"feature_id": str(j + 1), "count": float(INSTANCE_SOURCE_VALUES[j])}
         for j in range(77)
     ]
     return {"layer": "community_area", "data": data}  # type: ignore
