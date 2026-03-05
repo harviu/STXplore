@@ -81,8 +81,8 @@ function buildMergedGeo(geo, crimeCounts, layer, isRelationMap = false) {
     };
   });
   const counts = features.map((f) => f.properties.count);
-  const minCount = counts.length ? Math.min(...counts) : 0;
-  const maxCount = counts.length && isRelationMap ? Math.max(...counts, 0) : counts.length ? Math.max(...counts, 1) : 1;
+  const minCount = isRelationMap ? 0 : (counts.length ? Math.min(...counts) : 0);
+  const maxCount = isRelationMap ? 100 : (counts.length ? Math.max(...counts, 1) : 1);
   return {
     mergedGeo: { type: "FeatureCollection", features },
     minCount,
@@ -283,7 +283,10 @@ export default function MapBoxMap({
           const feature = features[0];
           const idRaw = feature.properties?.boundary_id ?? getBoundaryId(layerRef.current, feature);
           const id = String(idRaw);
-          const count = feature.properties?.count ?? 0;
+          const count = (isRelationMapRef.current && crimeCountsRef.current)
+            ? Number(crimeCountsRef.current[id] ?? 0)
+            : (feature.properties?.count ?? 0);
+            
           let text = getBoundaryLabel(layerRef.current, feature);
           if (crimeCountsRef.current != null && !isRelationMapRef.current) {
             text += ` — ${count} crime${count !== 1 ? "s" : ""}`;
@@ -500,7 +503,7 @@ export default function MapBoxMap({
               }}
             />
             <span style={{ color: "#333" }}>
-              {isRelationMap ? low.toFixed(4) : low} – {isRelationMap ? high.toFixed(4) : high}
+              {isRelationMap ? Math.round(low) : low} - {isRelationMap ? Math.round(high) : high}
             </span>
           </div>
         ))}
