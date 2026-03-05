@@ -533,6 +533,7 @@ export default function MapPanel({ onSelectionChange }) {
         loading: leftSummaryLoading,
         error: leftSummaryError,
         range: sourceRange(pastDays, anchorDate),
+        days: pastDays,
       },
       right: {
         selection: rightSelection,
@@ -540,6 +541,7 @@ export default function MapPanel({ onSelectionChange }) {
         loading: rightSummaryLoading,
         error: rightSummaryError,
         range: targetRange(futureDays, anchorDate),
+        days: futureDays,
       },
     });
   }, [

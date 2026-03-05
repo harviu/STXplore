@@ -1,10 +1,13 @@
+import { sum } from "d3";
 import Panel from "./Panel.jsx";
 import { select } from 'https://esm.sh/d3-selection';
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, use } from "react";
 
-export default function DashboardPanel({ mode, selection, inactiveMode, inactiveSelection, activeSummary, inactiveSummary }) {
+export default function DashboardPanel({ mode, selection, inactiveMode, inactiveSelection, activeSummary, inactiveSummary, pastDays, futureDays }) {
   const barsRef = useRef();
   const actualBarsRef = useRef();
+  const averageBarsRef = useRef();
+  const averageActualBarsRef = useRef();
   const hasActive = Boolean(selection);
   const hasInactive = Boolean(inactiveSelection);
 
@@ -17,7 +20,9 @@ export default function DashboardPanel({ mode, selection, inactiveMode, inactive
   //move inputs to constants to stop errors when null
   const summary = activeSummary?.top_types ?? null;
   const actual = inactiveSummary?.top_types ?? null;
-  
+  const averageSummary = activeSummary?.top_types.map(type => ({ ...type, count: type.count / pastDays })) ?? null;
+  const averageActual = inactiveSummary?.top_types.map(type => ({ ...type, count: type.count / futureDays })) ?? null;
+
   //get all the actual data from both past and "future" (Our past but future from anchor date perspective)
   const combined = summary && actual ? (Object.values(summary.concat(actual).reduce((acc, {primary_type, count}) => {
     acc[primary_type] = acc[primary_type] 
@@ -43,7 +48,7 @@ export default function DashboardPanel({ mode, selection, inactiveMode, inactive
 	    .text(function(d) {
 		    return d.count;
 	    }).attr("text-anchor", "start");
-     }, [summary]);
+    }, [summary]);
 
   //maps the actual data to the actual map graph in Actual Data Map Stats below
   useEffect(() => { if (!actual) return;
@@ -61,7 +66,41 @@ export default function DashboardPanel({ mode, selection, inactiveMode, inactive
 	    .text(function(d) {
 		    return d.count;
 	    }).attr("text-anchor", "start");
-     }, [actual]);
+    }, [actual]);
+
+  useEffect(() => { if (!averageSummary) return;
+     const bars = select(averageBarsRef.current);
+      bars.selectAll("rect").data(averageSummary).join("rect").attr("height", 19).attr("width", d => {if (d.count === 0) return 0; return d.count * 200/averageSummary[0].count;}).attr("y", (d, i) => i * 20).attr("fill", "steelblue");
+      select('.averageLabels').selectAll('text').data(averageSummary).join('text').attr('y', function(d, i) {
+        return i * 20 + 13;
+      })
+      .text(function(d) {
+        return d.primary_type;
+      }).attr("text-anchor", "end");
+      select('.averageCounts').selectAll('text').data(averageSummary).join('text').attr('y', function(d, i) {
+        return i * 20 + 13;
+      })
+      .text(function(d) {
+        return d.count.toFixed(2);
+      }).attr("text-anchor", "start");
+    }, [averageSummary]);
+
+  useEffect(() => { if (!averageActual) return;
+      const bars = select(averageActualBarsRef.current);
+      bars.selectAll("rect").data(averageActual).join("rect").attr("height", 19).attr("width", d => {if (d.count === 0) return 0; return d.count * 200/averageActual[0].count;}).attr("y", (d, i) => i * 20).attr("fill", "lightcoral");
+      select('.averageActualLabels').selectAll('text').data(averageActual).join('text').attr('y', function(d, i) {
+        return i * 20 + 13;
+      })
+      .text(function(d) {
+        return d.primary_type;
+      }).attr("text-anchor", "end");
+      select('.averageActualCounts').selectAll('text').data(averageActual).join('text').attr('y', function(d, i) {
+        return i * 20 + 13;
+      })
+      .text(function(d) {
+        return d.count.toFixed(2);
+      }).attr("text-anchor", "start");
+    }, [averageActual]);
 
   return (
     <Panel title="Dashboard">
@@ -86,7 +125,7 @@ export default function DashboardPanel({ mode, selection, inactiveMode, inactive
                     </p>
                     {summary && (
                       <div style={{ marginTop: 8 }}>
-                        <strong>Top Crime Types:</strong>
+                        <strong>Top Crime Types by count:</strong>
                         <br/>
                         <svg width="430" height="240">
                           <g className="bars" ref={barsRef} transform="translate(210, 30)"></g>
@@ -95,7 +134,17 @@ export default function DashboardPanel({ mode, selection, inactiveMode, inactive
                         </svg>
                       </div>
                     )}
-                  
+                    {averageSummary && (
+                      <div style={{ marginTop: 8 }}>
+                        <strong>Top Crime Types by average/day:</strong>
+                        <br/>
+                        <svg width="430" height="240">
+                          <g className="averageBars" ref={averageBarsRef} transform="translate(210, 30)"></g>
+                          <g className="averageLabels" transform="translate(198, 30)" style={{fill: "white"}}></g>
+                          <g className="averageCounts" transform="translate(220, 32)" style={{fill: "white"}}></g>
+                        </svg>
+                      </div>
+                    )}
                 </div>
               ) : hasActive && selection.mode === "relation" ? (
                 <div>
@@ -129,12 +178,23 @@ export default function DashboardPanel({ mode, selection, inactiveMode, inactive
                   </p>
                   {actual && (
                       <div style={{ marginTop: 8 }}>
-                        <strong>Top Crime Types:</strong>
+                        <strong>Top Crime Types by count:</strong>
                         <br/>
                         <svg width="430" height="240">
                           <g className="actualBars" ref={actualBarsRef} transform="translate(210, 30)"></g>
                           <g className="actualLabels" transform="translate(198, 30)" style={{fill: "white"}}></g>
                           <g className="actualCounts" transform="translate(220, 32)" style={{fill: "white"}}></g>
+                        </svg>
+                      </div>
+                    )}
+                    {averageActual && (
+                      <div style={{ marginTop: 8 }}>
+                        <strong>Top Crime Types by count:</strong>
+                        <br/>
+                        <svg width="430" height="240">
+                          <g className="averageActualBars" ref={averageActualBarsRef} transform="translate(210, 30)"></g>
+                          <g className="averageActualLabels" transform="translate(198, 30)" style={{fill: "white"}}></g>
+                          <g className="averageActualCounts" transform="translate(220, 32)" style={{fill: "white"}}></g>
                         </svg>
                       </div>
                     )}

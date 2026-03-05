@@ -37,8 +37,8 @@ export default function App() {
     actual: null,
     error: null,
 
-    left: { selection: null, summary: null, loading: false, error: null, range: null },
-    right: { selection: null, summary: null, loading: false, error: null, range: null },
+    left: { selection: null, summary: null, loading: false, error: null, range: null, days: null },
+    right: { selection: null, summary: null, loading: false, error: null, range: null, days: null },
   });
 
   const activeSelection = state[state.activeMode];
@@ -100,6 +100,8 @@ export default function App() {
             inactiveSelection={secondarySelection}
             activeSummary={state.left?.summary}
             inactiveSummary={state.right?.summary}
+            pastDays={state.left?.days}
+            futureDays={state.right?.days}
           />
         </section>
       </main>
