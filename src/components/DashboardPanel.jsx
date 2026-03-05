@@ -189,7 +189,7 @@ export default function DashboardPanel({ mode, selection, inactiveMode, inactive
                     )}
                     {averageActual && (
                       <div style={{ marginTop: 8 }}>
-                        <strong>Top Crime Types by count:</strong>
+                        <strong>Top Crime Types by average/day:</strong>
                         <br/>
                         <svg width="430" height="240">
                           <g className="averageActualBars" ref={averageActualBarsRef} transform="translate(210, 30)"></g>
