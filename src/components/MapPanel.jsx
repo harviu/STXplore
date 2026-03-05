@@ -1061,7 +1061,7 @@ useEffect(() => {
                       {!hoverDailyLoading && hoverDaily && hoverDaily.length > 0 && (
                         <TooltipMap
                           days={hoverDaily}
-                          isRelationMap={activeMode === "relation" || activeMode === "instance"}
+                          isRelationMap={(activeMode === "relation" || activeMode === "instance")&&hover.which === "left"}
                           />
                       )}
                     </>
