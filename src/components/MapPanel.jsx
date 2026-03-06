@@ -1095,14 +1095,12 @@ useEffect(() => {
                   Community
                 </label>
                 {/* Turn off beat layer while ai does not read it. Remove the conditional once the AI can read the beat layer */}
-                {!(activeMode === "relation" || activeMode === "instance") && secondaryMode !== "target" ? (
+                {!(activeMode === "relation" || activeMode === "instance")  ? (
                   <label>
                     <input
                       type="radio"
                       name="secondaryLayer"
                       checked={secondaryLayer === "beat"}
-                      // disable when using target as relation view
-                      disabled={activeMode === "relation" && secondaryMode === "target"}
                       onChange={() => {
                         setSecondaryLayer("beat");
                         setSecondarySelectedId(null);
@@ -1112,13 +1110,12 @@ useEffect(() => {
                   </label>
                 ):(<></>)}
                 {/* Turn off district layer while ai does not read it. Remove the conditional once the AI can read the district layer */}
-                {!(activeMode === "relation" || activeMode === "instance") && secondaryMode !== "target" ? (
+                {!(activeMode === "relation" || activeMode === "instance") ? (
                   <label>
                     <input
                       type="radio"
                       name="secondaryLayer"
                       checked={secondaryLayer === "district"}
-                      disabled={activeMode === "relation" && secondaryMode === "target"}
                       onChange={() => {
                         setSecondaryLayer("district");
                         setSecondarySelectedId(null);
