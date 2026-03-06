@@ -136,6 +136,11 @@ export default function MapPanel({ onSelectionChange }) {
   const [pastDays, setPastDays] = useState(90);
   const [futureDays, setFutureDays] = useState(30);
 
+  // Source map: show total crime count vs average per day
+  const [sourceCountMode, setSourceCountMode] = useState("total"); // "total" | "average"
+  // Target/Actual map: show total crime count vs average per day
+  const [targetCountMode, setTargetCountMode] = useState("total"); // "total" | "average"
+
   // Anchor date — defaults to latest date in dataset once loaded; user can pick another via calendar
   const [anchorDate, setAnchorDate] = useState(() => todayISO());
   const [calendarOpen, setCalendarOpen] = useState(false);
@@ -424,6 +429,35 @@ export default function MapPanel({ onSelectionChange }) {
     [activeMode, instanceSourceResp, leftTotalsResp]
   );
 
+  // When source map and "average" mode: show count / days; otherwise raw counts
+  const leftCountsForMap = useMemo(() => {
+    const raw =
+      activeMode === "relation"
+        ? relationCounts
+        : activeMode === "instance" && instanceSelectedId && instanceRelationCounts
+          ? instanceRelationCounts
+          : leftCrimeCounts;
+    if (raw == null) return raw;
+    if (
+      activeMode === "source" &&
+      sourceCountMode === "average" &&
+      pastDays > 0
+    ) {
+      const out = {};
+      for (const [id, val] of Object.entries(raw)) out[id] = val / pastDays;
+      return out;
+    }
+    return raw;
+  }, [
+    activeMode,
+    relationCounts,
+    instanceSelectedId,
+    instanceRelationCounts,
+    leftCrimeCounts,
+    sourceCountMode,
+    pastDays,
+  ]);
+
   //Get Data for Actual Heatmap
   const {
     data: rightTotalsResp,
@@ -441,6 +475,22 @@ export default function MapPanel({ onSelectionChange }) {
     () => responseToCounts(rightTotalsResp),
     [rightTotalsResp]
   );
+
+  // When right map shows Actual and "average" mode: show count / futureDays; otherwise raw counts
+  const rightCountsForMap = useMemo(() => {
+    if (rightCrimeCounts == null) return null;
+    if (
+      secondaryMode === "actual" &&
+      targetCountMode === "average" &&
+      futureDays > 0
+    ) {
+      const out = {};
+      for (const [id, val] of Object.entries(rightCrimeCounts))
+        out[id] = val / futureDays;
+      return out;
+    }
+    return secondaryMode === "actual" ? rightCrimeCounts : null;
+  }, [rightCrimeCounts, secondaryMode, targetCountMode, futureDays]);
 
   // Load dummy crime counts for source mode
   // NOT NEEDED ANYMORE, COMMENTING OUT
@@ -836,6 +886,30 @@ useEffect(() => {
                   </label>
                 ):(<></>)}
               </div>
+              {/* Source map only: total vs average per day */}
+              {activeMode === "source" && (
+                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                  <strong>Count:</strong>
+                  <label>
+                    <input
+                      type="radio"
+                      name="sourceCountMode"
+                      checked={sourceCountMode === "total"}
+                      onChange={() => setSourceCountMode("total")}
+                    />
+                    Total
+                  </label>
+                  <label>
+                    <input
+                      type="radio"
+                      name="sourceCountMode"
+                      checked={sourceCountMode === "average"}
+                      onChange={() => setSourceCountMode("average")}
+                    />
+                    Average per day
+                  </label>
+                </div>
+              )}
             </div>
             <div
               style={{
@@ -861,16 +935,12 @@ useEffect(() => {
                 >
                   <MapBoxMap
                     geo={geo}
-                    crimeCounts={
-                      activeMode === "relation"
-                      ? relationCounts
-                      : activeMode === "instance" && instanceSelectedId && instanceRelationCounts
-                        ? instanceRelationCounts // relation weights when a community is selected
-                        : leftCrimeCounts // instance source heat map when nothing selected
-                    }
+                    crimeCounts={leftCountsForMap}
                     legendTitle={
                       activeMode === "source"
-                      ? "Crime Count"
+                      ? sourceCountMode === "average"
+                        ? "Avg crimes per day"
+                        : "Crime Count"
                       : activeMode === "instance"
                           ? instanceRelationError
                             ? "Relation Error"
@@ -1058,6 +1128,30 @@ useEffect(() => {
                   </label>
                 ):(<></>)}
               </div>
+              {/* Actual map only: total vs average per day */}
+              {secondaryMode === "actual" && (
+                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                  <strong>Count:</strong>
+                  <label>
+                    <input
+                      type="radio"
+                      name="targetCountMode"
+                      checked={targetCountMode === "total"}
+                      onChange={() => setTargetCountMode("total")}
+                    />
+                    Total
+                  </label>
+                  <label>
+                    <input
+                      type="radio"
+                      name="targetCountMode"
+                      checked={targetCountMode === "average"}
+                      onChange={() => setTargetCountMode("average")}
+                    />
+                    Average per day
+                  </label>
+                </div>
+              )}
             </div>
             <div
               style={{
@@ -1083,8 +1177,18 @@ useEffect(() => {
                 >
                   <MapBoxMap
                     geo={secondaryGeo}
-                    crimeCounts={secondaryMode === "actual" ? rightCrimeCounts : null }
-                    legendTitle={secondaryMode === "error" ? "Difference (actual - target)" : secondaryMode === "target" && activeMode === "relation" ? "Predicted Crime Count": secondaryMode === "target" ? "Predicted Crime Count" :"Crime Count"}
+                    crimeCounts={rightCountsForMap}
+                    legendTitle={
+                      secondaryMode === "error"
+                        ? "Difference (actual - target)"
+                        : secondaryMode === "target" && activeMode === "relation"
+                          ? "Predicted Crime Count"
+                          : secondaryMode === "target"
+                            ? "Predicted Crime Count"
+                            : secondaryMode === "actual" && targetCountMode === "average"
+                              ? "Avg crimes per day"
+                              : "Crime Count"
+                    }
                     layer={secondaryLayer}
                     selectedId={secondarySelectedId}
                     onSelectId={setSecondarySelectedId}
