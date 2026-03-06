@@ -177,10 +177,15 @@ export default function MapPanel({ onSelectionChange }) {
   const hoverAbortRef = useRef(null);
   const hoverTimerRef = useRef(null);
 
-  //Relation (model-level) counts for right map when activeMode === "relation"
+  //Relation (model-level) counts for map when activeMode === "relation"
   const [relationCounts, setRelationCounts] = useState(null); // { "1": num, ... , "77" : num}
   const [relationLoading, setRelationLoading] = useState(false);
   const [relationError, setRelationError] = useState(null);
+
+  //Relation (instance-level) counts for map 
+  const [instanceRelationCounts, setInstanceRelationCounts] = useState(null);
+  const [instanceRelationLoading, setInstanceRelationLoading] = useState(false);
+  const [instanceRelationError, setInstanceRelationError] = useState(null);
 
   // Relation mode is community-only for now
   useEffect(() => {
@@ -188,13 +193,6 @@ export default function MapPanel({ onSelectionChange }) {
       setRelationLayer("community"); // left layer for relation tab
       setSecondaryMode("target"); // ensure right map is on target tab
       setTargetLayer("community"); // right layer for target tab
-    }
-  }, [activeMode]);
-
-  // Instance-level map uses 4D array (community_source, average time) — community-only
-  useEffect(() => {
-    if (activeMode === "instance") {
-      setInstanceLayer("community");
     }
   }, [activeMode]);
 
@@ -224,12 +222,12 @@ export default function MapPanel({ onSelectionChange }) {
       return;
     }
 
-    //Make right map clearly show the same selected community
+    //Make right map clearly show the same selected community (model-level relation)
     setSecondaryMode("target");
     setTargetLayer("community");
     setTargetSelectedId(relationSelectedId);
 
-    // Guard rail for invalid community id's
+    // Guard rail for invalid community id's (model-level relation)
     const sourceIdx = Number(relationSelectedId) - 1; // "1..77" -> "0...76"
     if (!Number.isFinite(sourceIdx) || sourceIdx < 0 || sourceIdx > 76) {
       setRelationError("Invalid community id for relation mapping.");
@@ -237,7 +235,7 @@ export default function MapPanel({ onSelectionChange }) {
       setRelationLoading(false);
       return;
     }
-    // fetch weights under valid conditions
+    // fetch model-level weights under valid conditions
     let cancelled = false;
     const ac = new AbortController();
     setRelationLoading(true);
@@ -273,6 +271,60 @@ export default function MapPanel({ onSelectionChange }) {
         ac.abort();
       };
   }, [activeMode, layer, relationSelectedId]);
+
+  // Fetch instance-level relation weights when a community is selected in instance mode
+  useEffect(() => {
+    if (activeMode != "instance") {
+      setInstanceRelationCounts(null);
+      setInstanceRelationLoading(false);
+      setInstanceRelationError(null);
+      return;
+    }
+    //No community selected yet - reset
+    if (!instanceSelectedId) {
+      setInstanceRelationCounts(null);
+      setInstanceRelationLoading(false);
+      setInstanceRelationError(null);
+      return;
+    }
+    const sourceIdx = Number(instanceSelectedId) - 1; //"1...77 -> 0...76"
+    if (!Number.isFinite(sourceIdx) || sourceIdx < 0 || sourceIdx > 76) {
+      setInstanceRelationError("Invalid community id for instance relation.");
+      setInstanceRelationLoading(false);
+      setInstanceRelationCounts(null);
+      return;
+    }
+    let cancelled = false;
+    const ac = new AbortController();
+    setInstanceRelationLoading(true);
+    setInstanceRelationError(null);
+    api.instanceLevelRelation(sourceIdx, pastDays, futureDays, { signal: ac.signal })
+      .then((data) => {
+        if (cancelled) return;
+        const targets = data?.targets;
+        if (!Array.isArray(targets) || targets.length !== 77) {
+          throw new Error("Instance relation API returned invalid targets array.")
+        }
+        // Convert targets [0...76] -> { "1": v0 , ... , "77": v76 }
+        const out = {};
+        for (let j = 0; j < 77; j++) out[String(j + 1)] = Number(targets[j]) || 0;
+        setInstanceRelationCounts(out);
+        setInstanceRelationLoading(false);
+      })
+      .catch((err) => {
+        if (err?.name === "AbortError") return;
+        if (cancelled) return;
+        console.error("instanceLevelRelation failed:", err);
+        setInstanceRelationError(String(err?.message ?? err));
+        setInstanceRelationCounts(null);
+        setInstanceRelationLoading(false);
+      });
+    return () => {
+      cancelled = true;
+      ac.abort();
+    };
+    // Re-fetched whenever community, past window, or future window changes
+  }, [activeMode, instanceSelectedId, pastDays, futureDays]);
 
   // allow hovering on both maps now 
   useEffect(() => {
@@ -809,8 +861,22 @@ useEffect(() => {
                 >
                   <MapBoxMap
                     geo={geo}
-                    crimeCounts={activeMode === "relation" ? relationCounts :leftCrimeCounts}
-                    legendTitle={activeMode === "source" ? "Crime Count" : activeMode === "instance" ? "Avg (time)" : "Normalized Relation Weight"}
+                    crimeCounts={
+                      activeMode === "relation"
+                      ? relationCounts
+                      : activeMode === "instance" && instanceSelectedId && instanceRelationCounts
+                        ? instanceRelationCounts // relation weights when a community is selected
+                        : leftCrimeCounts // instance source heat map when nothing selected
+                    }
+                    legendTitle={
+                      activeMode === "source"
+                      ? "Crime Count"
+                      : activeMode === "instance"
+                          ? instanceRelationError
+                            ? "Relation Error"
+                           : "Instance Relation Weight"
+                          : "Model Relation Weight"
+                    }
                     layer={layer}
                     selectedId={selectedId}
                     onSelectId={setSelectedId}
@@ -932,7 +998,7 @@ useEffect(() => {
                 <strong>Map:</strong>
                 <button onClick={() => setSecondaryMode("target")} disabled={secondaryMode === "target"}>
                   Target                </button>
-                  {canShowActualError && activeMode != "relation" ? (
+                  {canShowActualError ? (
                     <div>
                       <button onClick={ () => setSecondaryMode("actual")} disabled={secondaryMode === "actual"}>
                         Actual
@@ -1018,7 +1084,7 @@ useEffect(() => {
                   <MapBoxMap
                     geo={secondaryGeo}
                     crimeCounts={secondaryMode === "actual" ? rightCrimeCounts : null }
-                    legendTitle={secondaryMode === "error" ? "Difference (actual - target)" : secondaryMode === "target" && activeMode === "relation" ? "Model Predicted Crime Count": secondaryMode === "target" ? "Predicted Crime Count" :"Crime Count"}
+                    legendTitle={secondaryMode === "error" ? "Difference (actual - target)" : secondaryMode === "target" && activeMode === "relation" ? "Predicted Crime Count": secondaryMode === "target" ? "Predicted Crime Count" :"Crime Count"}
                     layer={secondaryLayer}
                     selectedId={secondarySelectedId}
                     onSelectId={setSecondarySelectedId}
