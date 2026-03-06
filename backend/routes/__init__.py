@@ -5,10 +5,12 @@ from backend.routes.dateRange import router as date_range_router
 from backend.routes.heatMap import router as heatMap_router
 from backend.routes.selectionDaily import router as tooltipMap_router
 from backend.routes.modelLevelRelation import router as model_level_router
+from backend.routes.selectionAllDaily import router as selectionAllDaily_router
 routers = [
     health_router,
     count_router,
     selection_router,
+    selectionAllDaily_router,
     date_range_router,
     heatMap_router,
     tooltipMap_router,

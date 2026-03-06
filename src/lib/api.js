@@ -56,6 +56,12 @@ export const api = {
       opts
     ),
 
+  selectionAllDaily: (layer, start, end, opts) =>
+    request(
+      `/api/selection-all-daily?layer=${encodeURIComponent(layer)}&start=${encodeURIComponent(start)}&end=${encodeURIComponent(end)}`,
+      opts
+    ),
+
   relationalModel: (source, opts) =>
     request(`/api/model_level_relation?source=${encodeURIComponent(source)}`, opts),
 
