@@ -4,24 +4,24 @@ import Panel from "./Panel.jsx";
 function titleForMode(mode) {
   switch (mode) {
     case "source":
-      return "Source Selection";
+      return "Source";
     case "relation":
-      return "Relation Selection";
+      return "Model Level Relation";
     case "instance":
-      return "Instance Selection";
+      return "Instance Level Relation";
     case "target":
-      return "Target Selection";
+      return "Target";
     case "actual":
-      return "Actual Selection";
+      return "Actual Crime Counts";
     case "error":
-      return "Error Map Selection";
+      return "Error between Predicted (Target) and Actual";
     default:
-      return "Selection";
+      return " ";
   }
 }
 
 // subcomponent for showing details of a selection, including API status and summary if available
-function SelectionBlock({ heading, payload, showApi = true }) {
+function SelectionBlock({ heading, payload, showApi = true, isLeft }) {
   // payload shape: { selection, summary, loading, error, range }
   const selection = payload?.selection ?? null;
   const summary = payload?.summary ?? null;
@@ -33,7 +33,6 @@ function SelectionBlock({ heading, payload, showApi = true }) {
     <div>
       <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between" }}>
         <strong>{heading}</strong>
-        {selection?.mode ? <span style={{ opacity: 0.75, fontSize: 12 }}>{selection.mode}</span> : null}
       </div>
 
       {!selection ? (
@@ -42,7 +41,7 @@ function SelectionBlock({ heading, payload, showApi = true }) {
         <>
           <div style={{ marginTop: 8 }}>
             <div>
-              <strong>{titleForMode(selection.mode)}:</strong>
+              <strong>Map Type:</strong> {titleForMode(selection.mode)}
             </div>
             <div>
               <strong>Layer:</strong> {selection.layer}
@@ -53,14 +52,19 @@ function SelectionBlock({ heading, payload, showApi = true }) {
             <div>
               <strong>Name:</strong> {selection.name}
             </div>
-            <div>
-              <strong>Days:</strong> {selection.days}
-            </div>
+              {summary && (
+                <div>
+                  <strong>
+                    # Days {isLeft ? 'before ' + summary.end : 'after ' + summary.start}: 
+                  </strong>
+                  {" " + selection.days}
+                </div>
+              )}
           </div>
 
           {showApi && selection.mode !== "target" ? (
             <>
-              <hr style={{ margin: "12px 0", opacity: 0.2 }} />
+              <hr style={{ margin: "12px 0", opacity: 0.1 }} />
 
               <div>
                 <strong>API:</strong>{" "}
@@ -75,12 +79,6 @@ function SelectionBlock({ heading, payload, showApi = true }) {
                     marginTop: 8,
                   }}
                 >
-                  <div>
-                    <strong>Layer:</strong> {summary.layer}
-                  </div>
-                  <div>
-                    <strong>ID:</strong> {summary.id}
-                  </div>
                   <div>
                     <strong>Starting Date:</strong> {summary.start}
                   </div>
@@ -154,9 +152,9 @@ export default function SidePanel({ left, right }) {
           </p>
         ) : (
           <>
-            <SelectionBlock heading="Left Map" payload={left} showApi={true} />
+            <SelectionBlock heading="Left Map" payload={left} showApi={true} isLeft={true} />
             <hr style={{ margin: "12px 0", opacity: 0.7 }} />
-            <SelectionBlock heading="Right Map" payload={right} showApi={true} />
+            <SelectionBlock heading="Right Map" payload={right} showApi={true} isLeft={false} />
           </>
         )}
       </div>
