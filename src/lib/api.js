@@ -70,5 +70,14 @@ export const api = {
       `/api/instance_level_relation?source=${encodeURIComponent(sourceIdx)}&past_days=${encodeURIComponent(pastDays)}&future_days=${encodeURIComponent(futureDays)}`,
       opts
     ),
+
+  get4dData: (d1, d2, d3, d4, opts) => {
+    const params = new URLSearchParams();
+    if (d1 !== null && d1 !== undefined) params.append("d1", d1);
+    if (d2 !== null && d2 !== undefined) params.append("d2", d2);
+    if (d3 !== null && d3 !== undefined) params.append("d3", d3);
+    if (d4 !== null && d4 !== undefined) params.append("d4", d4);
+    return request(`/api/data4d?${params.toString()}`, opts);
+  }
     
 };
