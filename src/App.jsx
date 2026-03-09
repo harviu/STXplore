@@ -39,6 +39,7 @@ export default function App() {
 
     left: { selection: null, summary: null, loading: false, error: null, range: null, days: null },
     right: { selection: null, summary: null, loading: false, error: null, range: null, days: null },
+    heatData: null,
   });
 
   const activeSelection = state[state.activeMode];
@@ -102,6 +103,7 @@ export default function App() {
             inactiveSummary={state.right?.summary}
             pastDays={state.left?.days}
             futureDays={state.right?.days}
+            heatData={state.heatData}
           />
         </section>
       </main>

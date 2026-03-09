@@ -1,9 +1,10 @@
 import { sum } from "d3";
 import Panel from "./Panel.jsx";
+import ClusterHeatmap from "./ClusterHeatmap.jsx";
 import { select } from 'https://esm.sh/d3-selection';
 import { useRef, useEffect, use } from "react";
 
-export default function DashboardPanel({ mode, selection, inactiveMode, inactiveSelection, activeSummary, inactiveSummary, pastDays, futureDays }) {
+export default function DashboardPanel({ mode, selection, inactiveMode, inactiveSelection, activeSummary, inactiveSummary, pastDays, futureDays, heatData }) {
   const barsRef = useRef();
   const actualBarsRef = useRef();
   const averageBarsRef = useRef();
@@ -212,6 +213,8 @@ export default function DashboardPanel({ mode, selection, inactiveMode, inactive
               )}
                 
             </div>
+            {heatData && <ClusterHeatmap data={heatData} />}
+            {heatData && console.log("Heatmap Data", heatData)}
           </div>
         )}
       </div>

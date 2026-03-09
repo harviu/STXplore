@@ -153,6 +153,7 @@ export default function MapPanel({ onSelectionChange }) {
   
   // Crime counts state (using dummy data for visualization)
   const [crimeCounts, setCrimeCounts] = useState(null);
+  const [relationValues, setRelationValues] = useState(null);
 
   // Bind controls to the active entity
   const layer = activeMode === "source" ? sourceLayer : activeMode === "relation" ? relationLayer : instanceLayer;
@@ -330,6 +331,31 @@ export default function MapPanel({ onSelectionChange }) {
     };
     // Re-fetched whenever community, past window, or future window changes
   }, [activeMode, instanceSelectedId, pastDays, futureDays]);
+
+  //get data for model level heatmap
+  useEffect(() => {
+    console.log("useEffect for heatmap data ran");
+    if (activeMode === "relation" && selectedId) {
+      console.log("if ran");
+      let cancelled = false;
+      const ac = new AbortController();
+      api.get4dData( pastDays, true, null, futureDays, true, selectedId, { signal: ac.signal })
+      .then((data) => { 
+        console.log("data for heatmap:", data);
+        if (cancelled) return;
+        setRelationValues(data);
+      })
+      .catch((err) => {
+        if (err?.name === "AbortError") return;
+        if (cancelled) return;
+        console.error("get4dData failed:", err);
+      });
+      return () => {
+        cancelled = true;
+        ac.abort();
+      };
+    }
+  }, [activeMode, pastDays, futureDays, selectedId]);
 
   // allow hovering on both maps now 
   useEffect(() => {
@@ -645,6 +671,7 @@ export default function MapPanel({ onSelectionChange }) {
         range: targetRange(futureDays, anchorDate),
         days: futureDays,
       },
+      heatData: relationValues,
     });
   }, [
     activeMode,
