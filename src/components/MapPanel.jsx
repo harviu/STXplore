@@ -334,14 +334,11 @@ export default function MapPanel({ onSelectionChange }) {
 
   //get data for model level heatmap
   useEffect(() => {
-    console.log("useEffect for heatmap data ran");
     if (activeMode === "relation" && selectedId) {
-      console.log("if ran");
       let cancelled = false;
       const ac = new AbortController();
-      api.get4dData( pastDays, true, null, futureDays, true, selectedId, { signal: ac.signal })
+      api.get4dData( pastDays, true, null, futureDays-1, false, selectedId, { signal: ac.signal })
       .then((data) => { 
-        console.log("data for heatmap:", data);
         if (cancelled) return;
         setRelationValues(data);
       })
