@@ -115,7 +115,8 @@ export default function DashboardPanel({ mode, selection, inactiveMode, inactive
             <p style={{ opacity: 0.8 }}>Select a boundary to begin.</p>
           </div>
         ) : (
-         <div style={{ display: "flex", flex: "1 1 430px", flexDirection: "row", width: "100%", justifyContent: "space-between", flexWrap: "wrap", overflow: "visible", gap: 8}}>
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", width: "100%", gap: 16 }}>
+          <div style={{ display: "flex", flex: "1 1 430px", flexDirection: "row", width: "100%", justifyContent: "space-between", flexWrap: "wrap", overflow: "visible", gap: 8}}>
             <div style={{ display: "flex", flex: "1 1 430px", flexDirection: "column", alignItems: "center", width: "100%", gap: 8 }}>
               {hasActive && selection.mode === "source"? (
                 <div>
@@ -211,10 +212,10 @@ export default function DashboardPanel({ mode, selection, inactiveMode, inactive
                   {inactiveMode === "target" ? (<strong>Target</strong>): inactiveMode === "actual" ? (<strong>Actual</strong>): (<strong>Error Map </strong>)} selection not chosen yet.
                 </p>
               )}
-                
             </div>
-            {heatData && <ClusterHeatmap data={heatData} isRelationMap= {mode === "relation"}/>}
           </div>
+          {heatData && <ClusterHeatmap data={heatData} isRelationMap= {mode === "relation"}/>}
+        </div>
         )}
       </div>
     </Panel>
