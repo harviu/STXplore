@@ -37,7 +37,7 @@ export default function ClusterHeatmap({ data, isRelationMap = false }) {
             d3.select(svgRef.current).selectAll("*").remove();
             const margin = { top: 20, right: 20, bottom: 30, left: 40 };
             const width = 430 - margin.left - margin.right;
-            const height = 240 - margin.top - margin.bottom;
+            const height = 640 - margin.top - margin.bottom;
             const svg = d3.select(svgRef.current)
                 .attr("width", width + margin.left + margin.right)
                 .attr("height", height + margin.top + margin.bottom)
