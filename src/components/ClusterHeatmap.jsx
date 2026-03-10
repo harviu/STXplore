@@ -51,6 +51,22 @@ export default function ClusterHeatmap({ data, isRelationMap = false }) {
             const yScale = d3.scaleBand().domain(ids).range([10, height]).padding(0.05);
             svg.append("g").style("font-size", "10px").call(d3.axisLeft(yScale).tickSize(0)).select(".domain").remove();
             const colorScale = d3.scaleSequential().interpolator(interpolate).domain([0, d3.max(heatmapData, d => d.count)]);
+            const tooltip = d3.select("#tooltip");
+            const mouseover = function(event, d) {
+                tooltip.style("opacity", 1);
+                d3.select(this).style("stroke", "black").style("opacity", 1);
+            };
+            const mousemove = function(event, d) {
+                const [x, y] = d3.pointer(event);
+                tooltip.html(`Community: ${d.id}<br>Days Ago: ${d.date+1}<br>Count: ${d.count}`)
+                    .style("left", (x + (x < document.documentElement.clientWidth - 120 ? 10 : -80)) + "px")
+                    .style("top", (y - 38) + "px")
+                    .style("overflow", "wrap");
+            };
+            const mouseleave = function(event, d) {
+                tooltip.style("opacity", 0);
+                d3.select(this).style("stroke", "none").style("opacity", 0.8);
+            };
             svg.selectAll().data(heatmapData, d => d.id + ':' + d.date)
                 .join("rect")
                 .attr("x", d => xScale(d.date+1))
@@ -61,14 +77,17 @@ export default function ClusterHeatmap({ data, isRelationMap = false }) {
                 .attr("height", yScale.bandwidth())
                 .style("fill", d => colorScale(d.count))
                 .style("stroke", "none")
-                .style("opacity", 0.8);
+                .style("opacity", 0.8)
+                .on("mouseover", mouseover)
+                .on("mousemove", mousemove)
+                .on("mouseleave", mouseleave);
             svg.append("text")
                 .attr("x", width / 2)
                 .attr("y",  0 )
                 .style("text-anchor", "middle")
                 .style("font-size", "12px")
                 .style("fill", "#ffffff")
-                .text("Days");
+                .text("Days Ago");
             svg.append("text")
                 .attr("transform", "rotate(-90)")
                 .attr("x", -height / 2)
@@ -84,6 +103,18 @@ export default function ClusterHeatmap({ data, isRelationMap = false }) {
     return (
         <div id="cluster-heatmap" style={{ position: "relative" }}>
             <svg ref={svgRef} />
+            <div id="tooltip" style={{
+                opacity: 0,
+                position: "absolute",
+                backgroundColor: "white",
+                border: "solid",
+                borderWidth: "1px",
+                borderRadius: "4px",
+                padding: "4px",
+                pointerEvents: "none",
+                color: "black",
+                fontSize: "10px"
+            }}/>
         </div>
     );
 }
