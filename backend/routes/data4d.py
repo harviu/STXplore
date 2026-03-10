@@ -30,4 +30,6 @@ def get_data4d(
     else:
         sliced = loadedArray[s1, s2, s3, s4]
 
-    return sliced.T.tolist()
+    if b1:
+        return sliced.T.tolist()
+    return sliced.tolist()

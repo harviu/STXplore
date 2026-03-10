@@ -214,7 +214,6 @@ export default function DashboardPanel({ mode, selection, inactiveMode, inactive
                 
             </div>
             {heatData && <ClusterHeatmap data={heatData} />}
-            {heatData && console.log("Heatmap Data", heatData)}
           </div>
         )}
       </div>

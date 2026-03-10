@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useMemo } from 'react';
 import * as d3 from 'd3';
 
 const CHOROPLETH_STOPS = [
@@ -18,26 +18,18 @@ const RELATION_STOPS = [
 
 export default function ClusterHeatmap({ data, isRelationMap = false }) {
     const svgRef = useRef(null);
-    const [heatmapData, setHeatmapData] = useState([]);
-    const [interpolate, setInterpolate] = useState(d3.scaleLinear().domain([0, 0.25, 0.5, 0.75, 1]).range(isRelationMap ? RELATION_STOPS : CHOROPLETH_STOPS));
 
-    useEffect(() => {
-        setInterpolate(d3.scaleLinear().domain([0, 0.25, 0.5, 0.75, 1]).range(isRelationMap ? RELATION_STOPS : CHOROPLETH_STOPS));
+    const interpolate = useMemo(() => {
+        return d3.interpolateRgbBasis(isRelationMap ? RELATION_STOPS : CHOROPLETH_STOPS);
     }, [isRelationMap]);
 
-    //2D array of counts for each community and day
-    useEffect(() => {
+    //2D array of counts for each community and day, ensuring day is a num
+    const heatmapData = useMemo(() => {
         if (!data) return;
-        data = data.map((community, cid) => 
-            community.map((day, did) => {
-                return { 
-                    id: cid,
-                    date: did,
-                    count: day
-                }
-            })
-        )
-        setHeatmapData(data);
+        return data.flatMap((community, cid) => 
+            community.map((day, did) => ({ id: cid, date: did, count: Number(day) || 0 }))
+        );
+        console.log("heatmap data updated:", processedData);
     }, [data]);
 
     useEffect(() => {
