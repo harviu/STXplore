@@ -352,7 +352,7 @@ export default function MapPanel({ onSelectionChange }) {
         ac.abort();
       };
     }
-  }, [activeMode, layer, pastDays])
+  }, [activeMode, layer, pastDays, anchorDate])
 
   //get data for relational heatmaps
   useEffect(() => {
@@ -715,6 +715,9 @@ export default function MapPanel({ onSelectionChange }) {
     rightSummaryLoading,
     rightSummaryError,
     futureDays,
+
+    crimeCounts,
+    relationValues,
 
     onSelectionChange,
   ]);

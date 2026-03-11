@@ -32,7 +32,7 @@ export default function ClusterHeatmap({ data, selectedId, isRelationMap = false
                 community.map((day, did) => ({ id: cid, date: did, count: Number(day) || 0 }))
             );
         } else {
-            if (!data || !Array.isArray(data)) return [];
+            if (!data || !Array.isArray(data)) {console.log(data);return [];}
             return data.map(d => ({ 
                 ...d,
                 count: Number(d.count) || 0
@@ -104,8 +104,7 @@ export default function ClusterHeatmap({ data, selectedId, isRelationMap = false
                 .style("font-size", "12px")
                 .style("fill", "#ffffff")
                 .text("Community Number");
-        }
-        if (heatmapData.length > 0 && svgRef.current && !isRelationMap) {
+        } else if (heatmapData.length > 0 && svgRef.current) {
             d3.select(svgRef.current).selectAll("*").remove();
             const margin = { top: 20, right: 30, bottom: 30, left: 50 };
             const width = document.documentElement.clientWidth - margin.left - margin.right;
@@ -170,7 +169,7 @@ export default function ClusterHeatmap({ data, selectedId, isRelationMap = false
                 .text("Community Number");
         }
         console.log(heatmapData);
-    }, [heatmapData, interpolate, document.documentElement.clientWidth]);
+    }, [heatmapData, selectedId, interpolate, document.documentElement.clientWidth]);
         
 
     return (
