@@ -332,7 +332,29 @@ export default function MapPanel({ onSelectionChange }) {
     // Re-fetched whenever community, past window, or future window changes
   }, [activeMode, instanceSelectedId, pastDays, futureDays]);
 
-  //get data for model level heatmap
+  //get data for source heatmap
+  useEffect(() => {
+    if (activeMode === "source") {
+      let cancelled = false;
+      const ac = new AbortController();
+      api.selectionAllDaily(layer, sourceRange(pastDays, anchorDate).start, sourceRange(pastDays, anchorDate).end, { signal: ac.signal })
+      .then((data) => {
+        if (cancelled) return;
+        setCrimeCounts(data);
+      })
+      .catch((err) => {
+        if (err?.name === "AbortError") return;
+        if (cancelled) return;
+        console.error("selectionAllDaily failed:", err);
+      });
+      return () => {
+        cancelled = true;
+        ac.abort();
+      };
+    }
+  }, [activeMode, layer, pastDays])
+
+  //get data for relational heatmaps
   useEffect(() => {
     if (activeMode !== "source" && selectedId) {
       let cancelled = false;
