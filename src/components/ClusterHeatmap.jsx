@@ -17,7 +17,7 @@ const RELATION_STOPS = [
   "#006d2c", //dark green (high)
 ];
 
-export default function ClusterHeatmap({ data, isRelationMap = false }) {
+export default function ClusterHeatmap({ data, selectedId, isRelationMap = false }) {
     const svgRef = useRef(null);
 
     const interpolate = useMemo(() => {
@@ -54,18 +54,18 @@ export default function ClusterHeatmap({ data, isRelationMap = false }) {
             const tooltip = d3.select("#tooltip");
             const mouseover = function(event, d) {
                 tooltip.style("opacity", 1);
-                d3.select(this).style("stroke", "black").style("opacity", 1);
+                d3.select(this).style("stroke", "magenta").style("stroke-width", 2).style("opacity", 1);
             };
             const mousemove = function(event, d) {
                 const [x, y] = d3.pointer(event);
-                tooltip.html(`Community: ${d.id}<br>Days Ago: ${d.date+1}<br>${isRelationMap ? "Relation" : "Count"}: ${d.count}`)
+                tooltip.html(`Community: ${d.id+1}<br>Days Ago: ${d.date+1}<br>${isRelationMap ? "Relation" : "Count"}: ${d.count}`)
                     .style("left", (x + (x < document.documentElement.clientWidth - 120 ? 10 : -80)) + "px")
                     .style("top", (y - 38) + "px")
                     .style("overflow", "wrap");
             };
             const mouseleave = function(event, d) {
                 tooltip.style("opacity", 0);
-                d3.select(this).style("stroke", "none").style("opacity", 0.8);
+                d3.select(this).style("stroke", d => String(d.id+1) === String(selectedId) ? "blue" : "none").style("stroke-width", d => String(d.id+1) === String(selectedId) ? 2 : 0).style("opacity", 0.8);
             };
             svg.selectAll().data(heatmapData, d => d.id + ':' + d.date)
                 .join("rect")
@@ -76,7 +76,8 @@ export default function ClusterHeatmap({ data, isRelationMap = false }) {
                 .attr("width", xScale.bandwidth())
                 .attr("height", yScale.bandwidth())
                 .style("fill", d => colorScale(d.count))
-                .style("stroke", "none")
+                .style("stroke", d => String(d.id+1) === String(selectedId) ? "blue" : "none")
+                .style("stroke-width", d => String(d.id+1) === String(selectedId) ? 2 : 0)
                 .style("opacity", 0.8)
                 .on("mouseover", mouseover)
                 .on("mousemove", mousemove)

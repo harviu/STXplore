@@ -337,7 +337,7 @@ export default function MapPanel({ onSelectionChange }) {
     if (activeMode !== "source" && selectedId) {
       let cancelled = false;
       const ac = new AbortController();
-      api.get4dData( activeMode === "instance" ? pastDays : 90, true, null, activeMode === "instance" ? futureDays-1 : 30, false, selectedId, { signal: ac.signal })
+      api.get4dData( activeMode === "instance" ? pastDays : 90, true, null, activeMode === "instance" ? futureDays-1 : 29, false, selectedId, { signal: ac.signal }) //future days column is 0 indexed
       .then((data) => { 
         if (cancelled) return;
         setRelationValues(data);
