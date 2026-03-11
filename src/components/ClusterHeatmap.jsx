@@ -58,7 +58,7 @@ export default function ClusterHeatmap({ data, isRelationMap = false }) {
             };
             const mousemove = function(event, d) {
                 const [x, y] = d3.pointer(event);
-                tooltip.html(`Community: ${d.id}<br>Days Ago: ${d.date+1}<br>Count: ${d.count}`)
+                tooltip.html(`Community: ${d.id}<br>Days Ago: ${d.date+1}<br>${isRelationMap ? "Relation" : "Count"}: ${d.count}`)
                     .style("left", (x + (x < document.documentElement.clientWidth - 120 ? 10 : -80)) + "px")
                     .style("top", (y - 38) + "px")
                     .style("overflow", "wrap");

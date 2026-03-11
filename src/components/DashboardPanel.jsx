@@ -214,7 +214,7 @@ export default function DashboardPanel({ mode, selection, inactiveMode, inactive
               )}
             </div>
           </div>
-          {heatData && mode=== "relation" && <ClusterHeatmap data={heatData} isRelationMap= {mode === "relation"}/>}
+          {heatData && mode !== "source" && <ClusterHeatmap data={heatData} isRelationMap= {mode !== "source"}/>}
         </div>
         )}
       </div>

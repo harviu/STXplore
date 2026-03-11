@@ -334,10 +334,10 @@ export default function MapPanel({ onSelectionChange }) {
 
   //get data for model level heatmap
   useEffect(() => {
-    if (activeMode === "relation" && selectedId) {
+    if (activeMode !== "source" && selectedId) {
       let cancelled = false;
       const ac = new AbortController();
-      api.get4dData( pastDays, true, null, futureDays-1, false, selectedId, { signal: ac.signal })
+      api.get4dData( activeMode === "instance" ? pastDays : 90, true, null, activeMode === "instance" ? futureDays-1 : 30, false, selectedId, { signal: ac.signal })
       .then((data) => { 
         if (cancelled) return;
         setRelationValues(data);
@@ -981,12 +981,12 @@ useEffect(() => {
                 </div>
             </div>
             {/*slider row (source and instance use date range to slice data)*/}
-            {activeMode === "source" || activeMode === "instance" ? (
-            <div style={{ display: "flex", flex:"1 1 auto", flexDirection: "column", width: "100%", height: "10%"}}>
+            {activeMode !== "relation" && 
+            (<div style={{ display: "flex", flex:"1 1 auto", flexDirection: "column", width: "100%", height: "10%"}}>
               <div style={{ display: "flex", flex: "1 1 auto", flexDirection: "row", width: "100%", height: "100%", justifyContent: "left" }}>
                 <label htmlFor="pastDays" style={{flex: 1}}>
                   <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, width: "100%" , height: "100%" }}>
-                  Source date: {pastDays} days before start <br/> ({anchorDate})
+                  Source date: {pastDays} days {activeMode === "source" || activeMode === "instance" ? (<>before start <br/> ({anchorDate})</>) : ("past")}
                   </div>
                 </label>
                 <span
@@ -995,7 +995,7 @@ useEffect(() => {
                 />
                 <label htmlFor="futureDays" style={{flex: 1}}>
                   <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, width: "100%", height: "100%" }}>
-                  <span style={{alignSelf: "center"}}>Target date: {futureDays} days after start <br/>({anchorDate})</span>
+                  <span style={{alignSelf: "center"}}>Target date: {futureDays} days {activeMode === "source" || activeMode === "instance" ? (<>after start <br/>({anchorDate})</>) : ("future")}</span>
                   </div>
                 </label>
               </div>
@@ -1059,7 +1059,7 @@ useEffect(() => {
                     }}
                   />
               </div>
-            </div>) : null}
+            </div>)}
           </div>
 
           {/* Target Map */}
