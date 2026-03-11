@@ -340,7 +340,7 @@ export default function MapPanel({ onSelectionChange }) {
       api.selectionAllDaily(layer, sourceRange(pastDays, anchorDate).start, sourceRange(pastDays, anchorDate).end, { signal: ac.signal })
       .then((data) => {
         if (cancelled) return;
-        setCrimeCounts(data);
+        setCrimeCounts(data.daily);
       })
       .catch((err) => {
         if (err?.name === "AbortError") return;
@@ -690,7 +690,7 @@ export default function MapPanel({ onSelectionChange }) {
         range: targetRange(futureDays, anchorDate),
         days: futureDays,
       },
-      heatData: relationValues,
+      heatData: activeMode === "source" ? crimeCounts : relationValues,
     });
   }, [
     activeMode,
