@@ -214,9 +214,11 @@ export default function DashboardPanel({ mode, selection, inactiveMode, inactive
               )}
             </div>
           </div>
-          {heatData && selection?.id && <ClusterHeatmap data={heatData} selectedId={selection.id} isRelationMap= {mode !== "source"}/>}
         </div>
         )}
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", width: "100%", gap: 16 }}>
+        {heatData && (selection?.id || mode === "source") && <ClusterHeatmap data={heatData} selectedId={selection?.id || null} isRelationMap= {mode !== "source"} key={document.documentElement.clientWidth}/>}
       </div>
     </Panel>
   );
