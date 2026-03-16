@@ -228,10 +228,9 @@ export default function MapPanel({ onSelectionChange }) {
       return;
     }
 
-    //Make right map clearly show the same selected community (model-level relation)
     setSecondaryMode("target");
     setTargetLayer("community");
-    setTargetSelectedId(relationSelectedId);
+    // Right map shows relation weights but does not sync selection with left map
 
     // Guard rail for invalid community id's (model-level relation)
     const sourceIdx = Number(relationSelectedId) - 1; // "1..77" -> "0...76"
