@@ -1004,47 +1004,50 @@ useEffect(() => {
                   />
                 </div>
             </div>
-            {/*slider row (source and instance use date range to slice data)*/}
-            {activeMode !== "relation" && 
-            (<div style={{ display: "flex", flex:"1 1 auto", flexDirection: "column", width: "100%", height: "10%"}}>
+            {/*slider row (source and instance use date range to slice data); past days disabled in relation mode */}
+            <div style={{ display: "flex", flex: "1 1 auto", flexDirection: "column", width: "100%", height: "10%" }}>
               <div style={{ display: "flex", flex: "1 1 auto", flexDirection: "row", width: "100%", height: "100%", justifyContent: "left" }}>
-                <label htmlFor="pastDays" style={{flex: 1}}>
-                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, width: "100%" , height: "100%" }}>
-                  Source date: {pastDays} days {activeMode === "source" || activeMode === "instance" ? (<>before start <br/> ({anchorDate})</>) : ("past")}
+                <label htmlFor="pastDays" style={{ flex: 1, opacity: activeMode === "relation" ? 0.5 : 1 }}>
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, width: "100%", height: "100%" }}>
+                    Source date: {pastDays} days {activeMode === "source" || activeMode === "instance" ? (<>before start <br/>({anchorDate})</>) : ("past")}
                   </div>
                 </label>
-                <span
-                  
-                  aria-hidden
-                />
-                <label htmlFor="futureDays" style={{flex: 1}}>
+                <span aria-hidden />
+                <label htmlFor="futureDays" style={{ flex: 1 }}>
                   <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, width: "100%", height: "100%" }}>
-                  <span style={{alignSelf: "center"}}>Target date: {futureDays} days {activeMode === "source" || activeMode === "instance" ? (<>after start <br/>({anchorDate})</>) : ("future")}</span>
+                    <span style={{ alignSelf: "center" }}>Target date: {futureDays} days {activeMode === "source" || activeMode === "instance" ? (<>after start <br/>({anchorDate})</>) : ("future")}</span>
                   </div>
                 </label>
               </div>
               <div style={{ display: "flex", flexDirection: "row", width: "100%", height: "100%", justifyContent: "left" }}>
                 <ThemeProvider theme={RTL_THEME}>
-                    <div dir="rtl" style={{ width: "100%" }}>
-                      <Slider
-                        id="pastDays"
-                        aria-label="Days before start"
-                        value={pastDays}
-                        onChange={(_e, value) => setPastDays(value)}
-                        valueLabelDisplay="auto"
-                        getAriaValueText={(v) => `${v} days ago`}
-                        min={1}
-                        max={90}
-                        sx={{
-                          width: "100%",
-                          "& .MuiSlider-rail": { height: 10, borderRadius: 0, backgroundColor: "rgb(255, 255, 255)", strokeWidth: 2},
-                          "& .MuiSlider-track": { height: 10, borderRadius: 0, backgroundColor: "rgb(100, 100, 255)", strokeWidth: 2},
-                          "& .MuiSlider-thumb": { width: 22, height: 22, backgroundColor: "white", border: "3px solid rgb(92, 92, 92)", marginRight: -2.5 },
-                        }}
-                      />
-                    </div>
-                  </ThemeProvider>
-                  <div
+                  <div dir="rtl" style={{ width: "100%" }}>
+                    <Slider
+                      id="pastDays"
+                      aria-label="Days before start"
+                      value={pastDays}
+                      onChange={(_e, value) => setPastDays(value)}
+                      disabled={activeMode === "relation"}
+                      valueLabelDisplay="auto"
+                      getAriaValueText={(v) => `${v} days ago`}
+                      min={1}
+                      max={90}
+                      sx={{
+                        width: "100%",
+                        "& .MuiSlider-rail": { height: 10, borderRadius: 0, backgroundColor: "rgb(255, 255, 255)", strokeWidth: 2 },
+                        "& .MuiSlider-track": { height: 10, borderRadius: 0, backgroundColor: "rgb(100, 100, 255)", strokeWidth: 2 },
+                        "& .MuiSlider-thumb": { width: 22, height: 22, backgroundColor: "white", border: "3px solid rgb(92, 92, 92)", marginRight: -2.5 },
+                        ...(activeMode === "relation" && {
+                          "&.Mui-disabled": { opacity: 0.5 },
+                          "& .MuiSlider-rail": { height: 10, borderRadius: 0, backgroundColor: "rgba(255,255,255,0.4)", strokeWidth: 2 },
+                          "& .MuiSlider-track": { height: 10, borderRadius: 0, backgroundColor: "rgba(100,100,255,0.4)", strokeWidth: 2 },
+                          "& .MuiSlider-thumb": { width: 22, height: 22, backgroundColor: "rgba(255,255,255,0.7)", border: "3px solid rgb(92, 92, 92)", marginRight: -2.5 },
+                        }),
+                      }}
+                    />
+                  </div>
+                </ThemeProvider>
+                <div
                   style={{
                     display: "flex",
                     flexDirection: "column",
@@ -1055,35 +1058,28 @@ useEffect(() => {
                   title={`Anchor date: ${anchorDate}`}
                   aria-hidden
                 >
-                  <div
-                    style={{
-                      width: 4,
-                      minHeight: 32,
-                      backgroundColor: "rgb(92, 92, 92)",
-                      borderRadius: 2,
-                    }}
-                  />
-                  <span style={{ fontSize: 10, color: "rgb(92, 92, 92)", marginTop: 2 }}></span>
+                  <div style={{ width: 4, minHeight: 32, backgroundColor: "rgb(92, 92, 92)", borderRadius: 2 }} />
+                  <span style={{ fontSize: 10, color: "rgb(92, 92, 92)", marginTop: 2 }} />
                 </div>
                 <Slider
-                    id="futureDays"
-                    aria-label="Days after start"
-                    value={futureDays}
-                    onChange={(_e, value) => setFutureDays(value)}
-                    valueLabelDisplay="auto"
-                    getAriaValueText={(v) => `${v} days from now`}
-                    step={1}
-                    min={1}
-                    max={30}
-                    sx={{
-                      width: "100%",
-                      "& .MuiSlider-rail": { height: 10, borderRadius: 0, backgroundColor: "rgb(255, 255, 255)" },
-                      "& .MuiSlider-track": { height: 10, borderRadius: 0 , backgroundColor: "rgb(100, 100, 255)"},
-                      "& .MuiSlider-thumb": { width: 22, height: 22, backgroundColor: "white", border: "3px solid rgb(92, 92, 92)" },
-                    }}
-                  />
+                  id="futureDays"
+                  aria-label="Days after start"
+                  value={futureDays}
+                  onChange={(_e, value) => setFutureDays(value)}
+                  valueLabelDisplay="auto"
+                  getAriaValueText={(v) => `${v} days from now`}
+                  step={1}
+                  min={1}
+                  max={30}
+                  sx={{
+                    width: "100%",
+                    "& .MuiSlider-rail": { height: 10, borderRadius: 0, backgroundColor: "rgb(255, 255, 255)" },
+                    "& .MuiSlider-track": { height: 10, borderRadius: 0, backgroundColor: "rgb(100, 100, 255)" },
+                    "& .MuiSlider-thumb": { width: 22, height: 22, backgroundColor: "white", border: "3px solid rgb(92, 92, 92)" },
+                  }}
+                />
               </div>
-            </div>)}
+            </div>
           </div>
 
           {/* Target Map */}
