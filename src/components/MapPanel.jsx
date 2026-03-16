@@ -228,10 +228,6 @@ export default function MapPanel({ onSelectionChange }) {
       return;
     }
 
-    setSecondaryMode("target");
-    setTargetLayer("community");
-    // Right map shows relation weights but does not sync selection with left map
-
     // Guard rail for invalid community id's (model-level relation)
     const sourceIdx = Number(relationSelectedId) - 1; // "1..77" -> "0...76"
     if (!Number.isFinite(sourceIdx) || sourceIdx < 0 || sourceIdx > 76) {
@@ -375,30 +371,41 @@ export default function MapPanel({ onSelectionChange }) {
     }
   }, [activeMode, pastDays, futureDays, selectedId]);
 
+  // Determines if we can show tooltip map 
+  const canShowHoverData = 
+    hover && 
+    (
+      //left map
+      (
+        hover.which === "left" && 
+        (
+          activeMode === "source" ||
+          (activeMode === "relation" && !!relationSelectedId) ||
+          (activeMode === "instance" && !!instanceSelectedId)
+        )
+      ) ||
+      // right map only when actual is active
+      (hover.which === "right" && secondaryMode === "actual")
+    );
+
   // allow hovering on both maps now 
   useEffect(() => {
-    if (!hover || !hover.id || !hover.layer) {
+    if (!hover || !hover.id || !hover.layer || !canShowHoverData) {
       setHoverDaily(null);
       setHoverDailyLoading(false);
       return;
     }
 
     const isLeft = hover.which === "left";
-    const isRightActual = hover.which === "right" && secondaryMode === "actual";
-    if (!isLeft && !isRightActual) {
-      setHoverDaily(null);
-      setHoverDailyLoading(false);
-      return;
-    }
 
     let start, end;
     if (isLeft) {
       ({ start, end } = sourceRange(pastDays, anchorDate));
     } else {
-      ({ start, end} = targetRange(futureDays, anchorDate));
+      ({ start, end } = targetRange(futureDays, anchorDate));
     }
 
-    const key = `${hover.layer}:${hover.id}:${start}:${end}`;
+    const key = `${hover.which}:${hover.layer}:${hover.id}:${start}:${end}`;
 
     const cached = hoverCacheRef.current.get(key);
     if (cached) {
@@ -408,9 +415,9 @@ export default function MapPanel({ onSelectionChange }) {
     }
 
     if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
+    if (hoverAbortRef.current) hoverAbortRef.current.abort();
 
     hoverTimerRef.current = setTimeout(() => {
-      if (hoverAbortRef.current) hoverAbortRef.current.abort();
       const ac = new AbortController();
       hoverAbortRef.current = ac;
 
@@ -423,20 +430,20 @@ export default function MapPanel({ onSelectionChange }) {
           const filled = fillDaily(start, end, data?.daily);
           hoverCacheRef.current.set(key, filled);
           setHoverDaily(filled);
-          setHoverDailyLoading(null);
+          setHoverDailyLoading(false);
         })
         .catch((err) => {
           if (err?.name === "AbortError") return;
-          console.error("selectionDaily failed:", err);
+          console.error("selection Daily Failed:", err);
           setHoverDaily(null);
           setHoverDailyLoading(false);
         });
     }, 200);
-
+    
     return () => {
       if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
     };
-  }, [hover?.which, hover?.id, hover?.layer, pastDays, anchorDate]);
+  }, [hover?.which, hover?.id, hover?.layer, activeMode, secondaryMode, relationSelectedId, instanceSelectedId, pastDays, futureDays, anchorDate, canShowHoverData,]);
 
   // Instance-level map on source side: 4D array → per-community time-averaged over slider date range.
   const {
@@ -1090,15 +1097,6 @@ useEffect(() => {
                     color: relationError ? "#ff6b6b" : "#ccc",
                   }}
                 >
-                  {activeMode === "relation" && secondaryMode === "target" ? (
-                    <>
-                      {relationLoading && "Loading model-level relation..."}
-                      {!relationLoading && relationError && relationError}
-                      {!relationLoading && !relationError && relationSelectedId && (
-                        <>Showing relation from Community Area {relationSelectedId}</>
-                      )}
-                    </>
-                  ) : null}
                 </div>
               <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                 <strong>Map:</strong>
@@ -1252,8 +1250,7 @@ useEffect(() => {
                 >
                   {hover.text}
                 </div>
-                { (hover.which === "left" || 
-                  (hover.which === "right" && secondaryMode === "actual")) && (
+                {canShowHoverData && (
                     <>
                       {hoverDailyLoading && (
                         <div style={{ marginTop: 6, opacity: 0.75 }}>Loading...</div>
