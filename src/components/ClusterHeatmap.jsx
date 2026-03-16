@@ -136,7 +136,7 @@ export default function ClusterHeatmap({ data, selectedId, isRelationMap = false
             const tooltip = d3.select("#tooltip");
             const mouseover = function(event, d) {
                 tooltip.style("opacity", 1);
-                d3.select(this).style("stroke", "black").style("stroke-width", 2).style("opacity", 1);
+                d3.select(this).style("stroke", "blue").style("stroke-width", 3).style("opacity", 1);
             };
             const mousemove = function(event, d) {
                 const [x, y] = d3.pointer(event);
