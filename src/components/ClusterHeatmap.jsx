@@ -196,7 +196,6 @@ export default function ClusterHeatmap({ data, selectedId, isRelationMap = false
         <div id="cluster-heatmap" style={{ position: "relative" }}>
             <svg ref={svgRef} />
             <div ref={divRef} style={{
-                opacity: 0,
                 position: "absolute",
                 backgroundColor: "white",
                 border: "solid",
@@ -205,7 +204,8 @@ export default function ClusterHeatmap({ data, selectedId, isRelationMap = false
                 padding: "4px",
                 pointerEvents: "none",
                 color: "black",
-                fontSize: "10px"
+                fontSize: "10px",
+                opacity: 0
             }}/>
         </div>
     );
