@@ -20,6 +20,7 @@ const EMPTY_CELL_FILL = "white"; // subtle gray for zero/missing, reads cleaner 
 
 export default function ClusterHeatmap({ data, selectedId, isRelationMap = false, isFuture = false }) {
     const svgRef = useRef(null);
+    const divRef = useRef(null);
     const [containerWidth, setContainerWidth] = useState(document.documentElement.clientWidth);
 
     useEffect(() => {
@@ -70,7 +71,7 @@ export default function ClusterHeatmap({ data, selectedId, isRelationMap = false
             svg.append("g").style("font-size", "11px").style("fill", "#b0b0b0").call(d3.axisLeft(yScale).tickSize(0)).select(".domain").remove();
             const maxCount = d3.max(heatmapData, d => d.count);
             const colorScale = d3.scaleSequential().interpolator(interpolate).domain([maxCount > 0 ? 0 : 0, maxCount || 1]);
-            const tooltip = d3.select("#tooltip");
+            const tooltip = d3.select(divRef.current);
             const mouseover = function(event, d) {
                 tooltip.style("opacity", 1);
                 d3.select(this).style("stroke", "magenta").style("stroke-width", 2).style("opacity", 1);
@@ -131,14 +132,14 @@ export default function ClusterHeatmap({ data, selectedId, isRelationMap = false
                 .append("g")
                 .attr("transform", `translate(${margin.left},${margin.top})`);
             const id = Array.from(new Set(heatmapData.map(d => d.id))).sort((a,b) => d3.ascending(Number(a), Number(b)));
-            const dates = Array.from(new Set(heatmapData.map(d => d.date))).sort((a,b) => d3.ascending(b,a));
+            const dates = Array.from(new Set(heatmapData.map(d => d.date))).sort((a,b) => isFuture ? d3.ascending(a,b) : d3.ascending(b,a));
             const xScale = d3.scaleBand().domain(dates).range([0, width]).padding(0.12);
-            svg.append("g").style("font-size", "11px").style("fill", "#b0b0b0").call(d3.axisBottom(xScale).tickSize(0).tickFormat(d => dates.indexOf(d) + 1)).select(".domain").remove();
+            svg.append("g").style("font-size", "11px").style("fill", "#b0b0b0").call(d3.axisBottom(xScale).tickSize(0).tickFormat(d => dates.indexOf(d))).select(".domain").remove();
             const yScale = d3.scaleBand().domain(id).range([10, height]).padding(0.12);
             svg.append("g").style("font-size", "11px").style("fill", "#b0b0b0").call(d3.axisLeft(yScale).tickSize(0)).select(".domain").remove();
             const maxCount = d3.max(heatmapData, d => d.count);
             const colorScale = d3.scaleSequential().interpolator(interpolate).domain([maxCount > 0 ? 0 : 0, maxCount || 1]);
-            const tooltip = d3.select("#tooltip");
+            const tooltip = d3.select(divRef.current);
             const mouseover = function(event, d) {
                 tooltip.style("opacity", 1);
                 d3.select(this).style("stroke", "blue").style("stroke-width", 3).style("opacity", 1);
@@ -194,7 +195,7 @@ export default function ClusterHeatmap({ data, selectedId, isRelationMap = false
     return (
         <div id="cluster-heatmap" style={{ position: "relative" }}>
             <svg ref={svgRef} />
-            <div id="tooltip" style={{
+            <div ref={divRef} style={{
                 opacity: 0,
                 position: "absolute",
                 backgroundColor: "white",
