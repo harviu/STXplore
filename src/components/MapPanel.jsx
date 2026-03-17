@@ -702,6 +702,8 @@ export default function MapPanel({ onSelectionChange }) {
     crimeCounts,
     relationValues,
 
+    futureCounts,
+
     onSelectionChange,
   ]);
 

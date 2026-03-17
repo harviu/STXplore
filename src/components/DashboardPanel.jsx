@@ -4,7 +4,7 @@ import ClusterHeatmap from "./ClusterHeatmap.jsx";
 import { select } from 'https://esm.sh/d3-selection';
 import { useRef, useEffect, use } from "react";
 
-export default function DashboardPanel({ mode, selection, inactiveMode, inactiveSelection, activeSummary, inactiveSummary, pastDays, futureDays, heatData }) {
+export default function DashboardPanel({ mode, selection, inactiveMode, inactiveSelection, activeSummary, inactiveSummary, pastDays, futureDays, heatData, targetHeatData }) {
   const barsRef = useRef();
   const actualBarsRef = useRef();
   const averageBarsRef = useRef();
@@ -217,8 +217,12 @@ export default function DashboardPanel({ mode, selection, inactiveMode, inactive
         </div>
         )}
       </div>
+      {/* Cluster Heatmaps */}
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", width: "100%", gap: 16 }}>
-        {heatData && (selection?.id || mode === "source") && <ClusterHeatmap data={heatData} selectedId={selection?.id || null} isRelationMap= {mode !== "source"} key={document.documentElement.clientWidth}/>}
+        <p style={{ opacity: 1, margin: 0, fill: "white" }}> Past map cluster heatmap </p>
+        {heatData && (selection?.id || mode === "source") && <ClusterHeatmap data={heatData} selectedId={selection?.id || null} isRelationMap= {mode !== "source"} />}
+        {targetHeatData && inactiveMode === "actual" && <p style={{ opacity: 1, margin: 0, fill: "white" }}> Future map cluster heatmap </p>}
+        {targetHeatData && inactiveMode === "actual" && <ClusterHeatmap data={targetHeatData} selectedId={inactiveSelection?.id || null} isRelationMap= {false} isFuture={true} />}
       </div>
     </Panel>
   );

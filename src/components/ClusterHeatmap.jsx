@@ -18,7 +18,7 @@ const RELATION_STOPS = [
 ];
 const EMPTY_CELL_FILL = "white"; // subtle gray for zero/missing, reads cleaner than black
 
-export default function ClusterHeatmap({ data, selectedId, isRelationMap = false }) {
+export default function ClusterHeatmap({ data, selectedId, isRelationMap = false, isFuture = false }) {
     const svgRef = useRef(null);
     const [containerWidth, setContainerWidth] = useState(document.documentElement.clientWidth);
 
@@ -177,7 +177,7 @@ export default function ClusterHeatmap({ data, selectedId, isRelationMap = false
                 .style("font-size", "13px")
                 .style("fill", "#e0e0e0")
                 .style("font-weight", "500")
-                .text("Days Ago");
+                .text( isFuture ? "Days Ahead" : "Days Ago");
             svg.append("text")
                 .attr("transform", "rotate(-90)")
                 .attr("x", -height / 2)

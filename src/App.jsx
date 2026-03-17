@@ -105,6 +105,7 @@ export default function App() {
             pastDays={state.left?.days}
             futureDays={state.right?.days}
             heatData={state.heatData}
+            targetHeatData={state.targetHeatData}
           />
         </section>
       </main>
