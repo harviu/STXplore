@@ -12,6 +12,8 @@ import TooltipMap from "./tooltipMap.jsx";
 import Slider from "@mui/material/Slider";
 import { createTheme, ThemeProvider } from "@mui/material/styles";
 import { Tooltip } from "@mui/material";
+import { set } from "date-fns";
+import { da } from "date-fns/locale";
 
 const RTL_THEME = createTheme({ direction: "rtl" });
 
@@ -68,15 +70,13 @@ function sourceRange(pastDays, anchorISO) {
   return { start, end }
 }
 
- function targetRange(futureDays, anchorISO){
+function targetRange(futureDays, anchorISO){
   const start = anchorISO;
   const end = addDaysISO(anchorISO, futureDays);
   return { start, end: end};
- }
-
-function todayISO() {
-  return new Date().toISOString().slice(0, 10);
 }
+
+function todayISO() { return new Date().toISOString().slice(0, 10); }
 
 function useResizeObserverSize() {
   const ref = useRef(null);
@@ -151,9 +151,10 @@ export default function MapPanel({ onSelectionChange }) {
   // Increment to recenter both maps to CHICAGO_ZOOM
   const [recenterTrigger, setRecenterTrigger] = useState(0);
   
-  // Crime counts state (using dummy data for visualization)
+  // Crime counts state and relation values state (4D array) for heatmaps
   const [crimeCounts, setCrimeCounts] = useState(null);
   const [relationValues, setRelationValues] = useState(null);
+  const [futureCounts, setFutureCounts] = useState(null);
 
   // Bind controls to the active entity
   const layer = activeMode === "source" ? sourceLayer : activeMode === "relation" ? relationLayer : instanceLayer;
@@ -332,7 +333,7 @@ export default function MapPanel({ onSelectionChange }) {
     // Re-fetched whenever community, past window, or future window changes
   }, [activeMode, instanceSelectedId, pastDays, futureDays]);
 
-  //get data for source heatmap
+  //get crime data for source heatmap
   useEffect(() => {
     if (activeMode === "source") {
       let cancelled = false;
@@ -538,34 +539,9 @@ export default function MapPanel({ onSelectionChange }) {
   }, [rightCrimeCounts, secondaryMode, targetCountMode, futureDays]);
 
   // Load dummy crime counts for source mode
-  // NOT NEEDED ANYMORE, COMMENTING OUT
-  /*
-  useEffect(() => {
-    if (activeMode !== "relation") {//Is source
-      setCrimeCounts(null);
-      return;
-    }
-    
-    let mounted = true;
-    
-    loadDummyCrimeCounts(pastDays, layer)
-      .then(counts => {
-        if (mounted) {
-          setCrimeCounts(counts);
-        }
-      })
-      .catch(error => {
-        console.error('Error loading dummy crime data:', error);
-        if (mounted) {
-          setCrimeCounts(null);
-        }
-      });
-    
-    return () => {
-      mounted = false;
-    };
-  }, [activeMode, layer, pastDays]);
-  */
+  // NOT NEEDED ANYMORE, MAKING SINGLE LINE AND COMMENTING OUT
+  //useEffect(() => { if (activeMode !== "relation") { setCrimeCounts(null); return; } let mounted = true; loadDummyCrimeCounts(pastDays, layer).then(counts => { if (mounted) { setCrimeCounts(counts); } }).catch(error => { console.error('Error loading dummy crime data:', error); if (mounted) { setCrimeCounts(null); } }); return () => { mounted = false; }; }, [activeMode, layer, pastDays]);
+
 
   function makeSelection(mode, layerX, idX, daysX, anchorISO, dateOffsetDays) {
     if (!idX) return null;
@@ -691,6 +667,7 @@ export default function MapPanel({ onSelectionChange }) {
         days: futureDays,
       },
       heatData: activeMode === "source" ? crimeCounts : relationValues,
+      targetHeatData: secondaryMode === "actual" ? futureCounts : null,
     });
   }, [
     activeMode,
@@ -734,10 +711,7 @@ export default function MapPanel({ onSelectionChange }) {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [calendarOpen]);
 
- /* useEffect(() => {
-  console.log("LEFT size", leftSize);
-}, [leftSize]);
-
+ /* For poor debugging:
 useEffect(() => {
   console.log("relation count", relationCounts);
 }, [relationCounts]);*/
@@ -747,6 +721,33 @@ useEffect(() => {
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
   const canShowActualError = maxDataDate && new Date(addDaysISO(anchorDate, futureDays) + "T00:00:00") <= maxDataDate;
+
+   //get crime data for actual heatmap. Has to be done after canShowActualError is calculated for the first time
+  useEffect(() => {
+    if (secondaryMode === "actual") {
+      let cancelled = false;
+      const ac = new AbortController();
+      if (canShowActualError) {
+        api.selectionAllDaily(secondaryLayer, targetRange(futureDays, anchorDate).start, targetRange(futureDays, anchorDate).end, { signal: ac.signal })
+        .then((data) => {
+          if (cancelled) return;
+          setFutureCounts(data.daily);
+        })
+        .catch((err) => {
+          if (err?.name === "AbortError") return;
+          if (cancelled) return;
+          console.error("selectionAllDaily for actual failed:", err);
+        });
+        return () => {
+          cancelled = true;
+          ac.abort();
+        };
+      } else { 
+        setFutureCounts(null);
+      }
+      
+    }
+  }, [secondaryMode, secondaryLayer, futureDays, anchorDate, canShowActualError]);
 
   return (
     <Panel title="Crime Map" fill style={{ minHeight: 0 }}>

@@ -40,6 +40,7 @@ export default function App() {
     left: { selection: null, summary: null, loading: false, error: null, range: null, days: null },
     right: { selection: null, summary: null, loading: false, error: null, range: null, days: null },
     heatData: null,
+    targetHeatData: null,
   });
 
   const activeSelection = state[state.activeMode];
