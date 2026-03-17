@@ -229,11 +229,6 @@ export default function MapPanel({ onSelectionChange }) {
       return;
     }
 
-    //Make right map clearly show the same selected community (model-level relation)
-    setSecondaryMode("target");
-    setTargetLayer("community");
-    setTargetSelectedId(relationSelectedId);
-
     // Guard rail for invalid community id's (model-level relation)
     const sourceIdx = Number(relationSelectedId) - 1; // "1..77" -> "0...76"
     if (!Number.isFinite(sourceIdx) || sourceIdx < 0 || sourceIdx > 76) {
@@ -377,30 +372,41 @@ export default function MapPanel({ onSelectionChange }) {
     }
   }, [activeMode, pastDays, futureDays, selectedId]);
 
+  // Determines if we can show tooltip map 
+  const canShowHoverData = 
+    hover && 
+    (
+      //left map
+      (
+        hover.which === "left" && 
+        (
+          activeMode === "source" ||
+          (activeMode === "relation" && !!relationSelectedId) ||
+          (activeMode === "instance" && !!instanceSelectedId)
+        )
+      ) ||
+      // right map only when actual is active
+      (hover.which === "right" && secondaryMode === "actual")
+    );
+
   // allow hovering on both maps now 
   useEffect(() => {
-    if (!hover || !hover.id || !hover.layer) {
+    if (!hover || !hover.id || !hover.layer || !canShowHoverData) {
       setHoverDaily(null);
       setHoverDailyLoading(false);
       return;
     }
 
     const isLeft = hover.which === "left";
-    const isRightActual = hover.which === "right" && secondaryMode === "actual";
-    if (!isLeft && !isRightActual) {
-      setHoverDaily(null);
-      setHoverDailyLoading(false);
-      return;
-    }
 
     let start, end;
     if (isLeft) {
       ({ start, end } = sourceRange(pastDays, anchorDate));
     } else {
-      ({ start, end} = targetRange(futureDays, anchorDate));
+      ({ start, end } = targetRange(futureDays, anchorDate));
     }
 
-    const key = `${hover.layer}:${hover.id}:${start}:${end}`;
+    const key = `${hover.which}:${hover.layer}:${hover.id}:${start}:${end}`;
 
     const cached = hoverCacheRef.current.get(key);
     if (cached) {
@@ -410,9 +416,9 @@ export default function MapPanel({ onSelectionChange }) {
     }
 
     if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
+    if (hoverAbortRef.current) hoverAbortRef.current.abort();
 
     hoverTimerRef.current = setTimeout(() => {
-      if (hoverAbortRef.current) hoverAbortRef.current.abort();
       const ac = new AbortController();
       hoverAbortRef.current = ac;
 
@@ -425,20 +431,20 @@ export default function MapPanel({ onSelectionChange }) {
           const filled = fillDaily(start, end, data?.daily);
           hoverCacheRef.current.set(key, filled);
           setHoverDaily(filled);
-          setHoverDailyLoading(null);
+          setHoverDailyLoading(false);
         })
         .catch((err) => {
           if (err?.name === "AbortError") return;
-          console.error("selectionDaily failed:", err);
+          console.error("selection Daily Failed:", err);
           setHoverDaily(null);
           setHoverDailyLoading(false);
         });
     }, 200);
-
+    
     return () => {
       if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
     };
-  }, [hover?.which, hover?.id, hover?.layer, pastDays, anchorDate]);
+  }, [hover?.which, hover?.id, hover?.layer, activeMode, secondaryMode, relationSelectedId, instanceSelectedId, pastDays, futureDays, anchorDate, canShowHoverData,]);
 
   // Instance-level map on source side: 4D array → per-community time-averaged over slider date range.
   const {
@@ -901,65 +907,57 @@ useEffect(() => {
                   />
                   Community
                 </label>
-                {/* Turn off beat layer while ai does not read it. Remove the conditional once the AI can read the beat layer */}
-                {!(activeMode === "relation" || activeMode === "instance") ? (
-                  <label>
-                    <input
-                      type="radio"
-                      name="layer"
-                      checked={layer === "beat"}
-                      // disable when relation mode
-                      disabled={activeMode === "relation"}
-                      onChange={() => {
-                        setLayer("beat");
-                        setSelectedId(null);
-                      }}
-                    />
-                    Beat
-                  </label>
-                ):(<></>)}
-                {/* Turn off district layer while ai does not read it. Remove the conditional once the AI can read the district layer */}
-                {!(activeMode === "relation" || activeMode === "instance") ? (
-                  <label>
-                    <input
-                      type="radio"
-                      name="layer"
-                      checked={layer === "district"}
-                      // disable when relation mode
-                      disabled={activeMode === "relation"}
-                      onChange={() => {
-                        setLayer("district");
-                        setSelectedId(null);
-                      }}
-                    />
-                    District
-                  </label>
-                ):(<></>)}
+                <label style={{ opacity: (activeMode === "relation" || activeMode === "instance") ? 0.5 : 1 }}>
+                  <input
+                    type="radio"
+                    name="layer"
+                    checked={layer === "beat"}
+                    disabled={activeMode === "relation" || activeMode === "instance"}
+                    onChange={() => {
+                      setLayer("beat");
+                      setSelectedId(null);
+                    }}
+                  />
+                  Beat
+                </label>
+                <label style={{ opacity: (activeMode === "relation" || activeMode === "instance") ? 0.5 : 1 }}>
+                  <input
+                    type="radio"
+                    name="layer"
+                    checked={layer === "district"}
+                    disabled={activeMode === "relation" || activeMode === "instance"}
+                    onChange={() => {
+                      setLayer("district");
+                      setSelectedId(null);
+                    }}
+                  />
+                  District
+                </label>
               </div>
-              {/* Source map only: total vs average per day */}
-              {activeMode === "source" && (
-                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                  <strong>Count:</strong>
-                  <label>
-                    <input
-                      type="radio"
-                      name="sourceCountMode"
-                      checked={sourceCountMode === "total"}
-                      onChange={() => setSourceCountMode("total")}
-                    />
-                    Total
-                  </label>
-                  <label>
-                    <input
-                      type="radio"
-                      name="sourceCountMode"
-                      checked={sourceCountMode === "average"}
-                      onChange={() => setSourceCountMode("average")}
-                    />
-                    Average per day
-                  </label>
-                </div>
-              )}
+              {/* Source map: total vs average per day; disabled when not on Source */}
+              <div style={{ display: "flex", gap: 8, alignItems: "center", opacity: activeMode === "source" ? 1 : 0.5 }}>
+                <strong>Count:</strong>
+                <label>
+                  <input
+                    type="radio"
+                    name="sourceCountMode"
+                    checked={sourceCountMode === "total"}
+                    disabled={activeMode !== "source"}
+                    onChange={() => setSourceCountMode("total")}
+                  />
+                  Total
+                </label>
+                <label>
+                  <input
+                    type="radio"
+                    name="sourceCountMode"
+                    checked={sourceCountMode === "average"}
+                    disabled={activeMode !== "source"}
+                    onChange={() => setSourceCountMode("average")}
+                  />
+                  Average per day
+                </label>
+              </div>
             </div>
             <div
               style={{
@@ -1006,47 +1004,50 @@ useEffect(() => {
                   />
                 </div>
             </div>
-            {/*slider row (source and instance use date range to slice data)*/}
-            {activeMode !== "relation" && 
-            (<div style={{ display: "flex", flex:"1 1 auto", flexDirection: "column", width: "100%", height: "10%"}}>
+            {/*slider row (source and instance use date range to slice data); past days disabled in relation mode */}
+            <div style={{ display: "flex", flex: "1 1 auto", flexDirection: "column", width: "100%", height: "10%" }}>
               <div style={{ display: "flex", flex: "1 1 auto", flexDirection: "row", width: "100%", height: "100%", justifyContent: "left" }}>
-                <label htmlFor="pastDays" style={{flex: 1}}>
-                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, width: "100%" , height: "100%" }}>
-                  Source date: {pastDays} days {activeMode === "source" || activeMode === "instance" ? (<>before start <br/> ({anchorDate})</>) : ("past")}
+                <label htmlFor="pastDays" style={{ flex: 1, opacity: activeMode === "relation" ? 0.5 : 1 }}>
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, width: "100%", height: "100%" }}>
+                    Source date: {pastDays} days before start <br/>({anchorDate})
                   </div>
                 </label>
-                <span
-                  
-                  aria-hidden
-                />
-                <label htmlFor="futureDays" style={{flex: 1}}>
+                <span aria-hidden />
+                <label htmlFor="futureDays" style={{ flex: 1 }}>
                   <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, width: "100%", height: "100%" }}>
-                  <span style={{alignSelf: "center"}}>Target date: {futureDays} days {activeMode === "source" || activeMode === "instance" ? (<>after start <br/>({anchorDate})</>) : ("future")}</span>
+                    <span style={{ alignSelf: "center" }}>Target date: {futureDays} days after start <br/>({anchorDate})</span>
                   </div>
                 </label>
               </div>
               <div style={{ display: "flex", flexDirection: "row", width: "100%", height: "100%", justifyContent: "left" }}>
                 <ThemeProvider theme={RTL_THEME}>
-                    <div dir="rtl" style={{ width: "100%" }}>
-                      <Slider
-                        id="pastDays"
-                        aria-label="Days before start"
-                        value={pastDays}
-                        onChange={(_e, value) => setPastDays(value)}
-                        valueLabelDisplay="auto"
-                        getAriaValueText={(v) => `${v} days ago`}
-                        min={1}
-                        max={90}
-                        sx={{
-                          width: "100%",
-                          "& .MuiSlider-rail": { height: 10, borderRadius: 0, backgroundColor: "rgb(255, 255, 255)", strokeWidth: 2},
-                          "& .MuiSlider-track": { height: 10, borderRadius: 0, backgroundColor: "rgb(100, 100, 255)", strokeWidth: 2},
-                          "& .MuiSlider-thumb": { width: 22, height: 22, backgroundColor: "white", border: "3px solid rgb(92, 92, 92)", marginRight: -2.5 },
-                        }}
-                      />
-                    </div>
-                  </ThemeProvider>
-                  <div
+                  <div dir="rtl" style={{ width: "100%" }}>
+                    <Slider
+                      id="pastDays"
+                      aria-label="Days before start"
+                      value={pastDays}
+                      onChange={(_e, value) => setPastDays(value)}
+                      disabled={activeMode === "relation"}
+                      valueLabelDisplay="auto"
+                      getAriaValueText={(v) => `${v} days ago`}
+                      min={1}
+                      max={90}
+                      sx={{
+                        width: "100%",
+                        "& .MuiSlider-rail": { height: 10, borderRadius: 0, backgroundColor: "rgb(255, 255, 255)", strokeWidth: 2 },
+                        "& .MuiSlider-track": { height: 10, borderRadius: 0, backgroundColor: "rgb(100, 100, 255)", strokeWidth: 2 },
+                        "& .MuiSlider-thumb": { width: 22, height: 22, backgroundColor: "white", border: "3px solid rgb(92, 92, 92)", marginRight: -2.5 },
+                        ...(activeMode === "relation" && {
+                          "&.Mui-disabled": { opacity: 0.5 },
+                          "& .MuiSlider-rail": { height: 10, borderRadius: 0, backgroundColor: "rgba(255,255,255,0.4)", strokeWidth: 2 },
+                          "& .MuiSlider-track": { height: 10, borderRadius: 0, backgroundColor: "rgba(100,100,255,0.4)", strokeWidth: 2 },
+                          "& .MuiSlider-thumb": { width: 22, height: 22, backgroundColor: "rgba(255,255,255,0.7)", border: "3px solid rgb(92, 92, 92)", marginRight: -2.5 },
+                        }),
+                      }}
+                    />
+                  </div>
+                </ThemeProvider>
+                <div
                   style={{
                     display: "flex",
                     flexDirection: "column",
@@ -1057,35 +1058,28 @@ useEffect(() => {
                   title={`Anchor date: ${anchorDate}`}
                   aria-hidden
                 >
-                  <div
-                    style={{
-                      width: 4,
-                      minHeight: 32,
-                      backgroundColor: "rgb(92, 92, 92)",
-                      borderRadius: 2,
-                    }}
-                  />
-                  <span style={{ fontSize: 10, color: "rgb(92, 92, 92)", marginTop: 2 }}></span>
+                  <div style={{ width: 4, minHeight: 32, backgroundColor: "rgb(92, 92, 92)", borderRadius: 2 }} />
+                  <span style={{ fontSize: 10, color: "rgb(92, 92, 92)", marginTop: 2 }} />
                 </div>
                 <Slider
-                    id="futureDays"
-                    aria-label="Days after start"
-                    value={futureDays}
-                    onChange={(_e, value) => setFutureDays(value)}
-                    valueLabelDisplay="auto"
-                    getAriaValueText={(v) => `${v} days from now`}
-                    step={1}
-                    min={1}
-                    max={30}
-                    sx={{
-                      width: "100%",
-                      "& .MuiSlider-rail": { height: 10, borderRadius: 0, backgroundColor: "rgb(255, 255, 255)" },
-                      "& .MuiSlider-track": { height: 10, borderRadius: 0 , backgroundColor: "rgb(100, 100, 255)"},
-                      "& .MuiSlider-thumb": { width: 22, height: 22, backgroundColor: "white", border: "3px solid rgb(92, 92, 92)" },
-                    }}
-                  />
+                  id="futureDays"
+                  aria-label="Days after start"
+                  value={futureDays}
+                  onChange={(_e, value) => setFutureDays(value)}
+                  valueLabelDisplay="auto"
+                  getAriaValueText={(v) => `${v} days from now`}
+                  step={1}
+                  min={1}
+                  max={30}
+                  sx={{
+                    width: "100%",
+                    "& .MuiSlider-rail": { height: 10, borderRadius: 0, backgroundColor: "rgb(255, 255, 255)" },
+                    "& .MuiSlider-track": { height: 10, borderRadius: 0, backgroundColor: "rgb(100, 100, 255)" },
+                    "& .MuiSlider-thumb": { width: 22, height: 22, backgroundColor: "white", border: "3px solid rgb(92, 92, 92)" },
+                  }}
+                />
               </div>
-            </div>)}
+            </div>
           </div>
 
           {/* Target Map */}
@@ -1104,31 +1098,21 @@ useEffect(() => {
                     color: relationError ? "#ff6b6b" : "#ccc",
                   }}
                 >
-                  {activeMode === "relation" && secondaryMode === "target" ? (
-                    <>
-                      {relationLoading && "Loading model-level relation..."}
-                      {!relationLoading && relationError && relationError}
-                      {!relationLoading && !relationError && relationSelectedId && (
-                        <>Showing relation from Community Area {relationSelectedId}</>
-                      )}
-                    </>
-                  ) : null}
                 </div>
               <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                 <strong>Map:</strong>
                 <button onClick={() => setSecondaryMode("target")} disabled={secondaryMode === "target"}>
-                  Target                </button>
-                  {canShowActualError ? (
-                    <div>
-                      <button onClick={ () => setSecondaryMode("actual")} disabled={secondaryMode === "actual"}>
-                        Actual
-                      </button>
-                      <span style={{ opacity: 0.5, padding: "0 4px" }}></span>
-                      <button onClick={() => setSecondaryMode("error")} disabled={secondaryMode === "error"}>
-                        Error
-                      </button>
-                      </div>
-                  ) : null}
+                  Target
+                </button>
+                <div style={{ display: "flex", gap: 8, alignItems: "center", opacity: canShowActualError ? 1 : 0.5 }}>
+                  <button onClick={() => setSecondaryMode("actual")} disabled={secondaryMode === "actual" || !canShowActualError}>
+                    Actual
+                  </button>
+                  <span style={{ opacity: 0.5, padding: "0 4px" }} />
+                  <button onClick={() => setSecondaryMode("error")} disabled={secondaryMode === "error" || !canShowActualError}>
+                    Error
+                  </button>
+                </div>
               </div>
               <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                 <strong>Layer:</strong>
@@ -1144,61 +1128,57 @@ useEffect(() => {
                   />
                   Community
                 </label>
-                {/* Turn off beat layer while ai does not read it. Remove the conditional once the AI can read the beat layer */}
-                {!(activeMode === "relation" || activeMode === "instance")  ? (
-                  <label>
-                    <input
-                      type="radio"
-                      name="secondaryLayer"
-                      checked={secondaryLayer === "beat"}
-                      onChange={() => {
-                        setSecondaryLayer("beat");
-                        setSecondarySelectedId(null);
-                      }}
-                    />
-                    Beat
-                  </label>
-                ):(<></>)}
-                {/* Turn off district layer while ai does not read it. Remove the conditional once the AI can read the district layer */}
-                {!(activeMode === "relation" || activeMode === "instance") ? (
-                  <label>
-                    <input
-                      type="radio"
-                      name="secondaryLayer"
-                      checked={secondaryLayer === "district"}
-                      onChange={() => {
-                        setSecondaryLayer("district");
-                        setSecondarySelectedId(null);
-                      }}
-                    />
-                    District
-                  </label>
-                ):(<></>)}
+                <label style={{ opacity: (activeMode === "relation" || activeMode === "instance") ? 0.5 : 1 }}>
+                  <input
+                    type="radio"
+                    name="secondaryLayer"
+                    checked={secondaryLayer === "beat"}
+                    disabled={activeMode === "relation" || activeMode === "instance"}
+                    onChange={() => {
+                      setSecondaryLayer("beat");
+                      setSecondarySelectedId(null);
+                    }}
+                  />
+                  Beat
+                </label>
+                <label style={{ opacity: (activeMode === "relation" || activeMode === "instance") ? 0.5 : 1 }}>
+                  <input
+                    type="radio"
+                    name="secondaryLayer"
+                    checked={secondaryLayer === "district"}
+                    disabled={activeMode === "relation" || activeMode === "instance"}
+                    onChange={() => {
+                      setSecondaryLayer("district");
+                      setSecondarySelectedId(null);
+                    }}
+                  />
+                  District
+                </label>
               </div>
-              {/* Actual map only: total vs average per day */}
-              {secondaryMode === "actual" && (
-                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                  <strong>Count:</strong>
-                  <label>
-                    <input
-                      type="radio"
-                      name="targetCountMode"
-                      checked={targetCountMode === "total"}
-                      onChange={() => setTargetCountMode("total")}
-                    />
-                    Total
-                  </label>
-                  <label>
-                    <input
-                      type="radio"
-                      name="targetCountMode"
-                      checked={targetCountMode === "average"}
-                      onChange={() => setTargetCountMode("average")}
-                    />
-                    Average per day
-                  </label>
-                </div>
-              )}
+              {/* Actual map: total vs average per day; disabled when not on Actual */}
+              <div style={{ display: "flex", gap: 8, alignItems: "center", opacity: secondaryMode === "actual" ? 1 : 0.5 }}>
+                <strong>Count:</strong>
+                <label>
+                  <input
+                    type="radio"
+                    name="targetCountMode"
+                    checked={targetCountMode === "total"}
+                    disabled={secondaryMode !== "actual"}
+                    onChange={() => setTargetCountMode("total")}
+                  />
+                  Total
+                </label>
+                <label>
+                  <input
+                    type="radio"
+                    name="targetCountMode"
+                    checked={targetCountMode === "average"}
+                    disabled={secondaryMode !== "actual"}
+                    onChange={() => setTargetCountMode("average")}
+                  />
+                  Average per day
+                </label>
+              </div>
             </div>
             <div
               style={{
@@ -1271,8 +1251,7 @@ useEffect(() => {
                 >
                   {hover.text}
                 </div>
-                { (hover.which === "left" || 
-                  (hover.which === "right" && secondaryMode === "actual")) && (
+                {canShowHoverData && (
                     <>
                       {hoverDailyLoading && (
                         <div style={{ marginTop: 6, opacity: 0.75 }}>Loading...</div>

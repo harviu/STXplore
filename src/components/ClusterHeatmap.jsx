@@ -16,6 +16,7 @@ const RELATION_STOPS = [
   "#2ca25f",
   "#006d2c", //dark green (high)
 ];
+const EMPTY_CELL_FILL = "white"; // subtle gray for zero/missing, reads cleaner than black
 
 export default function ClusterHeatmap({ data, selectedId, isRelationMap = false }) {
     const svgRef = useRef(null);
@@ -55,7 +56,7 @@ export default function ClusterHeatmap({ data, selectedId, isRelationMap = false
             d3.select(svgRef.current).selectAll("*").remove();
             const margin = { top: 20, right: 30, bottom: 30, left: 50 };
             const width = containerWidth - margin.left - margin.right;
-            const height = 740 - margin.top - margin.bottom;
+            const height = 1200 - margin.top - margin.bottom;
             const svg = d3.select(svgRef.current)
                 .attr("width", width + margin.left + margin.right)
                 .attr("height", height + margin.top + margin.bottom)
@@ -63,11 +64,12 @@ export default function ClusterHeatmap({ data, selectedId, isRelationMap = false
                 .attr("transform", `translate(${margin.left},${margin.top})`);
             const ids = Array.from(new Set(heatmapData.map(d => d.id+1)));
             const days = Array.from(new Set(heatmapData.map(d => d.date+1)));
-            const xScale = d3.scaleBand().domain(days).range([0, width]).padding(0.05);
-            svg.append("g").style("font-size", "10px").call(d3.axisBottom(xScale).tickSize(0)).select(".domain").remove();
-            const yScale = d3.scaleBand().domain(ids).range([10, height]).padding(0.05);
-            svg.append("g").style("font-size", "10px").call(d3.axisLeft(yScale).tickSize(0)).select(".domain").remove();
-            const colorScale = d3.scaleSequential().interpolator(interpolate).domain([0, d3.max(heatmapData, d => d.count)]);
+            const xScale = d3.scaleBand().domain(days).range([0, width]).padding(0.12);
+            svg.append("g").style("font-size", "11px").style("fill", "#b0b0b0").call(d3.axisBottom(xScale).tickSize(0)).select(".domain").remove();
+            const yScale = d3.scaleBand().domain(ids).range([10, height]).padding(0.12);
+            svg.append("g").style("font-size", "11px").style("fill", "#b0b0b0").call(d3.axisLeft(yScale).tickSize(0)).select(".domain").remove();
+            const maxCount = d3.max(heatmapData, d => d.count);
+            const colorScale = d3.scaleSequential().interpolator(interpolate).domain([maxCount > 0 ? 0 : 0, maxCount || 1]);
             const tooltip = d3.select("#tooltip");
             const mouseover = function(event, d) {
                 tooltip.style("opacity", 1);
@@ -89,14 +91,14 @@ export default function ClusterHeatmap({ data, selectedId, isRelationMap = false
                 .join("rect")
                 .attr("x", d => xScale(d.date+1))
                 .attr("y", d => yScale(d.id+1))
-                .attr("rx", 4)
-                .attr("ry", 4)
+                .attr("rx", 2)
+                .attr("ry", 2)
                 .attr("width", xScale.bandwidth())
                 .attr("height", yScale.bandwidth())
-                .style("fill", d => colorScale(d.count))
+                .style("fill", d => (d.count == null || d.count === 0) ? EMPTY_CELL_FILL : colorScale(d.count))
                 .style("stroke", d => (selectedId !== null && String(d.id+1) === String(selectedId)) ? "blue" : "none")
                 .style("stroke-width", d => (selectedId !== null && String(d.id+1) === String(selectedId)) ? 2 : 0)
-                .style("opacity", 0.8)
+                .style("opacity", 0.92)
                 .on("mouseover", mouseover)
                 .on("mousemove", mousemove)
                 .on("mouseleave", mouseleave);
@@ -104,23 +106,25 @@ export default function ClusterHeatmap({ data, selectedId, isRelationMap = false
                 .attr("x", width / 2)
                 .attr("y",  0 )
                 .style("text-anchor", "middle")
-                .style("font-size", "12px")
-                .style("fill", "#ffffff")
+                .style("font-size", "13px")
+                .style("fill", "#e0e0e0")
+                .style("font-weight", "500")
                 .text("Days Ago");
             svg.append("text")
                 .attr("transform", "rotate(-90)")
                 .attr("x", -height / 2)
                 .attr("y", -20)
                 .style("text-anchor", "middle")
-                .style("font-size", "12px")
-                .style("fill", "#ffffff")
+                .style("font-size", "13px")
+                .style("fill", "#e0e0e0")
+                .style("font-weight", "500")
                 .text("Community Number");
         }
         if (heatmapData.length > 0 && svgRef.current && !isRelationMap) {
             d3.select(svgRef.current).selectAll("*").remove();
             const margin = { top: 20, right: 30, bottom: 30, left: 50 };
             const width = containerWidth - margin.left - margin.right;
-            const height = 740 - margin.top - margin.bottom;
+            const height = 1200 - margin.top - margin.bottom;
             const svg = d3.select(svgRef.current)
                 .attr("width", width + margin.left + margin.right)
                 .attr("height", height + margin.top + margin.bottom)
@@ -128,11 +132,12 @@ export default function ClusterHeatmap({ data, selectedId, isRelationMap = false
                 .attr("transform", `translate(${margin.left},${margin.top})`);
             const id = Array.from(new Set(heatmapData.map(d => d.id))).sort((a,b) => d3.ascending(Number(a), Number(b)));
             const dates = Array.from(new Set(heatmapData.map(d => d.date))).sort((a,b) => d3.ascending(b,a));
-            const xScale = d3.scaleBand().domain(dates).range([0, width]).padding(0.05);
-            svg.append("g").style("font-size", "10px").call(d3.axisBottom(xScale).tickSize(0).tickFormat(d => {return dates.indexOf(d)+1})).select(".domain").remove();
-            const yScale = d3.scaleBand().domain(id).range([10, height]).padding(0.05);
-            svg.append("g").style("font-size", "10px").call(d3.axisLeft(yScale).tickSize(0)).select(".domain").remove();
-            const colorScale = d3.scaleSequential().interpolator(interpolate).domain([0, d3.max(heatmapData, d => d.count)]);
+            const xScale = d3.scaleBand().domain(dates).range([0, width]).padding(0.12);
+            svg.append("g").style("font-size", "11px").style("fill", "#b0b0b0").call(d3.axisBottom(xScale).tickSize(0).tickFormat(d => dates.indexOf(d) + 1)).select(".domain").remove();
+            const yScale = d3.scaleBand().domain(id).range([10, height]).padding(0.12);
+            svg.append("g").style("font-size", "11px").style("fill", "#b0b0b0").call(d3.axisLeft(yScale).tickSize(0)).select(".domain").remove();
+            const maxCount = d3.max(heatmapData, d => d.count);
+            const colorScale = d3.scaleSequential().interpolator(interpolate).domain([maxCount > 0 ? 0 : 0, maxCount || 1]);
             const tooltip = d3.select("#tooltip");
             const mouseover = function(event, d) {
                 tooltip.style("opacity", 1);
@@ -154,14 +159,14 @@ export default function ClusterHeatmap({ data, selectedId, isRelationMap = false
                 .join("rect")
                 .attr("x", d => xScale(d.date))
                 .attr("y", d => yScale(d.id))
-                .attr("rx", 4)
-                .attr("ry", 4)
+                .attr("rx", 2)
+                .attr("ry", 2)
                 .attr("width", xScale.bandwidth())
                 .attr("height", yScale.bandwidth())
-                .style("fill", d => colorScale(d.count))
+                .style("fill", d => (d.count == null || d.count === 0) ? EMPTY_CELL_FILL : colorScale(d.count))
                 .style("stroke", d => (selectedId !== null && String(d.id+1) === String(selectedId)) ? "blue" : "none")
                 .style("stroke-width", d => (selectedId !== null && String(d.id+1) === String(selectedId)) ? 2 : 0)
-                .style("opacity", 0.8)
+                .style("opacity", 0.92)
                 .on("mouseover", mouseover)
                 .on("mousemove", mousemove)
                 .on("mouseleave", mouseleave);
@@ -169,16 +174,18 @@ export default function ClusterHeatmap({ data, selectedId, isRelationMap = false
                 .attr("x", width / 2)
                 .attr("y",  0 )
                 .style("text-anchor", "middle")
-                .style("font-size", "12px")
-                .style("fill", "#ffffff")
+                .style("font-size", "13px")
+                .style("fill", "#e0e0e0")
+                .style("font-weight", "500")
                 .text("Days Ago");
             svg.append("text")
                 .attr("transform", "rotate(-90)")
                 .attr("x", -height / 2)
                 .attr("y", -20)
                 .style("text-anchor", "middle")
-                .style("font-size", "12px")
-                .style("fill", "#ffffff")
+                .style("font-size", "13px")
+                .style("fill", "#e0e0e0")
+                .style("font-weight", "500")
                 .text("Community Number");
         }
     }, [heatmapData, selectedId, interpolate, containerWidth]);
