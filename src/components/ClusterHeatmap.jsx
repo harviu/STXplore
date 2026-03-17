@@ -153,7 +153,7 @@ export default function ClusterHeatmap({ data, selectedId, isRelationMap = false
             };
             const mouseleave = function(event, d) {
                 tooltip.style("opacity", 0);
-                const isSelected = selectedId !== null && String(Number(d.id)+1) === String(selectedId);
+                const isSelected = selectedId !== null && String(Number(d.id)) === String(selectedId);
                 d3.select(this).style("stroke", d => isSelected ? "blue" : "none").style("stroke-width", d => isSelected ? 2 : 0).style("opacity", 0.8);
             };
             svg.selectAll().data(heatmapData, d => d.id + ':' + d.date)
@@ -165,8 +165,8 @@ export default function ClusterHeatmap({ data, selectedId, isRelationMap = false
                 .attr("width", xScale.bandwidth())
                 .attr("height", yScale.bandwidth())
                 .style("fill", d => (d.count == null || d.count === 0) ? EMPTY_CELL_FILL : colorScale(d.count))
-                .style("stroke", d => (selectedId !== null && String(Number(d.id)+1) === String(selectedId)) ? "blue" : "none")
-                .style("stroke-width", d => (selectedId !== null && String(Number(d.id)+1) === String(selectedId)) ? 2 : 0)
+                .style("stroke", d => (selectedId !== null && String(Number(d.id)) === String(selectedId)) ? "blue" : "none")
+                .style("stroke-width", d => (selectedId !== null && String(Number(d.id)) === String(selectedId)) ? 2 : 0)
                 .style("opacity", 0.92)
                 .on("mouseover", mouseover)
                 .on("mousemove", mousemove)
