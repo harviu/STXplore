@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useMemo } from 'react';
 import * as d3 from 'd3';
-import { sv } from 'date-fns/locale';
+import { da, sv } from 'date-fns/locale';
 
 const CHOROPLETH_STOPS = [
   "#ffffb2",
@@ -15,8 +15,8 @@ const RELATION_STOPS = [
   "#66c2a4",
   "#2ca25f",
   "#006d2c", //dark green (high)
-];
-const EMPTY_CELL_FILL = "white"; // subtle gray for zero/missing, reads cleaner than black
+``];
+const EMPTY_CELL_FILL = "rgba(255, 255, 255, 0.2)"; // subtle gray for zero/missing, reads cleaner than black
 
 export default function ClusterHeatmap({ data, selectedId, isRelationMap = false, isFuture = false }) {
     const svgRef = useRef(null);
@@ -45,10 +45,26 @@ export default function ClusterHeatmap({ data, selectedId, isRelationMap = false
             );
         } else {
             if (!data || !Array.isArray(data)) {return [];}
-            return data.map(d => ({ 
+            const processed =  data.map(d => ({ 
                 ...d,
                 count: Number(d.count) || 0
             }));
+            const allIds = Array.from(new Set(processed.map(d => d.id)));
+            const allDates = Array.from(new Set(processed.map(d => d.date)));
+            const dataMap = new Map(processed.map(d => [`${d.id}-${d.date}`, d.count]));
+            const completeData = [];
+            allIds.forEach(id => {
+                allDates.forEach(date => {
+                    const key = `${id}-${date}`;
+                    if (dataMap.has(key)) {
+                        console.log(dataMap.get(key));
+                        completeData.push( {id, date, count: dataMap.get(key) });
+                    } else {
+                        completeData.push({ id, date, count: 0 });
+                    }
+                })
+            });
+            return completeData;
         }
     }, [data]);
 
