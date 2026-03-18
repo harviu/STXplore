@@ -1130,12 +1130,12 @@ useEffect(() => {
                   />
                   Community
                 </label>
-                <label style={{ opacity: (activeMode === "relation" || activeMode === "instance") ? 0.5 : 1 }}>
+                <label style={{ opacity: (secondaryMode !== "actual") ? 0.5 : 1 }}>
                   <input
                     type="radio"
                     name="secondaryLayer"
                     checked={secondaryLayer === "beat"}
-                    disabled={activeMode === "relation" || activeMode === "instance"}
+                    disabled={secondaryMode !== "actual"}
                     onChange={() => {
                       setSecondaryLayer("beat");
                       setSecondarySelectedId(null);
@@ -1143,12 +1143,12 @@ useEffect(() => {
                   />
                   Beat
                 </label>
-                <label style={{ opacity: (activeMode === "relation" || activeMode === "instance") ? 0.5 : 1 }}>
+                <label style={{ opacity: (secondaryMode !== "actual") ? 0.5 : 1 }}>
                   <input
                     type="radio"
                     name="secondaryLayer"
                     checked={secondaryLayer === "district"}
-                    disabled={activeMode === "relation" || activeMode === "instance"}
+                    disabled={secondaryMode !== "actual"}
                     onChange={() => {
                       setSecondaryLayer("district");
                       setSecondarySelectedId(null);
