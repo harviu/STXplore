@@ -57,7 +57,6 @@ export default function ClusterHeatmap({ data, selectedId, isRelationMap = false
                 allDates.forEach(date => {
                     const key = `${id}-${date}`;
                     if (dataMap.has(key)) {
-                        console.log(dataMap.get(key));
                         completeData.push( {id, date, count: dataMap.get(key) });
                     } else {
                         completeData.push({ id, date, count: 0 });
@@ -69,7 +68,7 @@ export default function ClusterHeatmap({ data, selectedId, isRelationMap = false
     }, [data]);
 
     useEffect(() => {
-        if (heatmapData.length > 0 && svgRef.current && isRelationMap) {
+        if (isRelationMap && heatmapData.length > 0 && svgRef.current) {
             d3.select(svgRef.current).selectAll("*").remove();
             const margin = { top: 20, right: 30, bottom: 30, left: 50 };
             const width = containerWidth - margin.left - margin.right;
@@ -137,7 +136,7 @@ export default function ClusterHeatmap({ data, selectedId, isRelationMap = false
                 .style("font-weight", "500")
                 .text("Community Number");
         }
-        if (heatmapData.length > 0 && svgRef.current && !isRelationMap) {
+        if (!isRelationMap && heatmapData.length > 0 && svgRef.current) {
             d3.select(svgRef.current).selectAll("*").remove();
             const margin = { top: 20, right: 30, bottom: 30, left: 50 };
             const width = containerWidth - margin.left - margin.right;

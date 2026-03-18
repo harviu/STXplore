@@ -730,6 +730,12 @@ useEffect(() => {
 
   const canShowActualError = maxDataDate && new Date(addDaysISO(anchorDate, futureDays) + "T00:00:00") <= maxDataDate;
 
+  useEffect(() => {
+    if (secondaryMode !== "target" && !canShowActualError) {
+      setSecondaryMode("target");
+    }
+  }, [canShowActualError]);
+
    //get crime data for actual heatmap. Has to be done after canShowActualError is calculated for the first time
   useEffect(() => {
     if (secondaryMode === "actual") {
