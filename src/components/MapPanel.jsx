@@ -1006,10 +1006,10 @@ useEffect(() => {
                   />
                 </div>
             </div>
-            {/*slider row (source and instance use date range to slice data); past days disabled in relation mode */}
+            {/*slider row (source, relation, and instance use date range for left/right map data)*/}
             <div style={{ display: "flex", flex: "1 1 auto", flexDirection: "column", width: "100%", height: "10%" }}>
               <div style={{ display: "flex", flex: "1 1 auto", flexDirection: "row", width: "100%", height: "100%", justifyContent: "left" }}>
-                <label htmlFor="pastDays" style={{ flex: 1, opacity: activeMode === "relation" ? 0.5 : 1 }}>
+                <label htmlFor="pastDays" style={{ flex: 1 }}>
                   <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, width: "100%", height: "100%" }}>
                     Source date: {pastDays} days before start <br/>({anchorDate})
                   </div>
@@ -1029,7 +1029,6 @@ useEffect(() => {
                       aria-label="Days before start"
                       value={pastDays}
                       onChange={(_e, value) => setPastDays(value)}
-                      disabled={activeMode === "relation"}
                       valueLabelDisplay="auto"
                       getAriaValueText={(v) => `${v} days ago`}
                       min={1}
@@ -1039,12 +1038,6 @@ useEffect(() => {
                         "& .MuiSlider-rail": { height: 10, borderRadius: 0, backgroundColor: "rgb(255, 255, 255)", strokeWidth: 2 },
                         "& .MuiSlider-track": { height: 10, borderRadius: 0, backgroundColor: "rgb(100, 100, 255)", strokeWidth: 2 },
                         "& .MuiSlider-thumb": { width: 22, height: 22, backgroundColor: "white", border: "3px solid rgb(92, 92, 92)", marginRight: -2.5 },
-                        ...(activeMode === "relation" && {
-                          "&.Mui-disabled": { opacity: 0.5 },
-                          "& .MuiSlider-rail": { height: 10, borderRadius: 0, backgroundColor: "rgba(255,255,255,0.4)", strokeWidth: 2 },
-                          "& .MuiSlider-track": { height: 10, borderRadius: 0, backgroundColor: "rgba(100,100,255,0.4)", strokeWidth: 2 },
-                          "& .MuiSlider-thumb": { width: 22, height: 22, backgroundColor: "rgba(255,255,255,0.7)", border: "3px solid rgb(92, 92, 92)", marginRight: -2.5 },
-                        }),
                       }}
                     />
                   </div>
