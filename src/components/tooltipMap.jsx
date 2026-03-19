@@ -50,6 +50,7 @@ function choroplethColor(t, isRelationMap = false) {
 //The box component you see when you hover
 export default function TooltipMap({ days, height = 12, isRelationMap = false }) {
   const max = (days ?? []).reduce((m, d) => Math.max(m, d.count || 0), 0);
+  const min = (days ?? []).reduce((m, d) => Math.min(m, d.count || max), max);
   const tickHeight = height + 8; // taller than bars
   const tickTop = -4; // extend above and below bar row
 
@@ -69,7 +70,7 @@ export default function TooltipMap({ days, height = 12, isRelationMap = false })
           const background =
             c === 0 || max === 0
               ? "rgba(255,255,255, 0.9)"
-              : choroplethColor(c / max, isRelationMap);
+              : choroplethColor(isRelationMap ? (c - min) / (max - min) : c / max, isRelationMap);
 
           return (
             <div

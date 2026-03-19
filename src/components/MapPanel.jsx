@@ -398,6 +398,7 @@ export default function MapPanel({ onSelectionChange }) {
     }
 
     const isLeft = hover.which === "left";
+    const isRelation = isLeft && activeMode !== "source";
 
     let start, end;
     if (isLeft) {
@@ -406,7 +407,7 @@ export default function MapPanel({ onSelectionChange }) {
       ({ start, end } = targetRange(futureDays, anchorDate));
     }
 
-    const key = `${hover.which}:${hover.layer}:${hover.id}:${start}:${end}`;
+    const key = `${hover.which}:${hover.layer}:${hover.id}:${start}:${end}:${isRelation}`;
 
     const cached = hoverCacheRef.current.get(key);
     if (cached) {
@@ -425,20 +426,43 @@ export default function MapPanel({ onSelectionChange }) {
       setHoverDaily(null);
       setHoverDailyLoading(true);
 
-      api
-        .selectionDaily(hover.layer, hover.id, start, end, { signal: ac.signal })
-        .then((data) => {
-          const filled = fillDaily(start, end, data?.daily);
-          hoverCacheRef.current.set(key, filled);
-          setHoverDaily(filled);
-          setHoverDailyLoading(false);
-        })
-        .catch((err) => {
-          if (err?.name === "AbortError") return;
-          console.error("selection Daily Failed:", err);
-          setHoverDaily(null);
-          setHoverDailyLoading(false);
-        });
+      if (isRelation && selectedId) {
+        api.get4dData(pastDays, true, hover.id, futureDays-1, false, selectedId, { signal: ac.signal })
+          .then((data) => {
+            const formatted = [];
+            for ( let i = 0; i < data.length; i++) {
+              formatted.push({date: addDaysISO(anchorDate, -i+1), count: data[i]});
+              if (i === data.length - 1) {
+                console.log(addDaysISO(anchorDate, -i+1));
+              }
+            }
+            hoverCacheRef.current.set(key, formatted);
+            setHoverDaily(formatted);
+            setHoverDailyLoading(false);
+          })
+          .catch((err) => {
+            if (err?.name === "AbortError") return;
+            console.error("Get data for hover failed:", err);
+            setHoverDaily(null);
+            setHoverDailyLoading(false);
+          });
+      } else {
+        api
+          .selectionDaily(hover.layer, hover.id, start, end, { signal: ac.signal })
+          .then((data) => {
+            const filled = fillDaily(start, end, data?.daily);
+            hoverCacheRef.current.set(key, filled);
+            console.log(filled);
+            setHoverDaily(filled);
+            setHoverDailyLoading(false);
+          })
+          .catch((err) => {
+            if (err?.name === "AbortError") return;
+            console.error("selection Daily Failed:", err);
+            setHoverDaily(null);
+            setHoverDailyLoading(false);
+          });
+      }
     }, 200);
     
     return () => {
