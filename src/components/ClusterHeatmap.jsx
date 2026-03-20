@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useMemo } from 'react';
 import * as d3 from 'd3';
-import { da, sv } from 'date-fns/locale';
+import { da, he, sv } from 'date-fns/locale';
 
 const CHOROPLETH_STOPS = [
   "#ffffb2",
@@ -18,10 +18,29 @@ const RELATION_STOPS = [
 ``];
 const EMPTY_CELL_FILL = "rgba(255, 255, 255, 0.2)"; // subtle gray for zero/missing, reads cleaner than black
 
+//distance function for clustering
+const getDistance = (a, b) => {
+    return Math.sqrt(a.reduce((sum, val, i) => sum + Math.pow(val - (b[i] || 0), 2), 0)); // Euclidean distance
+};
+
+//clustering function
+const getClusterOrder = (matrix, ids) => {
+    if (matrix.length <= 1) return ids;
+    let remaining = [...matrix.map((data, i) => ({ data, id: ids[i] }))];
+    const orderedIds = [remaining.shift().id]; // start with first id
+    while (remaining.length > 0) {
+        const lastData = matrix[ids.indexOf(orderedIds[orderedIds.length - 1])];
+        remaining.sort((a, b) => getDistance(lastData, a.data) - getDistance(lastData, b.data)); //sort by distance
+        orderedIds.push(remaining.shift().id); // add closest next
+    }
+    return orderedIds;
+};
+
 export default function ClusterHeatmap({ data, selectedId, isRelationMap = false, isFuture = false }) {
     const svgRef = useRef(null);
     const divRef = useRef(null);
     const [containerWidth, setContainerWidth] = useState(document.documentElement.clientWidth);
+    const [isSelected, setIsSelected] = useState(false); //for toggle
 
     useEffect(() => {
         const handleResize = () => {
@@ -67,6 +86,22 @@ export default function ClusterHeatmap({ data, selectedId, isRelationMap = false
         }
     }, [data]);
 
+    const clusteredIds = useMemo(() => {
+        if (!heatmapData || heatmapData.length === 0) return [];
+        const ids = Array.from(new Set(heatmapData.map(d => d.id))).sort((a, b) => a - b);
+        const dates = Array.from(new Set(heatmapData.map(d => d.date))).sort();
+        if (isRelationMap) ids.sort((a,b) => d3.ascending(Number(a), Number(b)));
+        if(!isSelected) return ids; //dont cluster
+        const matrix = ids.map(id => {
+            return dates.map(date => {
+                const entry = heatmapData.find(d => d.id === id && d.date === date);
+                return entry ? entry.count : 0;
+            });
+        });
+        return getClusterOrder(matrix, ids);
+
+    }, [heatmapData, isSelected]);
+
     useEffect(() => {
         if (isRelationMap && heatmapData.length > 0 && svgRef.current) {
             d3.select(svgRef.current).selectAll("*").remove();
@@ -78,12 +113,11 @@ export default function ClusterHeatmap({ data, selectedId, isRelationMap = false
                 .attr("height", height + margin.top + margin.bottom)
                 .append("g")
                 .attr("transform", `translate(${margin.left},${margin.top})`);
-            const ids = Array.from(new Set(heatmapData.map(d => d.id+1)));
             const days = Array.from(new Set(heatmapData.map(d => d.date+1)));
             const xScale = d3.scaleBand().domain(days).range([0, width]).padding(0.12);
             svg.append("g").style("font-size", "11px").style("fill", "#b0b0b0").call(d3.axisBottom(xScale).tickSize(0)).select(".domain").remove();
-            const yScale = d3.scaleBand().domain(ids).range([10, height]).padding(0.12);
-            svg.append("g").style("font-size", "11px").style("fill", "#b0b0b0").call(d3.axisLeft(yScale).tickSize(0)).select(".domain").remove();
+            const yScale = d3.scaleBand().domain(clusteredIds).range([10, height]).padding(0.12);
+            svg.append("g").style("font-size", "11px").style("fill", "#b0b0b0").call(d3.axisLeft(yScale).tickSize(0).tickFormat(d => d+1)).select(".domain").remove();
             const maxCount = d3.max(heatmapData, d => d.count);
             const colorScale = d3.scaleSequential().interpolator(interpolate).domain([maxCount > 0 ? 0 : 0, maxCount || 1]);
             const tooltip = d3.select(divRef.current);
@@ -106,7 +140,7 @@ export default function ClusterHeatmap({ data, selectedId, isRelationMap = false
             svg.selectAll().data(heatmapData, d => d.id + ':' + d.date)
                 .join("rect")
                 .attr("x", d => xScale(d.date+1))
-                .attr("y", d => yScale(d.id+1))
+                .attr("y", d => yScale(d.id))
                 .attr("rx", 2)
                 .attr("ry", 2)
                 .attr("width", xScale.bandwidth())
@@ -138,7 +172,7 @@ export default function ClusterHeatmap({ data, selectedId, isRelationMap = false
         }
         if (!isRelationMap && heatmapData.length > 0 && svgRef.current) {
             d3.select(svgRef.current).selectAll("*").remove();
-            const margin = { top: 20, right: 30, bottom: 30, left: 50 };
+            const margin = { top: 40, right: 30, bottom: 30, left: 50 };
             const width = containerWidth - margin.left - margin.right;
             const height = 1200 - margin.top - margin.bottom;
             const svg = d3.select(svgRef.current)
@@ -146,11 +180,10 @@ export default function ClusterHeatmap({ data, selectedId, isRelationMap = false
                 .attr("height", height + margin.top + margin.bottom)
                 .append("g")
                 .attr("transform", `translate(${margin.left},${margin.top})`);
-            const id = Array.from(new Set(heatmapData.map(d => d.id))).sort((a,b) => d3.ascending(Number(a), Number(b)));
             const dates = Array.from(new Set(heatmapData.map(d => d.date))).sort((a,b) => isFuture ? d3.ascending(a,b) : d3.ascending(b,a));
-            const xScale = d3.scaleBand().domain(dates).range([0, width]).padding(0.12);
+            const xScale = d3.scaleBand().domain(dates).range([10, width]).padding(0.12);
             svg.append("g").style("font-size", "11px").style("fill", "#b0b0b0").call(d3.axisBottom(xScale).tickSize(0).tickFormat(d => dates.indexOf(d))).select(".domain").remove();
-            const yScale = d3.scaleBand().domain(id).range([10, height]).padding(0.12);
+            const yScale = d3.scaleBand().domain(clusteredIds.map(id => id)).range([10, height]).padding(0.12);
             svg.append("g").style("font-size", "11px").style("fill", "#b0b0b0").call(d3.axisLeft(yScale).tickSize(0)).select(".domain").remove();
             const maxCount = d3.max(heatmapData, d => d.count);
             const colorScale = d3.scaleSequential().interpolator(interpolate).domain([maxCount > 0 ? 0 : 0, maxCount || 1]);
@@ -188,7 +221,7 @@ export default function ClusterHeatmap({ data, selectedId, isRelationMap = false
                 .on("mouseleave", mouseleave);
             svg.append("text")
                 .attr("x", width / 2)
-                .attr("y",  0 )
+                .attr("y",  -10 )
                 .style("text-anchor", "middle")
                 .style("font-size", "13px")
                 .style("fill", "#e0e0e0")
@@ -204,11 +237,26 @@ export default function ClusterHeatmap({ data, selectedId, isRelationMap = false
                 .style("font-weight", "500")
                 .text("Community Number");
         }
-    }, [heatmapData, selectedId, interpolate, containerWidth]);
+    }, [heatmapData, selectedId, interpolate, containerWidth, isSelected]);
         
 
     return (
         <div id="cluster-heatmap" style={{ position: "relative" }}>
+            <div style={{ marginBottom: 8, display: "flex", justifyContent: "center" }}>
+                <button 
+                    onClick={() => setIsSelected(!isSelected)}
+                    style={{
+                        padding: "6px 12px",
+                        backgroundColor: isSelected ? "#013d83" : "#333",
+                        color: "white",
+                        border: "none",
+                        borderRadius: "4px",
+                        cursor: "pointer"
+                    }}
+                >
+                    {isSelected ? "Clear Clustering" : "Cluster by Similarity"}
+                </button>
+            </div>
             <svg ref={svgRef} />
             <div ref={divRef} style={{
                 position: "absolute",
