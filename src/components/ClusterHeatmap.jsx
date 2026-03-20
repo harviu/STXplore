@@ -269,7 +269,7 @@ export default function ClusterHeatmap({ data, selectedId, isRelationMap = false
                         cursor: "pointer"
                     }}
                 >
-                    {isSelected ? "Clear Clustering" : "Cluster by Similarity"}
+                    {isSelected ? "Clear Community Clustering" : "Cluster by Community"}
                 </button>
                 <div style={{ width: 8 }} /> {/* spacer */}
                 <button
