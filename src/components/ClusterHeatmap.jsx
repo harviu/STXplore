@@ -40,7 +40,8 @@ export default function ClusterHeatmap({ data, selectedId, isRelationMap = false
     const svgRef = useRef(null);
     const divRef = useRef(null);
     const [containerWidth, setContainerWidth] = useState(document.documentElement.clientWidth);
-    const [isSelected, setIsSelected] = useState(false); //for toggle
+    const [isSelected, setIsSelected] = useState(false); //for toggle community clustering
+    const [dateCluster, setDateCluster] = useState(false); //for toggle date clustering
 
     useEffect(() => {
         const handleResize = () => {
@@ -100,7 +101,22 @@ export default function ClusterHeatmap({ data, selectedId, isRelationMap = false
         });
         return getClusterOrder(matrix, ids);
 
-    }, [heatmapData, isSelected]);
+    }, [heatmapData, isSelected, isRelationMap]);
+
+    const clusteredDates = useMemo(() => {
+        if (!heatmapData || heatmapData.length === 0) return [];
+        const ids = Array.from(new Set(heatmapData.map(d => d.id))).sort((a, b) => a - b);
+        const dates = Array.from(new Set(heatmapData.map(d => d.date))).sort((a,b) => isFuture ? d3.ascending(a,b) : d3.ascending(b,a));
+        if (isRelationMap) dates.sort((a,b) => d3.ascending(Number(a), Number(b)));
+        if(!dateCluster) return dates; //dont cluster
+        const matrix = dates.map(date => {
+            return ids.map(id => {
+                const entry = heatmapData.find(d => d.id === id && d.date === date);
+                return entry ? entry.count : 0;
+            });
+        });
+        return getClusterOrder(matrix, dates);
+    }, [heatmapData, dateCluster, isFuture, isRelationMap]);
 
     useEffect(() => {
         if (isRelationMap && heatmapData.length > 0 && svgRef.current) {
@@ -113,9 +129,8 @@ export default function ClusterHeatmap({ data, selectedId, isRelationMap = false
                 .attr("height", height + margin.top + margin.bottom)
                 .append("g")
                 .attr("transform", `translate(${margin.left},${margin.top})`);
-            const days = Array.from(new Set(heatmapData.map(d => d.date+1)));
-            const xScale = d3.scaleBand().domain(days).range([0, width]).padding(0.12);
-            svg.append("g").style("font-size", "11px").style("fill", "#b0b0b0").call(d3.axisBottom(xScale).tickSize(0)).select(".domain").remove();
+            const xScale = d3.scaleBand().domain(clusteredDates).range([0, width]).padding(0.12);
+            svg.append("g").style("font-size", "11px").style("fill", "#b0b0b0").call(d3.axisBottom(xScale).tickSize(0).tickFormat(d => d+1)).select(".domain").remove();
             const yScale = d3.scaleBand().domain(clusteredIds).range([10, height]).padding(0.12);
             svg.append("g").style("font-size", "11px").style("fill", "#b0b0b0").call(d3.axisLeft(yScale).tickSize(0).tickFormat(d => d+1)).select(".domain").remove();
             const maxCount = d3.max(heatmapData, d => d.count);
@@ -139,7 +154,7 @@ export default function ClusterHeatmap({ data, selectedId, isRelationMap = false
             };
             svg.selectAll().data(heatmapData, d => d.id + ':' + d.date)
                 .join("rect")
-                .attr("x", d => xScale(d.date+1))
+                .attr("x", d => xScale(d.date))
                 .attr("y", d => yScale(d.id))
                 .attr("rx", 2)
                 .attr("ry", 2)
@@ -181,7 +196,7 @@ export default function ClusterHeatmap({ data, selectedId, isRelationMap = false
                 .append("g")
                 .attr("transform", `translate(${margin.left},${margin.top})`);
             const dates = Array.from(new Set(heatmapData.map(d => d.date))).sort((a,b) => isFuture ? d3.ascending(a,b) : d3.ascending(b,a));
-            const xScale = d3.scaleBand().domain(dates).range([10, width]).padding(0.12);
+            const xScale = d3.scaleBand().domain(clusteredDates).range([10, width]).padding(0.12);
             svg.append("g").style("font-size", "11px").style("fill", "#b0b0b0").call(d3.axisBottom(xScale).tickSize(0).tickFormat(d => dates.indexOf(d))).select(".domain").remove();
             const yScale = d3.scaleBand().domain(clusteredIds.map(id => id)).range([10, height]).padding(0.12);
             svg.append("g").style("font-size", "11px").style("fill", "#b0b0b0").call(d3.axisLeft(yScale).tickSize(0)).select(".domain").remove();
@@ -237,12 +252,12 @@ export default function ClusterHeatmap({ data, selectedId, isRelationMap = false
                 .style("font-weight", "500")
                 .text("Community Number");
         }
-    }, [heatmapData, selectedId, interpolate, containerWidth, isSelected]);
+    }, [heatmapData, selectedId, interpolate, containerWidth, isSelected, dateCluster, isFuture, isRelationMap]);
         
 
     return (
         <div id="cluster-heatmap" style={{ position: "relative" }}>
-            <div style={{ marginBottom: 8, display: "flex", justifyContent: "center" }}>
+            <div style={{ marginBottom: 8, display: "flex", justifyContent: "center",  }}>
                 <button 
                     onClick={() => setIsSelected(!isSelected)}
                     style={{
@@ -255,6 +270,20 @@ export default function ClusterHeatmap({ data, selectedId, isRelationMap = false
                     }}
                 >
                     {isSelected ? "Clear Clustering" : "Cluster by Similarity"}
+                </button>
+                <div style={{ width: 8 }} /> {/* spacer */}
+                <button
+                    onClick={() => setDateCluster(!dateCluster)}
+                    style={{
+                        padding: "6px 12px",
+                        backgroundColor: dateCluster ? "#013d83" : "#333",
+                        color: "white",
+                        border: "none",
+                        borderRadius: "4px",
+                        cursor: "pointer"
+                    }}
+                >
+                    {dateCluster ? "Clear Date Clustering" : "Cluster by Date"}
                 </button>
             </div>
             <svg ref={svgRef} />
