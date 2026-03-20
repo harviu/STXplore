@@ -291,7 +291,7 @@ export default function MapBoxMap({
           if (crimeCountsRef.current != null && !isRelationMapRef.current) {
             text += ` — ${count} crime${count !== 1 ? "s" : ""}`;
           }
-          if (isRelationMapRef.current && crimeCountsRef.current) {
+          if (isRelationMapRef.current && crimeCountsRef.current && selectedIdRef.current) {
             text += ` - ${count} relation`;
           }
           onHoverRef.current({
