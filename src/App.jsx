@@ -102,6 +102,8 @@ export default function App() {
             inactiveSelection={secondarySelection}
             activeSummary={state.left?.summary}
             inactiveSummary={state.right?.summary}
+            activeLoading={state.left?.loading}
+            inactiveLoading={state.right?.loading}
             pastDays={state.left?.days}
             futureDays={state.right?.days}
             heatData={state.heatData}

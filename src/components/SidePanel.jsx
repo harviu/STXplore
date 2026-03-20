@@ -71,7 +71,9 @@ function SelectionBlock({ heading, payload, showApi = true, isLeft }) {
                 {loading ? "Loading..." : error ? `Error: ${String(error)}` : "OK"}
               </div>
 
-              {summary && (
+              {loading ? (
+                <p style={{ opacity: 0.6, marginTop: 8, fontSize: 13 }}>Loading Data...</p>
+              ) : summary ? (
                 <pre
                   style={{
                     whiteSpace: "pre-wrap",
@@ -122,7 +124,7 @@ function SelectionBlock({ heading, payload, showApi = true, isLeft }) {
                     <strong>{summary.top_types?.[9]?.primary_type}:</strong> {summary.top_types?.[9]?.count}
                   </div>) : null}
                 </pre>
-              )}
+              ) : null}
             </>
           ) : null}
         </>

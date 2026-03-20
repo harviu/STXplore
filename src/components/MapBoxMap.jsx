@@ -116,6 +116,7 @@ export default function MapBoxMap({
   onHover = null,
   recenterTrigger = null,
   isRelationMap = false,
+  loading = false
 }) {
   const stops = isRelationMap ? RELATION_STOPS : CHOROPLETH_STOPS;
   //Hooks to ensure updates
@@ -188,6 +189,19 @@ export default function MapBoxMap({
     }
   });
 }, [mapStyle]);
+
+  const [showLoadingOverlay, setShowLoadingOverlay] = useState(false);
+  const loadingHideTimerRef = useRef(null);
+  useEffect(() => {
+    if (loading) {
+      if (loadingHideTimerRef.current) clearTimeout(loadingHideTimerRef.current);
+      setShowLoadingOverlay(true);
+    } else {
+      loadingHideTimerRef.current = setTimeout(() => setShowLoadingOverlay(false), 400);
+    }
+    return () => { if (loadingHideTimerRef.current) clearTimeout(loadingHideTimerRef.current); };
+  }, [loading])
+
 
   const { mergedGeo, minCount, maxCount } = useMemo(
     () => buildMergedGeo(geo, crimeCounts, layer, isRelationMap),
@@ -508,6 +522,26 @@ export default function MapBoxMap({
           </div>
         ))}
       </div>
+      {/* Loading Overlay */}
+      {showLoadingOverlay && (
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            background: "rgba(36, 36, 36, 0.75)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 10,
+            borderRadius: 4,
+            pointerEvents: "none",
+          }}
+        >
+          <span style={{ color: "#fff", fontSize: 15, fontWeight: 600, letterSpacing: "0.03em", opacity: 0.9 }}>
+            Loading...
+          </span>
+        </div>
+      )}
       {/* Style Selector Dropdown */}
 <div
   style={{

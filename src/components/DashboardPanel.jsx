@@ -4,7 +4,7 @@ import ClusterHeatmap from "./ClusterHeatmap.jsx";
 import { select } from 'https://esm.sh/d3-selection';
 import { useRef, useEffect, use } from "react";
 
-export default function DashboardPanel({ mode, selection, inactiveMode, inactiveSelection, activeSummary, inactiveSummary, pastDays, futureDays, heatData, targetHeatData }) {
+export default function DashboardPanel({ mode, selection, inactiveMode, inactiveSelection, activeSummary, inactiveSummary, pastDays, futureDays, heatData, targetHeatData, activeLoading, inactiveLoading }) {
   const barsRef = useRef();
   const actualBarsRef = useRef();
   const averageBarsRef = useRef();
@@ -125,7 +125,11 @@ export default function DashboardPanel({ mode, selection, inactiveMode, inactive
                     <strong>{cFL(selection.mode)}:</strong> Current stats for{" "}
                     <strong>{selection.name}</strong>.
                     </p>
-                    {summary && (
+                    {activeLoading ? (
+                      <p style={{ opacity: 0.6, marginTop: 8 }}>Loading...</p>
+                    ) : (
+                      <>
+                        {summary && (
                       <div style={{ marginTop: 8 }}>
                         <strong>Top Crime Types by count:</strong>
                         <br/>
@@ -135,8 +139,8 @@ export default function DashboardPanel({ mode, selection, inactiveMode, inactive
                           <g className="counts" transform="translate(220, 32)" style={{fill: "white"}}></g>
                         </svg>
                       </div>
-                    )}
-                    {averageSummary && (
+                        )}
+                        {averageSummary && (
                       <div style={{ marginTop: 8 }}>
                         <strong>Top Crime Types by average/day:</strong>
                         <br/>
@@ -147,6 +151,8 @@ export default function DashboardPanel({ mode, selection, inactiveMode, inactive
                         </svg>
                       </div>
                     )}
+                    </>
+                  )}
                 </div>
               ) : hasActive && selection.mode === "relation" ? (
                 <div>
@@ -178,7 +184,11 @@ export default function DashboardPanel({ mode, selection, inactiveMode, inactive
                     <strong>{cFL(inactiveSelection.mode)}</strong> stats for{" "}
                     <strong>{inactiveSelection.name}</strong>.
                   </p>
-                  {actual && (
+                  {inactiveLoading ? (
+                    <p style={{ opacity: 0.6, marginTop: 8 }}>Loading...</p>
+                  ) : (
+                    <>
+                      {actual && (
                       <div style={{ marginTop: 8 }}>
                         <strong>Top Crime Types by count:</strong>
                         <br/>
@@ -188,7 +198,7 @@ export default function DashboardPanel({ mode, selection, inactiveMode, inactive
                           <g className="actualCounts" transform="translate(220, 32)" style={{fill: "white"}}></g>
                         </svg>
                       </div>
-                    )}
+                      )}
                     {averageActual && (
                       <div style={{ marginTop: 8 }}>
                         <strong>Top Crime Types by average/day:</strong>
@@ -200,6 +210,8 @@ export default function DashboardPanel({ mode, selection, inactiveMode, inactive
                         </svg>
                       </div>
                     )}
+                  </>
+                  )}
                 </div>
               ):(
                 <p  style={{ opacity: 0.9, margin: 0 }}>

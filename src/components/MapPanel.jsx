@@ -296,7 +296,8 @@ export default function MapPanel({ onSelectionChange }) {
       const { start, end } = sourceRange(pastDays, anchorDate);
       return api.selectionSummary(leftSelection.layer, leftSelection.id, start, end, { signal });
     },
-    [leftSelection?.mode, leftSelection?.layer, leftSelection?.id, pastDays, anchorDate]
+    [leftSelection?.mode, leftSelection?.layer, leftSelection?.id, pastDays, anchorDate],
+    { keepPreviousData: false }
   );
 
   const {data: rightSummary, loading: rightSummaryLoading, error: rightSummaryError} = useApi(({ signal }) => {
@@ -305,7 +306,8 @@ export default function MapPanel({ onSelectionChange }) {
       const { start, end } = targetRange(futureDays, anchorDate);
       return api.selectionSummary(rightSelection.layer, rightSelection.id, start, end, { signal });
     },
-    [rightSelection?.mode, rightSelection?.layer, rightSelection?.id, futureDays, anchorDate]
+    [rightSelection?.mode, rightSelection?.layer, rightSelection?.id, futureDays, anchorDate],
+    { keepPreviousData: false }
   );
 
   const { data: dateRange } = useApi(({ signal }) => api.dateRange({ signal }), []);
@@ -516,8 +518,7 @@ useEffect(() => {
                   Instance <br/> Level
                 </button>
                 <button onClick={() => { setActiveMode("relation"); setSecondaryMode("target"); }} disabled={activeMode === "relation"} style={{fontSize:"0.65rem"}}>
-                  Model-Level <br/>
-                  Relation
+                  Model <br/> Level
                 </button>
               </div>
               <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
@@ -613,6 +614,13 @@ useEffect(() => {
                     onHover={(h) => setHover(h ? { ...h, which: "left" } : null)}
                     recenterTrigger={recenterTrigger}
                     isRelationMap={activeMode === "relation" || activeMode === "instance"}
+                    loading={
+                      activeMode === "source"
+                        ? leftTotalsLoading
+                        : activeMode === "instance"
+                          ? instanceRelationLoading || instanceSourceLoading
+                          : relationLoading
+                    }
                   />
                 </div>
             </div>
@@ -797,6 +805,7 @@ useEffect(() => {
                     onSelectId={setSecondarySelectedId}
                     onHover={(h) => setHover(h ? { ...h, which: "right" } : null)}
                     recenterTrigger={recenterTrigger}
+                    loading={rightTotalsLoading}
                   />
                 </div>
               {/* Tooltip */}
