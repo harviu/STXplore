@@ -183,31 +183,17 @@ export default function MapPanel({ onSelectionChange }) {
   }, [activeMode, pastDays, futureDays, selectedId]);
 
   // Instance-level map on source side: 4D array → per-community time-averaged over slider date range.
-  const {
-    data: instanceSourceResp,
-    loading: instanceSourceLoading,
-    error: instanceSourceError,
-  } = useApi(
-    ({ signal }) => {
-      if (activeMode !== "instance") return Promise.resolve(null);
-      return api.instanceLevelSource(pastDays, futureDays, { signal });
-    },
-    [activeMode, pastDays, futureDays]
-  );
+  const {data: instanceSourceResp, loading: instanceSourceLoading, error: instanceSourceError} = useApi(({ signal }) => {
+    if (activeMode !== "instance") return Promise.resolve(null);
+    return api.instanceLevelSource(pastDays, futureDays, { signal });
+  }, [activeMode, pastDays, futureDays]);
 
   //Get Data for Source HeatMap (used when activeMode is "source"; instance mode uses instanceSourceResp)
-  const {
-    data: leftTotalsResp,
-    loading: leftTotalsLoading,
-    error: leftTotalsError,
-  } = useApi(
-    ({ signal }) => {
-      const { start, end } = sourceRange(pastDays, anchorDate);
-      const apiLayer = UI_TO_API_LAYER[layer];
-      return api.mapTotals(apiLayer, start, end, { signal });
-    },
-    [layer, pastDays, anchorDate]
-  );
+  const {data: leftTotalsResp, loading: leftTotalsLoading, error: leftTotalsError} = useApi(({ signal }) => {
+    const { start, end } = sourceRange(pastDays, anchorDate);
+    const apiLayer = UI_TO_API_LAYER[layer];
+    return api.mapTotals(apiLayer, start, end, { signal });
+  }, [layer, pastDays, anchorDate]);
 
   const leftCrimeCounts = useMemo(
     () =>
@@ -236,23 +222,11 @@ export default function MapPanel({ onSelectionChange }) {
       return out;
     }
     return raw;
-  }, [
-    activeMode,
-    relationCounts,
-    instanceSelectedId,
-    instanceRelationCounts,
-    leftCrimeCounts,
-    sourceCountMode,
-    pastDays,
-  ]);
+  }, [activeMode, relationCounts, instanceSelectedId, instanceRelationCounts, leftCrimeCounts, sourceCountMode, pastDays]);
+
 
   //Get Data for Actual Heatmap
-  const {
-    data: rightTotalsResp,
-    loading: rightTotalsLoading,
-    error: rightTotalsError,
-  } = useApi(
-    ({ signal }) => {
+  const {data: rightTotalsResp, loading: rightTotalsLoading, error: rightTotalsError} = useApi(({ signal }) => {
       const { start, end } = targetRange(futureDays, anchorDate);
       const apiLayer = UI_TO_API_LAYER[secondaryLayer];
       return api.mapTotals(apiLayer, start, end, { signal });
@@ -299,15 +273,7 @@ export default function MapPanel({ onSelectionChange }) {
     date.setDate(date.getDate() + dateOffsetDays);
     const dateISO = date.toISOString().slice(0, 10);
 
-    return {
-      mode,
-      layer: layerX,
-      id: idX,
-      name: getBoundaryLabel(layerX, feature),
-      days: daysX,
-      dateISO,
-      feature,
-    };
+    return {mode, layer: layerX, id: idX, name: getBoundaryLabel(layerX, feature), days: daysX, dateISO, feature};
   }
 
   const sourceSelection = useMemo(() => makeSelection("source", sourceLayer, sourceSelectedId, pastDays, anchorDate, -pastDays), [sourceLayer, sourceSelectedId, pastDays, anchorDate]);
@@ -323,44 +289,22 @@ export default function MapPanel({ onSelectionChange }) {
   //Chooses what selection should drive the Right map summary
   const rightSelection = secondaryMode === "target" ? targetSelection : secondaryMode === "actual" ? actualSelection : errorSelection;
 
-  const {
-    data: leftSummary,
-    loading: leftSummaryLoading,
-    error: leftSummaryError,
-  } = useApi (
-    ({ signal }) => {
+  const {data: leftSummary, loading: leftSummaryLoading, error: leftSummaryError} = useApi(({ signal }) => {
       if (!leftSelection) return Promise.resolve(null);
 
       const { start, end } = sourceRange(pastDays, anchorDate);
       return api.selectionSummary(leftSelection.layer, leftSelection.id, start, end, { signal });
     },
-    [
-      leftSelection?.mode,
-      leftSelection?.layer,
-      leftSelection?.id,
-      pastDays,
-      anchorDate,
-    ]
+    [leftSelection?.mode, leftSelection?.layer, leftSelection?.id, pastDays, anchorDate]
   );
 
-  const {
-    data: rightSummary,
-    loading: rightSummaryLoading,
-    error: rightSummaryError,
-  } = useApi (
-    ({ signal }) => {
+  const {data: rightSummary, loading: rightSummaryLoading, error: rightSummaryError} = useApi(({ signal }) => {
       if (!rightSelection) return Promise.resolve(null);
 
       const { start, end } = targetRange(futureDays, anchorDate);
       return api.selectionSummary(rightSelection.layer, rightSelection.id, start, end, { signal });
     },
-    [
-      rightSelection?.mode,
-      rightSelection?.layer,
-      rightSelection?.id,
-      futureDays,
-      anchorDate,
-    ]
+    [rightSelection?.mode, rightSelection?.layer, rightSelection?.id, futureDays, anchorDate]
   );
 
   const { data: dateRange } = useApi(({ signal }) => api.dateRange({ signal }), []);
@@ -380,6 +324,7 @@ export default function MapPanel({ onSelectionChange }) {
 
   useEffect(() => {
     onSelectionChange?.({
+      //modes
       activeMode,
       secondaryMode,
       anchorDate,
@@ -392,22 +337,8 @@ export default function MapPanel({ onSelectionChange }) {
       actual: actualSelection,
       error: errorSelection,
       //summaries (split)
-      left: {
-        selection: leftSelection,
-        summary: leftSummary,
-        loading: leftSummaryLoading,
-        error: leftSummaryError,
-        range: sourceRange(pastDays, anchorDate),
-        days: pastDays,
-      },
-      right: {
-        selection: rightSelection,
-        summary: rightSummary,
-        loading: rightSummaryLoading,
-        error: rightSummaryError,
-        range: targetRange(futureDays, anchorDate),
-        days: futureDays,
-      },
+      left: {selection: leftSelection, summary: leftSummary, loading: leftSummaryLoading, error: leftSummaryError, range: sourceRange(pastDays, anchorDate), days: pastDays},
+      right: {selection: rightSelection, summary: rightSummary, loading: rightSummaryLoading, error: rightSummaryError, range: targetRange(futureDays, anchorDate), days: futureDays},
       heatData: activeMode === "source" ? crimeCounts : relationValues,
       targetHeatData: secondaryMode === "actual" ? futureCounts : null,
     });
@@ -504,16 +435,7 @@ useEffect(() => {
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", flex: "1 1 auto", minHeight: 0 }}>
         {/* Top toolbar: Anchor date + Recenter */}
         <div
-          style={{
-            display: "flex",
-            flexWrap: "wrap",
-            alignItems: "center",
-            gap: 16,
-            rowGap: 10,
-            width: "100%",
-            padding: "10px 0 6px",
-            justifyContent: "center",
-          }}
+          style={{display: "flex", flexWrap: "wrap", alignItems: "center", gap: 16, rowGap: 10, width: "100%", padding: "10px 0 6px", justifyContent: "center"}}
         >
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <strong style={{ fontWeight: 600, opacity: 0.95 }}>Anchor date</strong>
@@ -522,33 +444,13 @@ useEffect(() => {
                 type="button"
                 onClick={() => setCalendarOpen((open) => !open)}
                 title="Pick start date (anchor for source/target days)"
-                style={{
-                  padding: "6px 14px",
-                  cursor: "pointer",
-                  border: "1px solid rgba(255,255,255,0.25)",
-                  borderRadius: 8,
-                  background: "rgba(255,255,255,0.1)",
-                  color: "inherit",
-                  fontSize: "inherit",
-                  fontWeight: 500,
-                  minWidth: 120,
-                }}
+                style={{padding: "6px 14px", cursor: "pointer", border: "1px solid rgba(255,255,255,0.25)", borderRadius: 8, background: "rgba(255,255,255,0.1)", color: "inherit", fontSize: "inherit", fontWeight: 500, minWidth: 120}}
               >
                 {anchorDate?.slice(0, 10) ?? anchorDate}
               </button>
               {calendarOpen && (
                 <div
-                  style={{
-                    position: "absolute",
-                    top: "100%",
-                    left: 0,
-                    marginTop: 6,
-                    zIndex: 1000,
-                    background: "var(--panel-bg, #1e1e1e)",
-                    borderRadius: 8,
-                    boxShadow: "0 4px 20px rgba(0,0,0,0.4)",
-                    padding: 8,
-                  }}
+                  style={{position: "absolute", top: "100%", left: 0, marginTop: 6, zIndex: 1000, background: "var(--panel-bg, #1e1e1e)", borderRadius: 8, boxShadow: "0 4px 20px rgba(0,0,0,0.4)", padding: 8}}
                 >
                   <DayPicker
                     mode="single"
@@ -577,13 +479,7 @@ useEffect(() => {
           </div>
 
           <span
-            style={{
-              width: 1,
-              height: 22,
-              background: "rgba(255,255,255,0.2)",
-              borderRadius: 1,
-              flexShrink: 0,
-            }}
+            style={{width: 1, height: 22, background: "rgba(255,255,255,0.2)", borderRadius: 1, flexShrink: 0}}
             aria-hidden
           />
 
@@ -593,16 +489,7 @@ useEffect(() => {
               type="button"
               onClick={() => setRecenterTrigger((t) => t + 1)}
               title={`Recenter both maps to Chicago (zoom ${CHICAGO_ZOOM})`}
-              style={{
-                padding: "6px 14px",
-                cursor: "pointer",
-                border: "1px solid rgba(255,255,255,0.25)",
-                borderRadius: 8,
-                background: "rgba(255,255,255,0.1)",
-                color: "inherit",
-                fontSize: "inherit",
-                fontWeight: 500,
-              }}
+              style={{padding: "6px 14px", cursor: "pointer", border: "1px solid rgba(255,255,255,0.25)", borderRadius: 8, background: "rgba(255,255,255,0.1)", color: "inherit", fontSize: "inherit", fontWeight: 500}}
             >
               Recenter maps
             </button>
@@ -616,12 +503,7 @@ useEffect(() => {
           <div style={{ flex: "1", flexDirection: "column", padding: "1em", display: "flex", alignItems: "center" }}>
             {/* Controls */}
             <div
-              style={{
-                width: "100%",
-                marginTop: 6,
-                marginBottom: 6,
-                minHeight: 25,
-              }}
+              style={{width: "100%", marginTop: 6, marginBottom: 6, minHeight: 25}}
             />
             <div style={{ display: "flex", flexDirection: "column", gap: 8, alignItems: "flex-start", width: "100%" }}>
               <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
@@ -704,26 +586,11 @@ useEffect(() => {
               </div>
             </div>
             <div
-              style={{
-                flex: "1 1 auto",
-                minHeight: 0,
-                overflow: "hidden",
-                position: "relative",
-                padding: 12,
-                boxSizing: "border-box",
-                width: "100%",
-                display: "flex",
-                flexDirection: "column",
-                gap: 10,
-              }}
+              style={{flex: "1 1 auto", minHeight: 0, overflow: "hidden", position: "relative", padding: 12, boxSizing: "border-box", width: "100%", display: "flex", flexDirection: "column", gap: 10}}
             >
                 {/* Map area 1*/}
                 <div
-                  style={{
-                    height: MAP_H,
-                    width: "100%",
-                    overflow: "hidden",
-                  }}
+                  style={{height: MAP_H, width: "100%", overflow: "hidden"}}
                 >
                   <MapBoxMap
                     geo={geo}
@@ -785,13 +652,7 @@ useEffect(() => {
                   </div>
                 </ThemeProvider>
                 <div
-                  style={{
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "center",
-                    flexShrink: 0,
-                    minWidth: 12,
-                  }}
+                  style={{display: "flex", flexDirection: "column", alignItems: "center", flexShrink: 0, minWidth: 12}}
                   title={`Anchor date: ${anchorDate}`}
                   aria-hidden
                 >
@@ -825,15 +686,7 @@ useEffect(() => {
             <div style={{ display: "flex", flexDirection: "column", gap: 8, alignItems: "flex-start", width: "100%" }}>
               {/* Model Level Relation Messages */}
                 <div
-                  style={{
-                    width: "100%",
-                    marginTop: 6,
-                    marginBottom: 6,
-                    minHeight: 18, // reserves a line even when empty
-                    fontSize: 13,
-                    fontWeight: 500,
-                    color: relationError ? "#ff6b6b" : "#ccc",
-                  }}
+                  style={{width: "100%", marginTop: 6, marginBottom: 6, minHeight: 18, fontSize: 13, fontWeight: 500, color: relationError ? "#ff6b6b" : "#ccc"}}
                 >
                 </div>
               <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
@@ -918,26 +771,11 @@ useEffect(() => {
               </div>
             </div>
             <div
-              style={{
-                flex: "1 1 auto",
-                minHeight: 0,
-                overflow: "hidden",
-                position: "relative",
-                padding: 12,
-                boxSizing: "border-box",
-                width: "100%",
-                display: "flex",
-                flexDirection: "column",
-                gap: 10,
-              }}
+              style={{flex: "1 1 auto", minHeight: 0, overflow: "hidden", position: "relative", padding: 12, boxSizing: "border-box", width: "100%", display: "flex", flexDirection: "column", gap: 10}}
             >
                 {/* Map area 2*/}
                 <div
-                  style={{
-                    height: MAP_H,
-                    width: "100%",
-                    overflow: "hidden",
-                  }}
+                  style={{height: MAP_H, width: "100%", overflow: "hidden"}}
                 >
                   <MapBoxMap
                     geo={secondaryGeo}
@@ -963,20 +801,7 @@ useEffect(() => {
               {/* Tooltip */}
               {hover && (
                 <div
-                  style={{
-                    position: "fixed",
-                    left: hover.x + 12,
-                    top: hover.y + 12,
-                    background: "rgba(0,0,0,0.85)",
-                    color: "white",
-                    padding: "8px 10px",
-                    borderRadius: 6,
-                    fontSize: 12,
-                    pointerEvents: "none",
-                    zIndex: 9999,
-                    width: "420px",
-                    maxWidth: "calc(100vw - 24px)",
-                  }}
+                  style={{position: "fixed", left: hover.x + 12, top: hover.y + 12, background: "rgba(0,0,0,0.85)", color: "white", padding: "8px 10px", borderRadius: 6, fontSize: 12, pointerEvents: "none", zIndex: 9999, width: "420px", maxWidth: "calc(100vw - 24px)"}}
                 >
                   <div
                     style={{
