@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState, useEffect } from "react";
+import { useMemo, useRef, useState, useEffect, useReducer } from "react";
 import Panel from "./Panel.jsx";
 import MapBoxMap, { CHICAGO_ZOOM } from "./MapBoxMap.jsx";
 import { BOUNDARY_GEO, getBoundaryId, getBoundaryLabel } from "../lib/boundaries.js";
@@ -15,6 +15,7 @@ import Slider from "@mui/material/Slider";
 import { createTheme, ThemeProvider } from "@mui/material/styles";
 import { addDaysISO, sourceRange, targetRange, todayISO } from "../lib/dates.js";
 import { responseToCounts } from "../lib/crimeAggregates.js";
+import { initialMapFaces, mapFacesReducer } from "../lib/mapFacesReducer.js";
 
 const RTL_THEME = createTheme({ direction: "rtl" });
 
@@ -58,21 +59,35 @@ export default function MapPanel({ onSelectionChange }) {
   const [activeMode, setActiveMode] = useState("source"); // "source" | "relation" | "instance"
   const [secondaryMode, setSecondaryMode] = useState("target"); // "target" | "actual" | "error"
 
-  //community, beat, or district for each map
-  const [sourceLayer, setSourceLayer] = useState("community");
-  const [relationLayer, setRelationLayer] = useState("community");
-  const [instanceLayer, setInstanceLayer] = useState("community");
-  const [targetLayer, setTargetLayer] = useState("community"); //target is the prexicted layer
-  const [actualLayer, setActualLayer] = useState("community");
-  const [errorLayer, setErrorLayer] = useState("community"); // actual - predicted layer
+  // Per-tab layer + selection (left: source | relation | instance; right: target | actual | error)
+  const [mapFaces, dispatchMapFaces] = useReducer(mapFacesReducer, initialMapFaces);
 
-  // Selected boundary IDs for each map
-  const [sourceSelectedId, setSourceSelectedId] = useState(null);
-  const [relationSelectedId, setRelationSelectedId] = useState(null);
-  const [instanceSelectedId, setInstanceSelectedId] = useState(null);
-  const [targetSelectedId, setTargetSelectedId] = useState(null);
-  const [actualSelectedId, setActualSelectedId] = useState(null);
-  const [errorSelectedId, setErrorSelectedId] = useState(null);
+  const layer = mapFaces[activeMode].layer;
+  const selectedId = mapFaces[activeMode].selectedId;
+  const setLayer = (newLayer) =>
+    dispatchMapFaces({ type: "SET_FACET_LAYER", facet: activeMode, layer: newLayer, clearSelection: true });
+  const setSelectedId = (newId) =>
+    dispatchMapFaces({ type: "SET_FACET_SELECTION", facet: activeMode, selectedId: newId });
+
+  const secondaryLayer = mapFaces[secondaryMode].layer;
+  const secondarySelectedId = mapFaces[secondaryMode].selectedId;
+  const setSecondaryLayer = (newLayer) =>
+    dispatchMapFaces({ type: "SET_FACET_LAYER", facet: secondaryMode, layer: newLayer, clearSelection: true });
+  const setSecondarySelectedId = (newId) =>
+    dispatchMapFaces({ type: "SET_FACET_SELECTION", facet: secondaryMode, selectedId: newId });
+
+  const sourceLayer = mapFaces.source.layer;
+  const sourceSelectedId = mapFaces.source.selectedId;
+  const relationLayer = mapFaces.relation.layer;
+  const relationSelectedId = mapFaces.relation.selectedId;
+  const instanceLayer = mapFaces.instance.layer;
+  const instanceSelectedId = mapFaces.instance.selectedId;
+  const targetLayer = mapFaces.target.layer;
+  const targetSelectedId = mapFaces.target.selectedId;
+  const actualLayer = mapFaces.actual.layer;
+  const actualSelectedId = mapFaces.actual.selectedId;
+  const errorLayer = mapFaces.error.layer;
+  const errorSelectedId = mapFaces.error.selectedId;
 
   //date sliders
   const [pastDays, setPastDays] = useState(90);
@@ -98,20 +113,6 @@ export default function MapPanel({ onSelectionChange }) {
   const [relationValues, setRelationValues] = useState(null);
   const [futureCounts, setFutureCounts] = useState(null);
 
-  // Bind controls to the active entity
-  const layer = activeMode === "source" ? sourceLayer : activeMode === "relation" ? relationLayer : instanceLayer;
-  const setLayer = activeMode === "source" ? setSourceLayer : activeMode === "relation" ? setRelationLayer : setInstanceLayer;
-  //then for the target map 
-  const secondaryLayer = secondaryMode === "target" ? targetLayer : secondaryMode === "actual" ? actualLayer : errorLayer;
-  const setSecondaryLayer = secondaryMode === "target" ? setTargetLayer : secondaryMode === "actual" ? setActualLayer : setErrorLayer;
-
-  //The community/beat/district ID that's currently selected on the source/relation map
-  const selectedId = activeMode === "source" ? sourceSelectedId : activeMode === "relation" ? relationSelectedId : instanceSelectedId;
-  const setSelectedId = activeMode === "source" ? setSourceSelectedId : activeMode === "relation" ? setRelationSelectedId : setInstanceSelectedId;
-  //and the one for the target/actual/error map
-  const secondarySelectedId = secondaryMode === "target" ? targetSelectedId : secondaryMode === "actual" ? actualSelectedId : errorSelectedId;
-  const setSecondarySelectedId = secondaryMode === "target" ? setTargetSelectedId : secondaryMode === "actual" ? setActualSelectedId : setErrorSelectedId;
-
   //Get boundary geometry
   const geo = BOUNDARY_GEO[layer];
   const secondaryGeo = BOUNDARY_GEO[secondaryLayer];
@@ -129,12 +130,12 @@ export default function MapPanel({ onSelectionChange }) {
   //Instance relation counts
   const { counts: instanceRelationCounts, loading: instanceRelationLoading, error: instanceRelationError } = useInstanceRelationCounts(activeMode, instanceSelectedId, pastDays, futureDays);
 
-  // Set the relation layer to community and the secondary mode to target
+  // Relation tab: community-only on both sides; snap right map to Target
   useEffect(() => {
     if (activeMode === "relation") {
-      setRelationLayer("community"); // relation layer for relation tab
-      setSecondaryMode("target"); // secondary mode for target tab
-      setTargetLayer("community"); // secondary layer for target tab
+      dispatchMapFaces({ type: "SET_FACET_LAYER", facet: "relation", layer: "community", clearSelection: false });
+      setSecondaryMode("target");
+      dispatchMapFaces({ type: "SET_FACET_LAYER", facet: "target", layer: "community", clearSelection: false });
     }
   }, [activeMode]);
 
