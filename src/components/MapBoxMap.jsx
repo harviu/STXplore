@@ -555,7 +555,6 @@ export default function MapBoxMap({
             alignItems: "center",
             justifyContent: "center",
             zIndex: 10,
-            borderRadius: 4,
             pointerEvents: "none",
           }}
         >
