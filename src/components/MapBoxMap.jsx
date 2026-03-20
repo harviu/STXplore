@@ -131,6 +131,7 @@ export default function MapBoxMap({
   const selectedIdRef = useRef(selectedId);
   const isRelationMapRef = useRef(isRelationMap);
   const [mapStyle, setMapStyle] = useState('streets');
+  const lastHoverStateRef = useRef(null); 
   
   useEffect(() => {
     onSelectIdRef.current = onSelectId;
@@ -308,6 +309,7 @@ export default function MapBoxMap({
           if (isRelationMapRef.current && crimeCountsRef.current && selectedIdRef.current) {
             text += ` - ${count} relation`;
           }
+          lastHoverStateRef.current = { x: e.originalEvent.clientX, y: e.originalEvent.clientY, feature };
           onHoverRef.current({
             x: e.originalEvent.clientX,
             y: e.originalEvent.clientY,
@@ -316,6 +318,7 @@ export default function MapBoxMap({
             layer: layerRef.current,
           });
         } else {
+          lastHoverStateRef.current = null;
           onHoverRef.current(null);
         }
       }
@@ -426,6 +429,25 @@ export default function MapBoxMap({
     if (!map) return;
     map.flyTo({ center: CHICAGO_CENTER, zoom: CHICAGO_ZOOM });
   }, [recenterTrigger]);
+
+  useEffect(() => {
+    const h = lastHoverStateRef.current;
+    if (!h || !onHoverRef.current) return;
+    const { x, y, feature } = h;
+    const idRaw = feature.properties?.boundary_id ?? getBoundaryId(layerRef.current, feature);
+    const id = String(idRaw);
+    const count = (isRelationMapRef.current && crimeCountsRef.current)
+      ? Number(crimeCountsRef.current[id] ?? 0)
+      : (feature.properties?.count ?? 0);
+    let text = getBoundaryLabel(layerRef.current, feature);
+    if (crimeCountsRef.current != null && !isRelationMapRef.current) {
+      text += ` — ${count} crime${count !== 1 ? "s" : ""}`;
+    }
+    if (isRelationMapRef.current && crimeCountsRef.current && selectedIdRef.current) {
+      text += ` - ${count} relation`;
+    }
+    onHoverRef.current({ x, y, text, id, layer: layerRef.current });
+  }, [crimeCounts]);
 
   //Make sure user can use Mapbox otherswise show message to add token in .env file. This should be for devs only, add a permanent token for production use.
   const token = getMapboxToken().trim();
