@@ -3,30 +3,22 @@ import Panel from "./Panel.jsx";
 import MapBoxMap, { CHICAGO_ZOOM } from "./MapBoxMap.jsx";
 import { BOUNDARY_GEO, getBoundaryId, getBoundaryLabel } from "../lib/boundaries.js";
 import { indexById } from "../lib/indexById.js";
-import { loadDummyCrimeCounts } from "../lib/dummyCrimeData.js";
 import { DayPicker } from "react-day-picker";
 import "react-day-picker/style.css";
 import { api } from "../lib/api.js";
 import { useApi } from "../hooks/useApi.js";
+import { useHoverDailySeries } from "../hooks/useHoverDailySeries.js";
+import { useModelRelationCounts } from "../hooks/useModelRelationCounts.js";
+import { useInstanceRelationCounts } from "../hooks/useInstanceRelationCounts.js";
 import TooltipMap from "./tooltipMap.jsx";
 import Slider from "@mui/material/Slider";
 import { createTheme, ThemeProvider } from "@mui/material/styles";
-import { Tooltip } from "@mui/material";
-import {
-  addDaysISO,
-  sourceRange,
-  targetRange,
-  todayISO,
-} from "../lib/dates.js";
-import { fillDaily, responseToCounts } from "../lib/crimeAggregates.js";
+import { addDaysISO, sourceRange, targetRange, todayISO } from "../lib/dates.js";
+import { responseToCounts } from "../lib/crimeAggregates.js";
 
 const RTL_THEME = createTheme({ direction: "rtl" });
 
-const UI_TO_API_LAYER = {
-  community: "community_area",
-  beat: "beat",
-  district: "district",
-};
+const UI_TO_API_LAYER = { community: "community_area", beat: "beat", district: "district" };
 
 function useResizeObserverSize() {
   const ref = useRef(null);
@@ -120,163 +112,31 @@ export default function MapPanel({ onSelectionChange }) {
   const secondarySelectedId = secondaryMode === "target" ? targetSelectedId : secondaryMode === "actual" ? actualSelectedId : errorSelectedId;
   const setSecondarySelectedId = secondaryMode === "target" ? setTargetSelectedId : secondaryMode === "actual" ? setActualSelectedId : setErrorSelectedId;
 
+  //Get boundary geometry
   const geo = BOUNDARY_GEO[layer];
   const secondaryGeo = BOUNDARY_GEO[secondaryLayer];
 
+  //Get boundary ID and label
   const getId = useMemo(() => (f) => getBoundaryId(layer, f), [layer]);
   const getLabel = useMemo(() => (f) => getBoundaryLabel(layer, f), [layer]);
 
-  //Tooltip Map
-  const [hoverDaily, setHoverDaily] = useState(null);
-  const [hoverDailyLoading, setHoverDailyLoading] = useState(false);
+  //Hover daily series
+  const { hoverDaily, hoverDailyLoading, canShowHoverData } = useHoverDailySeries({hover, activeMode, secondaryMode, relationSelectedId, instanceSelectedId, selectedId, pastDays, futureDays, anchorDate});
 
-  const hoverCacheRef = useRef(new Map()); // key -> filled daily array
-  const hoverAbortRef = useRef(null);
-  const hoverTimerRef = useRef(null);
+  //Model relation counts
+  const { counts: relationCounts, loading: relationLoading, error: relationError } = useModelRelationCounts(activeMode, layer, relationSelectedId);
 
-  //Relation (model-level) counts for map when activeMode === "relation"
-  const [relationCounts, setRelationCounts] = useState(null); // { "1": num, ... , "77" : num}
-  const [relationLoading, setRelationLoading] = useState(false);
-  const [relationError, setRelationError] = useState(null);
+  //Instance relation counts
+  const { counts: instanceRelationCounts, loading: instanceRelationLoading, error: instanceRelationError } = useInstanceRelationCounts(activeMode, instanceSelectedId, pastDays, futureDays);
 
-  //Relation (instance-level) counts for map 
-  const [instanceRelationCounts, setInstanceRelationCounts] = useState(null);
-  const [instanceRelationLoading, setInstanceRelationLoading] = useState(false);
-  const [instanceRelationError, setInstanceRelationError] = useState(null);
-
-  // Relation mode is community-only for now
+  // Set the relation layer to community and the secondary mode to target
   useEffect(() => {
     if (activeMode === "relation") {
-      setRelationLayer("community"); // left layer for relation tab
-      setSecondaryMode("target"); // ensure right map is on target tab
-      setTargetLayer("community"); // right layer for target tab
+      setRelationLayer("community"); // relation layer for relation tab
+      setSecondaryMode("target"); // secondary mode for target tab
+      setTargetLayer("community"); // secondary layer for target tab
     }
   }, [activeMode]);
-
-  //Fetch relation weights only when in relation mode AND a community is selected
-  useEffect(() => {
-    // reset if not relation
-    if (activeMode !== "relation") {
-      setRelationCounts(null);
-      setRelationLoading(false);
-      setRelationError(null);
-      return;
-    }
-
-    // Only community layer
-    if (layer !== "community") {
-      setRelationCounts(null);
-      setRelationLoading(false);
-      setRelationError("Model-level relation is only available for community layer right now.");
-      return;
-    }
-
-    //reset if no commmunity selected 
-    if (!relationSelectedId) {
-      setRelationCounts(null);
-      setRelationLoading(false);
-      setRelationError(null);
-      return;
-    }
-
-    // Guard rail for invalid community id's (model-level relation)
-    const sourceIdx = Number(relationSelectedId) - 1; // "1..77" -> "0...76"
-    if (!Number.isFinite(sourceIdx) || sourceIdx < 0 || sourceIdx > 76) {
-      setRelationError("Invalid community id for relation mapping.");
-      setRelationCounts(null);
-      setRelationLoading(false);
-      return;
-    }
-    // fetch model-level weights under valid conditions
-    let cancelled = false;
-    const ac = new AbortController();
-    setRelationLoading(true);
-    setRelationError(null);
-    api.relationalModel(sourceIdx, { signal: ac.signal })
-      .then((data) => {
-        //check if cancelled
-        if (cancelled) return;
-
-        // ensure valid array
-        const targets = data?.targets;
-        if(!Array.isArray(targets) || targets.length != 77) {
-          throw new Error("Relation API returned invalid targets array.")
-        }
-
-        // Convert targets [0..76] -> { "1": v0, ... , "77" : v76 }
-        const out = {};
-        for (let j = 0; j < 77; j++) out[String(j + 1)] = Number(targets[j]) || 0;
-        setRelationCounts(out);
-        setRelationLoading(false);
-      })
-      // handle errors
-      .catch((err) => {
-        if (err?.name === "AbortError") return;
-        if (cancelled) return;
-        console.error("relationModel failed:", err);
-        setRelationError(String(err?.message ?? err));
-        setRelationCounts(null);
-        setRelationLoading(false);
-      });
-      return () => {
-        cancelled = true;
-        ac.abort();
-      };
-  }, [activeMode, layer, relationSelectedId]);
-
-  // Fetch instance-level relation weights when a community is selected in instance mode
-  useEffect(() => {
-    if (activeMode != "instance") {
-      setInstanceRelationCounts(null);
-      setInstanceRelationLoading(false);
-      setInstanceRelationError(null);
-      return;
-    }
-    //No community selected yet - reset
-    if (!instanceSelectedId) {
-      setInstanceRelationCounts(null);
-      setInstanceRelationLoading(false);
-      setInstanceRelationError(null);
-      return;
-    }
-    const sourceIdx = Number(instanceSelectedId) - 1; //"1...77 -> 0...76"
-    if (!Number.isFinite(sourceIdx) || sourceIdx < 0 || sourceIdx > 76) {
-      setInstanceRelationError("Invalid community id for instance relation.");
-      setInstanceRelationLoading(false);
-      setInstanceRelationCounts(null);
-      return;
-    }
-    let cancelled = false;
-    const ac = new AbortController();
-    setInstanceRelationLoading(true);
-    setInstanceRelationError(null);
-    api.instanceLevelRelation(sourceIdx, pastDays, futureDays, { signal: ac.signal })
-      .then((data) => {
-        if (cancelled) return;
-        const targets = data?.targets;
-        if (!Array.isArray(targets) || targets.length !== 77) {
-          throw new Error("Instance relation API returned invalid targets array.")
-        }
-        // Convert targets [0...76] -> { "1": v0 , ... , "77": v76 }
-        const out = {};
-        for (let j = 0; j < 77; j++) out[String(j + 1)] = Number(targets[j]) || 0;
-        setInstanceRelationCounts(out);
-        setInstanceRelationLoading(false);
-      })
-      .catch((err) => {
-        if (err?.name === "AbortError") return;
-        if (cancelled) return;
-        console.error("instanceLevelRelation failed:", err);
-        setInstanceRelationError(String(err?.message ?? err));
-        setInstanceRelationCounts(null);
-        setInstanceRelationLoading(false);
-      });
-    return () => {
-      cancelled = true;
-      ac.abort();
-    };
-    // Re-fetched whenever community, past window, or future window changes
-  }, [activeMode, instanceSelectedId, pastDays, futureDays]);
 
   //get crime data for source heatmap
   useEffect(() => {
@@ -321,104 +181,6 @@ export default function MapPanel({ onSelectionChange }) {
       };
     }
   }, [activeMode, pastDays, futureDays, selectedId]);
-
-  // Determines if we can show tooltip map 
-  const canShowHoverData = 
-    hover && 
-    (
-      //left map
-      (
-        hover.which === "left" && 
-        (
-          activeMode === "source" ||
-          (activeMode === "relation" && !!relationSelectedId) ||
-          (activeMode === "instance" && !!instanceSelectedId)
-        )
-      ) ||
-      // right map only when actual is active
-      (hover.which === "right" && secondaryMode === "actual")
-    );
-
-  // allow hovering on both maps now 
-  useEffect(() => {
-    if (!hover || !hover.id || !hover.layer || !canShowHoverData) {
-      setHoverDaily(null);
-      setHoverDailyLoading(false);
-      return;
-    }
-
-    const isLeft = hover.which === "left";
-    const isRelation = isLeft && activeMode !== "source";
-
-    let start, end;
-    if (isLeft) {
-      ({ start, end } = sourceRange(pastDays, anchorDate));
-    } else {
-      ({ start, end } = targetRange(futureDays, anchorDate));
-    }
-
-    const key = `${hover.which}:${hover.layer}:${hover.id}:${start}:${end}:${isRelation}`;
-
-    const cached = hoverCacheRef.current.get(key);
-    if (cached) {
-      setHoverDaily(cached);
-      setHoverDailyLoading(false);
-      return;
-    }
-
-    if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
-    if (hoverAbortRef.current) hoverAbortRef.current.abort();
-
-    hoverTimerRef.current = setTimeout(() => {
-      const ac = new AbortController();
-      hoverAbortRef.current = ac;
-
-      setHoverDaily(null);
-      setHoverDailyLoading(true);
-
-      if (isRelation && selectedId) {
-        api.get4dData(pastDays, true, hover.id, futureDays-1, false, selectedId, { signal: ac.signal })
-          .then((data) => {
-            const formatted = [];
-            for ( let i = 0; i < data.length; i++) {
-              formatted.push({date: addDaysISO(anchorDate, -i+1), count: data[i]});
-              if (i === data.length - 1) {
-                console.log(addDaysISO(anchorDate, -i+1));
-              }
-            }
-            hoverCacheRef.current.set(key, formatted);
-            setHoverDaily(formatted);
-            setHoverDailyLoading(false);
-          })
-          .catch((err) => {
-            if (err?.name === "AbortError") return;
-            console.error("Get data for hover failed:", err);
-            setHoverDaily(null);
-            setHoverDailyLoading(false);
-          });
-      } else {
-        api
-          .selectionDaily(hover.layer, hover.id, start, end, { signal: ac.signal })
-          .then((data) => {
-            const filled = fillDaily(start, end, data?.daily);
-            hoverCacheRef.current.set(key, filled);
-            console.log(filled);
-            setHoverDaily(filled);
-            setHoverDailyLoading(false);
-          })
-          .catch((err) => {
-            if (err?.name === "AbortError") return;
-            console.error("selection Daily Failed:", err);
-            setHoverDaily(null);
-            setHoverDailyLoading(false);
-          });
-      }
-    }, 200);
-    
-    return () => {
-      if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
-    };
-  }, [hover?.which, hover?.id, hover?.layer, activeMode, secondaryMode, relationSelectedId, instanceSelectedId, pastDays, futureDays, anchorDate, canShowHoverData,]);
 
   // Instance-level map on source side: 4D array → per-community time-averaged over slider date range.
   const {
