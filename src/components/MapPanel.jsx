@@ -12,8 +12,13 @@ import TooltipMap from "./tooltipMap.jsx";
 import Slider from "@mui/material/Slider";
 import { createTheme, ThemeProvider } from "@mui/material/styles";
 import { Tooltip } from "@mui/material";
-import { set } from "date-fns";
-import { da } from "date-fns/locale";
+import {
+  addDaysISO,
+  sourceRange,
+  targetRange,
+  todayISO,
+} from "../lib/dates.js";
+import { fillDaily, responseToCounts } from "../lib/crimeAggregates.js";
 
 const RTL_THEME = createTheme({ direction: "rtl" });
 
@@ -22,61 +27,6 @@ const UI_TO_API_LAYER = {
   beat: "beat",
   district: "district",
 };
-
-function isoRangeDays(startISO, endISO) {
-  const out = [];
-  const d = new Date(startISO + "T00:00:00");
-  const end = new Date(endISO + "T00:00:00");
-  while (d < end) {
-    out.push(toYYYYMMDD(d));
-    d.setDate(d.getDate() + 1);
-  }
-  return out;
-}
-
-function fillDaily(start, end, rows) {
-  const by = new Map((rows ?? []).map((r) => [r.date, Number(r.count) || 0]));
-  const dates = isoRangeDays(start, end);
-  return dates.map((dt) => ({ date: dt, count: by.get(dt) ?? 0 }));
-}
-
-function responseToCounts(resp){
-  // backend returns { start, end, date: [{ feature_id, count }, ...]}
-  const rows = resp?.data ?? [];
-  const out = {};
-  for (const r of rows) {
-    if (r?.feature_id == null) continue;
-    out[String(r.feature_id)] = Number(r.count) || 0;
-  }
-  return out;
-}
-
-function addDaysISO(iso, days) {
-  const d = new Date(iso + "T00:00:00");
-  d.setDate(d.getDate() + days);
-  return toYYYYMMDD(d);
-}
-
-function toYYYYMMDD(d) {
-  const yyyy = d.getFullYear();
-  const mm = String(d.getMonth() + 1).padStart(2, "0");
-  const dd = String(d.getDate()).padStart(2, "0");
-  return `${yyyy}-${mm}-${dd}`;
-}
-
-function sourceRange(pastDays, anchorISO) {
-  const start = addDaysISO(anchorISO, -pastDays);
-  const end = anchorISO
-  return { start, end }
-}
-
-function targetRange(futureDays, anchorISO){
-  const start = anchorISO;
-  const end = addDaysISO(anchorISO, futureDays);
-  return { start, end: end};
-}
-
-function todayISO() { return new Date().toISOString().slice(0, 10); }
 
 function useResizeObserverSize() {
   const ref = useRef(null);
