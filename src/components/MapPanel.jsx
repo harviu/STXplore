@@ -21,39 +21,6 @@ const RTL_THEME = createTheme({ direction: "rtl" });
 
 const UI_TO_API_LAYER = { community: "community_area", beat: "beat", district: "district" };
 
-function useResizeObserverSize() {
-  const ref = useRef(null);
-  const [size, setSize] = useState({ width: 0, height: 0 });
-
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-
-    let raf = 0;
-
-    const ro = new ResizeObserver(() => {
-      cancelAnimationFrame(raf);
-      raf = requestAnimationFrame(() => {
-        const rect = el.getBoundingClientRect();
-        const w = Math.max(0, Math.floor(rect.width));
-        const h = Math.max(0, Math.floor(rect.height));
-        setSize((prev) => {
-          if (prev.width === w && prev.height === h) return prev;
-          return { width: w, height: h};
-        });
-      });
-    });
-
-    ro.observe(el);
-    return () => {
-      cancelAnimationFrame(raf);
-      ro.disconnect();
-    }
-  }, []);
-
-  return { ref, size };
-}
-
 export default function MapPanel({ onSelectionChange, onSummaryChange }) {
   const MAP_H = "clamp(450px, 55vh, 550px)";
   const [activeMode, setActiveMode] = useState("source"); // "source" | "relation" | "instance"
@@ -116,10 +83,6 @@ export default function MapPanel({ onSelectionChange, onSummaryChange }) {
   //Get boundary geometry
   const geo = BOUNDARY_GEO[layer];
   const secondaryGeo = BOUNDARY_GEO[secondaryLayer];
-
-  //Get boundary ID and label
-  const getId = useMemo(() => (f) => getBoundaryId(layer, f), [layer]);
-  const getLabel = useMemo(() => (f) => getBoundaryLabel(layer, f), [layer]);
 
   //Hover daily series
   const { hoverDaily, hoverDailyLoading, canShowHoverData } = useHoverDailySeries({hover, activeMode, secondaryMode, relationSelectedId, instanceSelectedId, selectedId, pastDays, futureDays, anchorDate});
@@ -339,6 +302,7 @@ export default function MapPanel({ onSelectionChange, onSummaryChange }) {
       target: targetSelection,
       actual: actualSelection,
       error: errorSelection,
+      //data for heatmaps
       heatData: activeMode === "source" ? crimeCounts : relationValues,
       targetHeatData: secondaryMode === "actual" ? futureCounts : null,
     });
@@ -395,11 +359,6 @@ export default function MapPanel({ onSelectionChange, onSummaryChange }) {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [calendarOpen]);
-
- /* For poor debugging:
-useEffect(() => {
-  console.log("relation count", relationCounts);
-}, [relationCounts]);*/
 
   const thirtyDaysAgo = new Date(); // fallback to today if max date not loaded yet
   if (maxDataDate) thirtyDaysAgo.setTime(maxDataDate.getTime());
