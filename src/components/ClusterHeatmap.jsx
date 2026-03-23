@@ -1,21 +1,7 @@
 import { useEffect, useRef, useState, useMemo } from 'react';
 import * as d3 from 'd3';
-import { da, he, sv } from 'date-fns/locale';
+import { CHOROPLETH_STOPS, RELATION_STOPS } from "src/lib/colors.js"
 
-const CHOROPLETH_STOPS = [
-  "#ffffb2",
-  "#fecc5c",
-  "#fd8d3c",
-  "#f03b20",
-  "#bd0026",
-];
-const RELATION_STOPS = [
-  "#0acaff", //light blue (low)
-  "#4ae4e4",
-  "#66c2a4",
-  "#2ca25f",
-  "#006d2c", //dark green (high)
-``];
 const EMPTY_CELL_FILL = "rgba(255, 255, 255, 0.2)"; // subtle gray for zero/missing, reads cleaner than black
 
 //distance function for clustering
