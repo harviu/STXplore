@@ -4,7 +4,7 @@ import { select } from 'https://esm.sh/d3-selection';
 import { useRef, useEffect } from "react";
 
 function renderBarChart(barsRef, labelsRef, countsRef, data, color, isAverage = false ) {
-  if (!data || data.lenght === 0) return;
+  if (!data || data.lenght === 0 || data[0]?.count == null) return;
 
   const maxCount = data[0].count;
 
@@ -62,8 +62,12 @@ export default function DashboardPanel({ mode, selection, inactiveMode, inactive
 
   const summary = activeSummary?.top_types ?? null;
   const actual = inactiveSummary?.top_types ?? null;
-  const averageSummary = activeSummary?.top_types?.map((t) => ({ ...t, count: t.count / pastDays })) ?? null;
-  const averageActual = inactiveSummary?.top_types?.map((t) => ({ ...t, count: t.count / futureDays })) ?? null;
+  const averageSummary = (activeSummary?.top_types && pastDays > 0)
+      ? activeSummary?.top_types?.map((t) => ({ ...t, count: t.count / pastDays }))
+      : null;
+  const averageActual = (inactiveSummary?.top_types && futureDays > 0)
+      ? inactiveSummary?.top_types?.map((t) => ({ ...t, count: t.count / futureDays }))
+      : null;
 
   //maps the source data to the source map graph in source map stats below
   useEffect(() => { 
