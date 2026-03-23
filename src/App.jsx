@@ -37,10 +37,12 @@ export default function App() {
     actual: null,
     error: null,
 
-    left: { selection: null, summary: null, loading: false, error: null, range: null, days: null },
-    right: { selection: null, summary: null, loading: false, error: null, range: null, days: null },
     heatData: null,
     targetHeatData: null,
+  });
+  const [summaries, setSummaries] = useState({ 
+    left: { selection: null, summary: null, loading: false, error: null, range: null, days: null },
+    right: { selection: null, summary: null, loading: false, error: null, range: null, days: null },
   });
 
   const activeSelection = state[state.activeMode];
@@ -86,11 +88,11 @@ export default function App() {
       <main className="appMain">
         <section className="topRow">
           <div className="mapCell" ref={mapCellRef}>
-            <MapPanel onSelectionChange={setState} />
+            <MapPanel onSelectionChange={setState} onSummaryChange={setSummaries} />
           </div>
 
           <div className="sideCell" style={sideCellStyle}>
-            <SidePanel left={state?.left} right={state?.right} />
+            <SidePanel left={summaries?.left} right={summaries?.right} />
           </div>
         </section>
 
@@ -100,12 +102,12 @@ export default function App() {
             selection={activeSelection}
             inactiveMode={state.secondaryMode}
             inactiveSelection={secondarySelection}
-            activeSummary={state.left?.summary}
-            inactiveSummary={state.right?.summary}
-            activeLoading={state.left?.loading}
-            inactiveLoading={state.right?.loading}
-            pastDays={state.left?.days}
-            futureDays={state.right?.days}
+            activeSummary={summaries.left?.summary}
+            inactiveSummary={summaries.right?.summary}
+            activeLoading={summaries.left?.loading}
+            inactiveLoading={summaries.right?.loading}
+            pastDays={summaries.left?.days}
+            futureDays={summaries.right?.days}
             heatData={state.heatData}
             targetHeatData={state.targetHeatData}
           />

@@ -54,7 +54,7 @@ function useResizeObserverSize() {
   return { ref, size };
 }
 
-export default function MapPanel({ onSelectionChange }) {
+export default function MapPanel({ onSelectionChange, onSummaryChange }) {
   const MAP_H = "clamp(450px, 55vh, 550px)";
   const [activeMode, setActiveMode] = useState("source"); // "source" | "relation" | "instance"
   const [secondaryMode, setSecondaryMode] = useState("target"); // "target" | "actual" | "error"
@@ -339,9 +339,6 @@ export default function MapPanel({ onSelectionChange }) {
       target: targetSelection,
       actual: actualSelection,
       error: errorSelection,
-      //summaries (split)
-      left: {selection: leftSelection, summary: leftSummary, loading: leftSummaryLoading, error: leftSummaryError, range: sourceRange(pastDays, anchorDate), days: pastDays},
-      right: {selection: rightSelection, summary: rightSummary, loading: rightSummaryLoading, error: rightSummaryError, range: targetRange(futureDays, anchorDate), days: futureDays},
       heatData: activeMode === "source" ? crimeCounts : relationValues,
       targetHeatData: secondaryMode === "actual" ? futureCounts : null,
     });
@@ -357,6 +354,21 @@ export default function MapPanel({ onSelectionChange }) {
     actualSelection,
     errorSelection,
 
+    crimeCounts,
+    relationValues,
+
+    futureCounts,
+
+    onSelectionChange,
+  ]);
+
+  useEffect(() => {
+    onSummaryChange?.({
+      //summaries (split)
+      left: {selection: leftSelection, summary: leftSummary, loading: leftSummaryLoading, error: leftSummaryError, range: sourceRange(pastDays, anchorDate), days: pastDays},
+      right: {selection: rightSelection, summary: rightSummary, loading: rightSummaryLoading, error: rightSummaryError, range: targetRange(futureDays, anchorDate), days: futureDays},
+    });
+  }, [
     leftSelection,
     leftSummary,
     leftSummaryLoading,
@@ -368,14 +380,9 @@ export default function MapPanel({ onSelectionChange }) {
     rightSummaryLoading,
     rightSummaryError,
     futureDays,
-
-    crimeCounts,
-    relationValues,
-
-    futureCounts,
-
-    onSelectionChange,
+    onSummaryChange,
   ]);
+
 
   // Close calendar when clicking outside
   useEffect(() => {
