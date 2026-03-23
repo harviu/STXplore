@@ -1,6 +1,6 @@
 //array of colors for the choropleth map
 /** Yellow → orange → red choropleth colors */
-const CHOROPLETH_STOPS = [
+export const CHOROPLETH_STOPS = [
   "#ffffb2", // light yellow (low)
   "#fecc5c",
   "#fd8d3c",
@@ -8,7 +8,7 @@ const CHOROPLETH_STOPS = [
   "#bd0026", // dark red (high)
 ];
 
-const RELATION_STOPS = [
+export const RELATION_STOPS = [
   "#0acaff", //light blue (low)
   "#4ae4e4",
   "#66c2a4",

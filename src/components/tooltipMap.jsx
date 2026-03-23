@@ -1,4 +1,4 @@
-import { CHOROPLETH_STOPS, RELATION_STOPS } from "src/lib/colors.js"
+import { CHOROPLETH_STOPS, RELATION_STOPS } from "../lib/colors.js"
 
 //Converts hex color to rgb color
 function hexToRgb(hex) {

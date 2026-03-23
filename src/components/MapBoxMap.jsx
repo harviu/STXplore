@@ -2,7 +2,7 @@ import { useEffect, useRef, useMemo, useState } from "react";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { getBoundaryId, getBoundaryLabel } from "../lib/boundaries.js";
-import { CHOROPLETH_STOPS, RELATION_STOPS } from "src/lib/colors.js"
+import { CHOROPLETH_STOPS, RELATION_STOPS } from "../lib/colors.js"
 
 export const CHICAGO_CENTER = [-87.70, 41.84]; // Approximate center of Chicago
 export const CHICAGO_ZOOM = 9.1; // Initial zoom level to show the whole city
