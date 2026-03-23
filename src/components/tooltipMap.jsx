@@ -1,18 +1,4 @@
-//coloring for the box in tooltip
-const CHOROPLETH_STOPS = [
-  "#ffffb2",
-  "#fecc5c",
-  "#fd8d3c",
-  "#f03b20",
-  "#bd0026",
-];
-const RELATION_STOPS = [
-  "#0acaff", //light blue (low)
-  "#4ae4e4",
-  "#66c2a4",
-  "#2ca25f",
-  "#006d2c", //dark green (high)
-];
+import { CHOROPLETH_STOPS, RELATION_STOPS } from "src/lib/colors.js"
 
 //Converts hex color to rgb color
 function hexToRgb(hex) {

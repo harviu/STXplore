@@ -2,6 +2,7 @@ import { useEffect, useRef, useMemo, useState } from "react";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { getBoundaryId, getBoundaryLabel } from "../lib/boundaries.js";
+import { CHOROPLETH_STOPS, RELATION_STOPS } from "src/lib/colors.js"
 
 export const CHICAGO_CENTER = [-87.70, 41.84]; // Approximate center of Chicago
 export const CHICAGO_ZOOM = 9.1; // Initial zoom level to show the whole city
@@ -11,23 +12,6 @@ const BOUNDARIES_SELECTED_LAYER_ID = "boundaries-selected";
 
 const getMapboxToken = () => import.meta.env.VITE_MAPBOX_ACCESS_TOKEN ?? "";
 
-//array of colors for the choropleth map
-/** Yellow → orange → red choropleth colors */
-const CHOROPLETH_STOPS = [
-  "#ffffb2", // light yellow (low)
-  "#fecc5c",
-  "#fd8d3c",
-  "#f03b20",
-  "#bd0026", // dark red (high)
-];
-
-const RELATION_STOPS = [
-  "#0acaff", //light blue (low)
-  "#4ae4e4",
-  "#66c2a4",
-  "#2ca25f",
-  "#006d2c", //dark green (high)
-];
 
 const LEGEND_TITLE = "Crime count";
 
