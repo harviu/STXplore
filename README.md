@@ -1,16 +1,6 @@
-# React + Vite
+# Project Description
+This project was written for researchers at Grand Valley State University. The purpose of this project is to create a webpage for the visualization of the data surrounding an artificial inteligence created by the researchers. The artificial inteligence is not included in this repository.
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Two things needed besides the repository are the artificial inteligence, for which this was created, and a database holding the data the artificial inteligence was for. Some or all features may be unavailable to those who attempt to use this project without either.
 
-Currently, two official plugins are available:
-
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
-
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+The project is based in the React library with a backend in Python and hosted with Vite. During development, local PostgreSQL databases were used to hold the data which the artificial inteligence was for. 
