@@ -22,6 +22,9 @@ const RTL_THEME = createTheme({ direction: "rtl" });
 const UI_TO_API_LAYER = { community: "community_area", beat: "beat", district: "district" };
 
 /**
+ * The MapPanel component is responsible for rendering the main map interface and managing the state of the selected boundaries on both the left and right maps. 
+ * It handles user interactions with the maps and updates the selection and summary data accordingly.
+ * The physical maps are handled by the MapBoxMap component.
  * 
  * @param {Object} props 
  * @param {(selection: Object) => void} props.onSelectionChange Callback that receives the current selection object whenever it changes. The selection object has the shape: {activemode, secondaryMode, anchorDate, source: {mode, layer, id, name, days, dateISO, feature}, relation: {...}, instance: {...}, target: {...}, actual: {...}, error: {...}, heatData - has general structure:{communityId: id, date: date, count: c}, targetHeatData: similar to heatData but for target/actual map}
@@ -295,6 +298,7 @@ export default function MapPanel({ onSelectionChange, onSummaryChange }) {
     if (dateRange?.max) setAnchorDate(dateRange.max.slice(0, 10));
   }, [dateRange?.max]);
 
+  //pass selection and data up
   useEffect(() => {
     onSelectionChange?.({
       //modes
@@ -333,6 +337,7 @@ export default function MapPanel({ onSelectionChange, onSummaryChange }) {
     onSelectionChange,
   ]);
 
+  //pass summary data up
   useEffect(() => {
     onSummaryChange?.({
       //summaries (split)
@@ -367,12 +372,15 @@ export default function MapPanel({ onSelectionChange, onSummaryChange }) {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [calendarOpen]);
 
-  const thirtyDaysAgo = new Date(); // fallback to today if max date not loaded yet
+  //
+  const thirtyDaysAgo = new Date(); 
+  // fallback to today if max date not loaded yet
   if (maxDataDate) thirtyDaysAgo.setTime(maxDataDate.getTime());
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
   const canShowActualError = maxDataDate && new Date(addDaysISO(anchorDate, futureDays) + "T00:00:00") <= maxDataDate;
 
+//Reset to target if invalid actual/error
   useEffect(() => {
     if (secondaryMode !== "target" && !canShowActualError) {
       setSecondaryMode("target");
