@@ -20,6 +20,18 @@ function titleForMode(mode) {
   }
 }
 
+/**
+ * The SelectionBlock component is a subcomponent used within the SidePanel to display details about a specific selection on either the left or right map. 
+ * It takes in a heading, a payload containing the selection and summary data, and flags for whether to show API status and whether it's for the left map. 
+ * The component conditionally renders the selection details, API status, and summary information based on the provided data.
+ * 
+ * @param {Object} props 
+ * @param {string} props.heading The title to display for this selection block (e.g., "Left Map" or "Right Map")
+ * @param {Object} props.payload The data for this selection block
+ * @param {boolean} [props.showApi=true] Whether to show API status
+ * @param {boolean} props.isLeft Whether this block is for the left map 
+ * @returns {JSX.Element}
+ */
 // subcomponent for showing details of a selection, including API status and summary if available
 function SelectionBlock({ heading, payload, showApi = true, isLeft }) {
   // payload shape: { selection, summary, loading, error, range }
@@ -133,6 +145,15 @@ function SelectionBlock({ heading, payload, showApi = true, isLeft }) {
   );
 }
 
+/**
+ * The SidePanel component displays details about the current selections on the left and right maps, including API loading status and summary information if available. It receives the selection and summary data for both maps as props and conditionally renders the information. If no selection is made, it prompts the user to click a boundary on either map to see details.
+ * It uses the SelectionBlock subcomponent to display the details for each map's selection, including the map type, layer, ID, name, and summary statistics. The API status is also shown if the showApi prop is true. The component is designed to be flexible and can handle cases where there is no selection or when data is still loading.
+ * 
+ * @param {Object} props
+ * @param {Object} props.left The data for the left map selection and summary, with shape: {selection, summary, loading, error, range}
+ * @param {Object} props.right The data for the right map selection and summary, with shape: {selection, summary, loading, error, range}
+ * @returns {JSX.Element}
+ */
 //The main side panel holds the potential for two summaries, one for the source maps on the left and one for the target maps on the right.
 export default function SidePanel({ left, right }) {
   const hasAnySelection = !!left?.selection || !!right?.selection;
