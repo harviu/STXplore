@@ -21,6 +21,13 @@ const RTL_THEME = createTheme({ direction: "rtl" });
 
 const UI_TO_API_LAYER = { community: "community_area", beat: "beat", district: "district" };
 
+/**
+ * 
+ * @param {Object} props 
+ * @param {(selection: Object) => void} props.onSelectionChange Callback that receives the current selection object whenever it changes. The selection object has the shape: {activemode, secondaryMode, anchorDate, source: {mode, layer, id, name, days, dateISO, feature}, relation: {...}, instance: {...}, target: {...}, actual: {...}, error: {...}, heatData - has general structure:{communityId: id, date: date, count: c}, targetHeatData: similar to heatData but for target/actual map}
+ * @param {(summary: Object) => void} props.onSummaryChange Callback that receives the current summary data for the left and right maps whenever it changes. The summary object has the shape: {left: {selection, summary, loading, error, range, days}, right: {selection, summary, loading, error, range, days}}. Keeps track of the returns from api calls regarding the maps. Note that values from this component are in onSelectionChange.
+ * @returns {JSX.Element}
+ */
 export default function MapPanel({ onSelectionChange, onSummaryChange }) {
   const MAP_H = "clamp(450px, 55vh, 550px)";
   const [activeMode, setActiveMode] = useState("source"); // "source" | "relation" | "instance"

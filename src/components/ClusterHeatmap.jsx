@@ -22,6 +22,17 @@ const getClusterOrder = (matrix, ids) => {
     return orderedIds;
 };
 
+/**
+ * The cluster heatmap component shows the data across communities and days.
+ * It is basically a collection of the tooltip bars for all communities.
+ * 
+ * @param {Object} props 
+ * @param {Array|Object} props.data For relation map, a 2D array of counts by community (outer) and day (inner). For source/target map, an array of objects with shape {id: communityId, date: date, count: count}
+ * @param {string|number|null} props.selectedId Currently selected community ID to highlight (1-based for relation map, numeric for source/target). Null if no selection.
+ * @param {boolean} [props.isRelationMap=false] Whether this heatmap is for relation data (true) or source/target data (false). Affects color scheme and formatting.
+ * @param {boolean} [props.isFuture=false] Whether the date axis represents future days (true) or past days (false). Affects date sorting and axis label.
+ * @returns {JSX.Element}
+ */
 export default function ClusterHeatmap({ data, selectedId, isRelationMap = false, isFuture = false }) {
     const svgRef = useRef(null);
     const divRef = useRef(null);
