@@ -24,6 +24,13 @@ function useMediaQuery(query) {
   return matches;
 }
 
+/**
+ * Main application component that renders the overall layout of the app, including the MapPanel, SidePanel, and DashboardPanel.
+ * It manages the state for the active and secondary modes, selections, summaries, and heatmap data. It also handles responsive layout adjustments based on screen size.
+ * It also dirstibutes the state to child components
+ * 
+ * @returns {JSX.Element}
+ */
 export default function App() {
   const [state, setState] = useState({
     activeMode: "source",

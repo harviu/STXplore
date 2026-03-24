@@ -1,5 +1,6 @@
 import { CHOROPLETH_STOPS, RELATION_STOPS } from "../lib/colors.js"
 
+//Helper functions:
 //Converts hex color to rgb color
 function hexToRgb(hex) {
   const h = hex.replace("#", "");
@@ -33,6 +34,17 @@ function choroplethColor(t, isRelationMap = false) {
   return lerpColor(stops[i], stops[i + 1], frac);
 }
 
+/**
+ * Component for the small bar chart you see when you hover over a boundary. 
+ * It shows the daily counts for the past and future days relative to the anchor date, with weekly tick marks. 
+ * The color of the bars is determined by the choroplethColor function, which maps counts to colors based on the provided color stops.
+ * 
+ * @param {Object} props - The properties for the TooltipMap component.
+ * @param {Array} props.days - An array of objects representing daily counts, where each object has a 'date' and 'count' property. 
+ * @param {number} [props.height=12] - The height of the bars in pixels. Default is 12.
+ * @param {boolean} [props.isRelationMap=false] - A flag indicating whether to use relation map color stops. Default is false.
+ * @returns {JSX.Element}
+ */
 //The box component you see when you hover
 export default function TooltipMap({ days, height = 12, isRelationMap = false }) {
   const max = (days ?? []).reduce((m, d) => Math.max(m, d.count || 0), 0);
