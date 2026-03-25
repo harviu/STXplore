@@ -123,7 +123,7 @@ export default function ClusterHeatmap({ data, selectedId, isRelationMap = false
 
             const xTickFormat = isRelationMap
                 ? (d) => d+ 1
-                : (d) => clusteredDates.indexOf(d);
+                : (d) => Math.round((d3.max(heatmapData.map(d => new Date(d.date).getTime())) - new Date(d).getTime()) / (1000 * 60 * 60 * 24))+1;
 
             const hoverStrokeColor = isRelationMap ? "magenta" : "darkgreen";
             const hoverstrokeWidth = isRelationMap ? 2: 3;
