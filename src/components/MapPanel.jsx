@@ -501,7 +501,7 @@ export default function MapPanel({ onSelectionChange, onSummaryChange }) {
               <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                 <strong>Map:</strong>
                 <button onClick={() => setActiveMode("source")} disabled={activeMode === "source"}>
-                  Source
+                  Past
                 </button>
                 <button onClick={() => setActiveMode("instance")} disabled={activeMode === "instance"} style={{fontSize:"0.65rem"}}>
                   Instance <br/> Level
@@ -697,7 +697,7 @@ export default function MapPanel({ onSelectionChange, onSummaryChange }) {
               <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                 <strong>Map:</strong>
                 <button onClick={() => setSecondaryMode("target")} disabled={secondaryMode === "target"}>
-                  Target
+                  Predicted
                 </button>
                 <div style={{ display: "flex", gap: 8, alignItems: "center", opacity: canShowActualError ? 1 : 0.5 }}>
                   <button onClick={() => setSecondaryMode("actual")} disabled={secondaryMode === "actual" || !canShowActualError}>
