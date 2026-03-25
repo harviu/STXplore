@@ -3,8 +3,19 @@ import ClusterHeatmap from "./ClusterHeatmap.jsx";
 import { select } from 'https://esm.sh/d3-selection';
 import { useRef, useEffect } from "react";
 
+/**A function that renders a horizontal bar chart using D3 
+ * 
+ * @param {Object} props
+ * @param {React.Ref} props.barsRef - Ref for the bars in the summary bar chart
+ * @param {React.Ref} props.labelsRef - Ref for the labels in the summary bar chart
+ * @param {React.Ref} props.countsRef - Ref for the counts in the summary bar chart
+ * @param {Array} props.data - The data for the bar chart
+ * @param {string} props.color - The color for the bars
+ * @param {boolean} [props.isAverage=false] - Indicates if the chart should display average values
+ * This function directly manipulates the ref props an does not return anything. 
+ */
 function renderBarChart(barsRef, labelsRef, countsRef, data, color, isAverage = false ) {
-  if (!data || data.lenght === 0 || data[0]?.count == null) return;
+  if (!data || data.length === 0 || data[0]?.count == null) return;
 
   const maxCount = data[0].count;
 
@@ -34,12 +45,32 @@ function renderBarChart(barsRef, labelsRef, countsRef, data, color, isAverage = 
     .attr("text-anchor", "start");
 }
 
-/** Literally just capitalizes the first letter of a string for better formatting */
+/** Literally just capitalizes the first letter of a string for better formatting
+ * @param {string} string - The input string to capitalize
+ * @return {string} - The input string with the first letter capitalized
+ */
 function capitalizeFirst(string) {
   if (!string) return "";
   return string.charAt(0).toUpperCase() + string.slice(1);
 }
 
+/**
+ * DashboardPanel component that displays analytics based on the current selection and time range.
+ * @param {Object} props - The props for the DashboardPanel component.
+ * @param {string} props.mode - The current active mode of the selection (source, relation, instance). 
+ * @param {Object} props.selection - The current selection object containing details about the active selected boundary.
+ * @param {string} props.inactiveMode - The mode of the inactive selection (actual, target, error).
+ * @param {Object} props.inactiveSelection - The current inactive selection object containing details about the inactive selected boundary.
+ * @param {Object} props.activeSummary - The summary data for the active selection, including top crime types and counts.
+ * @param {Object} props.inactiveSummary - The summary data for the inactive selection, including top crime types and counts.
+ * @param {number} props.pastDays - The number of past days included in the active selection's time range.
+ * @param {number} props.futureDays - The number of future days included in the inactive selection's time range.
+ * @param {Object} props.heatData - The data for the past map cluster heatmap.
+ * @param {Object} props.targetHeatData - The data for the future map cluster heatmap.
+ * @param {boolean} props.activeLoading - Indicates if the active selection's summary data is currently loading.
+ * @param {boolean} props.inactiveLoading - Indicates if the inactive selection's summary data is currently loading.
+ * @returns {JSX.Element} The rendered DashboardPanel component.
+ */
 export default function DashboardPanel({ mode, selection, inactiveMode, inactiveSelection, activeSummary, inactiveSummary, pastDays, futureDays, heatData, targetHeatData, activeLoading, inactiveLoading }) {
   const barsRef = useRef();
   const labelsRef = useRef();
