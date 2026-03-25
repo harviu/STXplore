@@ -1,5 +1,11 @@
 //array of colors for the choropleth map
-/** Yellow → orange → red choropleth colors */
+/**
+ * Colors for the choropleth and relation maps. 
+ * Each array is ordered from low to high values, with 5 stops each. 
+ * Yellow → orange → red choropleth colors for crime counts
+ * Light blue → teal → dark green relation colors for relation counts
+ * 
+ */
 export const CHOROPLETH_STOPS = [
   "#ffffb2", // light yellow (low)
   "#fecc5c",
