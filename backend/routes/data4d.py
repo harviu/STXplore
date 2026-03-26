@@ -13,7 +13,8 @@ def get_data4d(
     d2: Optional[int] = Query(None),
     d3: Optional[int] = Query(None),
     b3: bool = Query(False),
-    d4: Optional[int] = Query(None)
+    d4: Optional[int] = Query(None),
+    d3_start: Optional[int] = Query(None, ge=0, le=29, description="Inclusive start index on future-day axis (with b1+b3)"),
 ):
     #Check for dimensions else take slice
     s1 = d1 if d1 is not None else slice(None)
@@ -22,7 +23,8 @@ def get_data4d(
     s4 = d4 if d4 is not None else slice(None)
 
     if b1 and b3:
-        sliced = loadedArray[:s1, s2, :s3, s4]
+        lo = int(d3_start) if d3_start is not None else 0
+        sliced = loadedArray[:s1, s2, lo:s3, s4]
     elif b1:
         sliced = loadedArray[:s1, s2, s3, s4]
     elif b3:

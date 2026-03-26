@@ -65,13 +65,16 @@ export const api = {
   relationalModel: (source, opts) =>
     request(`/api/model_level_relation?source=${encodeURIComponent(source)}`, opts),
 
-  instanceLevelRelation: (sourceIdx, pastDays, futureDays, opts) =>
-    request (
-      `/api/instance_level_relation?source=${encodeURIComponent(sourceIdx)}&past_days=${encodeURIComponent(pastDays)}&future_days=${encodeURIComponent(futureDays)}`,
+  instanceLevelRelation: (sourceIdx, pastDays, futureStart, futureEnd, opts) =>
+    request(
+      `/api/instance_level_relation?source=${encodeURIComponent(sourceIdx)}&past_days=${encodeURIComponent(pastDays)}&future_days=${encodeURIComponent(futureEnd)}&future_start=${encodeURIComponent(futureStart)}`,
       opts
     ),
 
-  get4dData: (d1, b1, d2, d3, b3, d4, opts) => {
+  instanceLevelSource: (_pastDays, _futureStart, _futureEnd, _opts) => Promise.resolve({ data: [] }),
+
+  get4dData: (d1, b1, d2, d3, b3, d4, opts = {}) => {
+    const { signal, d3Start, ...rest } = opts;
     const params = new URLSearchParams();
     if (d1 !== null && d1 !== undefined) params.append("d1", d1);
     if (b1 !== null && b1 !== undefined) params.append("b1", b1);
@@ -79,7 +82,8 @@ export const api = {
     if (d3 !== null && d3 !== undefined) params.append("d3", d3);
     if (b3 !== null && b3 !== undefined) params.append("b3", b3);
     if (d4 !== null && d4 !== undefined) params.append("d4", d4);
-    return request(`/api/data4d?${params.toString()}`, opts);
-  }
+    if (d3Start != null) params.append("d3_start", d3Start);
+    return request(`/api/data4d?${params.toString()}`, { signal, ...rest });
+  },
     
 };

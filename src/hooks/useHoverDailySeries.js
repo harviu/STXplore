@@ -6,7 +6,7 @@ import { fillDaily } from "../lib/crimeAggregates.js";
 /**
  * Debounced fetch of daily series for the map hover tooltip (standard selectionDaily or 4D relation path).
  */
-export function useHoverDailySeries({hover, activeMode, secondaryMode, relationSelectedId, instanceSelectedId, selectedId, pastDays, futureDays, anchorDate}) {
+export function useHoverDailySeries({hover, activeMode, secondaryMode, relationSelectedId, instanceSelectedId, selectedId, pastDays, futureStart, futureEnd, anchorDate}) {
   //Check if the hover data can be shown
   const canShowHoverData = useMemo(() =>
       !!(
@@ -49,7 +49,7 @@ export function useHoverDailySeries({hover, activeMode, secondaryMode, relationS
     if (isLeft) {
       ({ start, end } = sourceRange(pastDays, anchorDate));
     } else {
-      ({ start, end } = targetRange(futureDays, anchorDate));
+      ({ start, end } = targetRange(futureStart, futureEnd, anchorDate));
     }
 
     //Generate a unique key for the hover daily series
@@ -79,7 +79,7 @@ export function useHoverDailySeries({hover, activeMode, secondaryMode, relationS
       //If the hover is on the left and the selected id is not null
       if (isRelation && selectedId) {
         api
-          .get4dData(pastDays, true, hover.id, futureDays - 1, false, selectedId, {
+          .get4dData(pastDays, true, hover.id, futureEnd - 1, false, selectedId, {
             signal: ac.signal,
           })
           .then((data) => {
@@ -125,7 +125,7 @@ export function useHoverDailySeries({hover, activeMode, secondaryMode, relationS
       if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
       if (hoverAbortRef.current) hoverAbortRef.current.abort();
     };
-  }, [  hover?.which, hover?.id, hover?.layer, activeMode, secondaryMode, relationSelectedId, instanceSelectedId, selectedId, pastDays, futureDays, anchorDate, canShowHoverData]);
+  }, [  hover?.which, hover?.id, hover?.layer, activeMode, secondaryMode, relationSelectedId, instanceSelectedId, selectedId, pastDays, futureStart, futureEnd, anchorDate, canShowHoverData]);
 
   //Return the hover daily series, loading state, and whether the hover data can be shown
   return { hoverDaily, hoverDailyLoading, canShowHoverData };

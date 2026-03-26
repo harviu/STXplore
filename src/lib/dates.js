@@ -60,13 +60,14 @@ export function sourceRange(pastDays, anchorISO) {
 }
 
 /**
- * Creates a date range from after the included date.
- * @param {number} futureDays - the number of days in the future
+ * Creates a date range after the anchor: [anchor + startOffset, anchor + endOffset) in calendar-day steps.
+ * @param {number} futureStartOffset - days after anchor where the window starts (≥ 0)
+ * @param {number} futureEndOffset - days after anchor where the window ends (exclusive end date via addDays)
  * @param {string} anchorISO - the anchor date as an ISO string
- * @returns {Object} - an object with start and end dates
+ * @returns {{ start: string, end: string }}
  */
-export function targetRange(futureDays, anchorISO) {
-  const start = anchorISO;
-  const end = addDaysISO(anchorISO, futureDays);
+export function targetRange(futureStartOffset, futureEndOffset, anchorISO) {
+  const start = addDaysISO(anchorISO, futureStartOffset);
+  const end = addDaysISO(anchorISO, futureEndOffset);
   return { start, end };
 }

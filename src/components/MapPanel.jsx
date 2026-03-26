@@ -68,7 +68,10 @@ export default function MapPanel({ onSelectionChange, onSummaryChange }) {
 
   //date sliders
   const [pastDays, setPastDays] = useState(90);
-  const [futureDays, setFutureDays] = useState(30);
+  /** Inclusive start / exclusive end as day offsets after anchor (matches targetRange / tensor slice). */
+  const [futureRange, setFutureRange] = useState([0, 30]);
+  const [futureStart, futureEnd] = futureRange;
+  const futureSpanDays = futureEnd - futureStart;
 
   // Source map: show total crime count vs average per day
   const [sourceCountMode, setSourceCountMode] = useState("total"); // "total" | "average"
@@ -95,13 +98,13 @@ export default function MapPanel({ onSelectionChange, onSummaryChange }) {
   const secondaryGeo = BOUNDARY_GEO[secondaryLayer];
 
   //Hover daily series
-  const { hoverDaily, hoverDailyLoading, canShowHoverData } = useHoverDailySeries({hover, activeMode, secondaryMode, relationSelectedId, instanceSelectedId, selectedId, pastDays, futureDays, anchorDate});
+  const { hoverDaily, hoverDailyLoading, canShowHoverData } = useHoverDailySeries({hover, activeMode, secondaryMode, relationSelectedId, instanceSelectedId, selectedId, pastDays, futureStart, futureEnd, anchorDate});
 
   //Model relation counts
   const { counts: relationCounts, loading: relationLoading, error: relationError } = useModelRelationCounts(activeMode, layer, relationSelectedId);
 
   //Instance relation counts
-  const { counts: instanceRelationCounts, loading: instanceRelationLoading, error: instanceRelationError } = useInstanceRelationCounts(activeMode, instanceSelectedId, pastDays, futureDays);
+  const { counts: instanceRelationCounts, loading: instanceRelationLoading, error: instanceRelationError } = useInstanceRelationCounts(activeMode, instanceSelectedId, pastDays, futureStart, futureEnd);
 
   // Relation tab: community-only on both sides; snap right map to Target
   useEffect(() => {
@@ -139,7 +142,10 @@ export default function MapPanel({ onSelectionChange, onSummaryChange }) {
     if (activeMode !== "source" && selectedId) {
       let cancelled = false;
       const ac = new AbortController();
-      api.get4dData( activeMode === "instance" ? pastDays : 90, true, null, futureDays-1 , false, selectedId, { signal: ac.signal }) //future days column is 0 indexed
+      api.get4dData(activeMode === "instance" ? pastDays : 90, true, null, futureEnd, true, selectedId, {
+        signal: ac.signal,
+        d3Start: futureStart,
+      })
       .then((data) => { 
         if (cancelled) return;
         setRelationValues(data);
@@ -154,13 +160,13 @@ export default function MapPanel({ onSelectionChange, onSummaryChange }) {
         ac.abort();
       };
     }
-  }, [activeMode, pastDays, futureDays, selectedId]);
+  }, [activeMode, pastDays, futureStart, futureEnd, selectedId]);
 
   // Instance-level map on source side: 4D array → per-community time-averaged over slider date range.
   const {data: instanceSourceResp, loading: instanceSourceLoading, error: instanceSourceError} = useApi(({ signal }) => {
     if (activeMode !== "instance") return Promise.resolve(null);
-    return api.instanceLevelSource(pastDays, futureDays, { signal });
-  }, [activeMode, pastDays, futureDays]);
+    return api.instanceLevelSource(pastDays, futureStart, futureEnd, { signal });
+  }, [activeMode, pastDays, futureStart, futureEnd]);
 
   //Get Data for Source HeatMap (used when activeMode is "source"; instance mode uses instanceSourceResp)
   const {data: leftTotalsResp, loading: leftTotalsLoading, error: leftTotalsError} = useApi(({ signal }) => {
@@ -201,32 +207,32 @@ export default function MapPanel({ onSelectionChange, onSummaryChange }) {
 
   //Get Data for Actual Heatmap
   const {data: rightTotalsResp, loading: rightTotalsLoading, error: rightTotalsError} = useApi(({ signal }) => {
-      const { start, end } = targetRange(futureDays, anchorDate);
+      const { start, end } = targetRange(futureStart, futureEnd, anchorDate);
       const apiLayer = UI_TO_API_LAYER[secondaryLayer];
       return api.mapTotals(apiLayer, start, end, { signal });
     },
-    [secondaryLayer, anchorDate, futureDays]
+    [secondaryLayer, anchorDate, futureStart, futureEnd]
   );
   const rightCrimeCounts = useMemo(
     () => responseToCounts(rightTotalsResp),
     [rightTotalsResp]
   );
 
-  // When right map shows Actual and "average" mode: show count / futureDays; otherwise raw counts
+  // When right map shows Actual and "average" mode: show count / span; otherwise raw counts
   const rightCountsForMap = useMemo(() => {
     if (rightCrimeCounts == null) return null;
     if (
       secondaryMode === "actual" &&
       targetCountMode === "average" &&
-      futureDays > 0
+      futureSpanDays > 0
     ) {
       const out = {};
       for (const [id, val] of Object.entries(rightCrimeCounts))
-        out[id] = val / futureDays;
+        out[id] = val / futureSpanDays;
       return out;
     }
     return secondaryMode === "actual" ? rightCrimeCounts : null;
-  }, [rightCrimeCounts, secondaryMode, targetCountMode, futureDays]);
+  }, [rightCrimeCounts, secondaryMode, targetCountMode, futureSpanDays]);
 
   // Load dummy crime counts for source mode
   // NOT NEEDED ANYMORE, MAKING SINGLE LINE AND COMMENTING OUT
@@ -253,9 +259,9 @@ export default function MapPanel({ onSelectionChange, onSummaryChange }) {
   const sourceSelection = useMemo(() => makeSelection("source", sourceLayer, sourceSelectedId, pastDays, anchorDate, -pastDays), [sourceLayer, sourceSelectedId, pastDays, anchorDate]);
   const relationSelection = useMemo(() => makeSelection("relation", relationLayer, relationSelectedId, pastDays, anchorDate, -pastDays), [relationLayer, relationSelectedId, pastDays, anchorDate]);
   const instanceSelection = useMemo(() => makeSelection("instance", instanceLayer, instanceSelectedId, pastDays, anchorDate, -pastDays), [instanceLayer, instanceSelectedId, pastDays, anchorDate]);
-  const targetSelection = useMemo(() => makeSelection("target", targetLayer, targetSelectedId, futureDays, anchorDate, futureDays),[targetLayer, targetSelectedId, futureDays, anchorDate]);
-  const actualSelection = useMemo(() => makeSelection("actual", actualLayer, actualSelectedId, futureDays, anchorDate, futureDays),[actualLayer, actualSelectedId, futureDays, anchorDate]);
-  const errorSelection = useMemo(() => makeSelection("error", errorLayer, errorSelectedId, futureDays, anchorDate, futureDays),[errorLayer, errorSelectedId, futureDays, anchorDate]);
+  const targetSelection = useMemo(() => makeSelection("target", targetLayer, targetSelectedId, futureSpanDays, anchorDate, futureEnd),[targetLayer, targetSelectedId, futureSpanDays, futureEnd, anchorDate]);
+  const actualSelection = useMemo(() => makeSelection("actual", actualLayer, actualSelectedId, futureSpanDays, anchorDate, futureEnd),[actualLayer, actualSelectedId, futureSpanDays, futureEnd, anchorDate]);
+  const errorSelection = useMemo(() => makeSelection("error", errorLayer, errorSelectedId, futureSpanDays, anchorDate, futureEnd),[errorLayer, errorSelectedId, futureSpanDays, futureEnd, anchorDate]);
 
   //Chooses what selection should drive the Left map summary
   const leftSelection = activeMode === "source" ? sourceSelection: activeMode === "relation" ? relationSelection : instanceSelection;
@@ -276,10 +282,10 @@ export default function MapPanel({ onSelectionChange, onSummaryChange }) {
   const {data: rightSummary, loading: rightSummaryLoading, error: rightSummaryError} = useApi(({ signal }) => {
       if (!rightSelection) return Promise.resolve(null);
 
-      const { start, end } = targetRange(futureDays, anchorDate);
+      const { start, end } = targetRange(futureStart, futureEnd, anchorDate);
       return api.selectionSummary(rightSelection.layer, rightSelection.id, start, end, { signal });
     },
-    [rightSelection?.mode, rightSelection?.layer, rightSelection?.id, futureDays, anchorDate],
+    [rightSelection?.mode, rightSelection?.layer, rightSelection?.id, futureStart, futureEnd, anchorDate],
     { keepPreviousData: false }
   );
 
@@ -342,7 +348,7 @@ export default function MapPanel({ onSelectionChange, onSummaryChange }) {
     onSummaryChange?.({
       //summaries (split)
       left: {selection: leftSelection, summary: leftSummary, loading: leftSummaryLoading, error: leftSummaryError, range: sourceRange(pastDays, anchorDate), days: pastDays},
-      right: {selection: rightSelection, summary: rightSummary, loading: rightSummaryLoading, error: rightSummaryError, range: targetRange(futureDays, anchorDate), days: futureDays},
+      right: {selection: rightSelection, summary: rightSummary, loading: rightSummaryLoading, error: rightSummaryError, range: targetRange(futureStart, futureEnd, anchorDate), days: futureSpanDays},
     });
   }, [
     leftSelection,
@@ -355,7 +361,9 @@ export default function MapPanel({ onSelectionChange, onSummaryChange }) {
     rightSummary,
     rightSummaryLoading,
     rightSummaryError,
-    futureDays,
+    futureStart,
+    futureEnd,
+    futureSpanDays,
     onSummaryChange,
   ]);
 
@@ -378,7 +386,7 @@ export default function MapPanel({ onSelectionChange, onSummaryChange }) {
   if (maxDataDate) thirtyDaysAgo.setTime(maxDataDate.getTime());
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-  const canShowActualError = maxDataDate && new Date(addDaysISO(anchorDate, futureDays) + "T00:00:00") <= maxDataDate;
+  const canShowActualError = maxDataDate && new Date(addDaysISO(anchorDate, futureEnd) + "T00:00:00") <= maxDataDate;
 
 //Reset to target if invalid actual/error
   useEffect(() => {
@@ -393,7 +401,7 @@ export default function MapPanel({ onSelectionChange, onSummaryChange }) {
       let cancelled = false;
       const ac = new AbortController();
       if (canShowActualError) {
-        api.selectionAllDaily(secondaryLayer, targetRange(futureDays, anchorDate).start, targetRange(futureDays, anchorDate).end, { signal: ac.signal })
+        api.selectionAllDaily(secondaryLayer, targetRange(futureStart, futureEnd, anchorDate).start, targetRange(futureStart, futureEnd, anchorDate).end, { signal: ac.signal })
         .then((data) => {
           if (cancelled) return;
           setFutureCounts(data.daily);
@@ -412,7 +420,7 @@ export default function MapPanel({ onSelectionChange, onSummaryChange }) {
       }
       
     }
-  }, [secondaryMode, secondaryLayer, futureDays, anchorDate, canShowActualError]);
+  }, [secondaryMode, secondaryLayer, futureStart, futureEnd, anchorDate, canShowActualError]);
 
   return (
     <Panel title="Crime Map" fill style={{ minHeight: 0 }}>
@@ -493,7 +501,7 @@ export default function MapPanel({ onSelectionChange, onSummaryChange }) {
               <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                 <strong>Map:</strong>
                 <button onClick={() => setActiveMode("source")} disabled={activeMode === "source"}>
-                  Source
+                  Past
                 </button>
                 <button onClick={() => setActiveMode("instance")} disabled={activeMode === "instance"} style={{fontSize:"0.65rem"}}>
                   Instance <br/> Level
@@ -614,9 +622,13 @@ export default function MapPanel({ onSelectionChange, onSummaryChange }) {
                   </div>
                 </label>
                 <span aria-hidden />
-                <label htmlFor="futureDays" style={{ flex: 1 }}>
+                <label htmlFor="futureRange" style={{ flex: 1 }}>
                   <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, width: "100%", height: "100%" }}>
-                    <span style={{ alignSelf: "center" }}>Target date: {futureDays} days after start <br/>({anchorDate})</span>
+                    <span style={{ alignSelf: "center" }}>
+                      Target window: {addDaysISO(anchorDate, futureStart)} – {addDaysISO(anchorDate, futureEnd - 1)}
+                      <br />
+                      ({futureSpanDays} days; offsets {futureStart}–{futureEnd} from {anchorDate})
+                    </span>
                   </div>
                 </label>
               </div>
@@ -650,14 +662,17 @@ export default function MapPanel({ onSelectionChange, onSummaryChange }) {
                   <span style={{ fontSize: 10, color: "rgb(92, 92, 92)", marginTop: 2 }} />
                 </div>
                 <Slider
-                  id="futureDays"
-                  aria-label="Days after start"
-                  value={futureDays}
-                  onChange={(_e, value) => setFutureDays(value)}
+                  id="futureRange"
+                  aria-label="Target window after anchor date"
+                  value={futureRange}
+                  onChange={(_e, value) => setFutureRange(value)}
                   valueLabelDisplay="auto"
-                  getAriaValueText={(v) => `${v} days from now`}
+                  getAriaValueText={(v) =>
+                    Array.isArray(v) ? `${v[0]}–${v[1]} days after anchor` : `${v} days after anchor`
+                  }
+                  minDistance={1}
                   step={1}
-                  min={1}
+                  min={0}
                   max={30}
                   sx={{
                     width: "100%",
@@ -682,7 +697,7 @@ export default function MapPanel({ onSelectionChange, onSummaryChange }) {
               <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                 <strong>Map:</strong>
                 <button onClick={() => setSecondaryMode("target")} disabled={secondaryMode === "target"}>
-                  Target
+                  Predicted
                 </button>
                 <div style={{ display: "flex", gap: 8, alignItems: "center", opacity: canShowActualError ? 1 : 0.5 }}>
                   <button onClick={() => setSecondaryMode("actual")} disabled={secondaryMode === "actual" || !canShowActualError}>

@@ -3,7 +3,7 @@ import { api } from "../lib/api.js";
 import { RELATION_TARGET_LEN, targetsToCountsByCommunityId } from "../lib/relationTargets.js";
 
 /** Instance-level relation map counts when left tab is "instance" and a community is selected. */
-export function useInstanceRelationCounts(activeMode, instanceSelectedId, pastDays, futureDays) {
+export function useInstanceRelationCounts(activeMode, instanceSelectedId, pastDays, futureStart, futureEnd) {
   const [counts, setCounts] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -44,7 +44,7 @@ export function useInstanceRelationCounts(activeMode, instanceSelectedId, pastDa
 
     //Fetch the instance relation counts
     api
-      .instanceLevelRelation(sourceIdx, pastDays, futureDays, { signal: ac.signal })
+      .instanceLevelRelation(sourceIdx, pastDays, futureStart, futureEnd, { signal: ac.signal })
       .then((data) => {
         if (cancelled) return;
         //Format the data
@@ -75,7 +75,7 @@ export function useInstanceRelationCounts(activeMode, instanceSelectedId, pastDa
       //Abort the abort controller
       ac.abort();
     };
-  }, [activeMode, instanceSelectedId, pastDays, futureDays]);
+  }, [activeMode, instanceSelectedId, pastDays, futureStart, futureEnd]);
 
   //Return the counts, loading state, and error state
   return { counts, loading, error };
