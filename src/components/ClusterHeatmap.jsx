@@ -138,7 +138,7 @@ export default function ClusterHeatmap({ data, selectedId, isRelationMap = false
         });
         const root = getClusterOrder(matrix, dates);
         const hierarchy = d3.hierarchy(root);
-        return [[hierarchy.leaves().map(d => d.data.id)], root];
+        return [hierarchy.leaves().map(d => d.data.id), root];
     }, [heatmapData, dateCluster, isFuture, isRelationMap]);
 
     useEffect(() => {
@@ -176,7 +176,6 @@ export default function ClusterHeatmap({ data, selectedId, isRelationMap = false
                 const rootNode = clusteredIds[1];
                 const root = d3.hierarchy(rootNode);
                 const clusterLayout = d3.cluster().size([height, margin.left - 60]);
-                
                 clusterLayout(root);
                 root.leaves().forEach(leaf => {leaf.x = yScale(leaf.data.id) + yScale.bandwidth() / 2; });
                 root.eachAfter(node => {
@@ -200,6 +199,30 @@ export default function ClusterHeatmap({ data, selectedId, isRelationMap = false
                     .style("stroke", "#888")
                     .style("stroke-width", 1);
 
+            }
+            if (dateCluster) {
+                const rootNode = clusteredDates[1];
+                const root = d3.hierarchy(rootNode);
+                const clusterLayout = d3.cluster().size([width, margin.top -30]);
+                clusterLayout(root);
+                root.leaves().forEach(leaf => {leaf.x = xScale(leaf.data.id) + xScale.bandwidth() / 2; });
+                root.eachAfter(node => {
+                    if (node.children) {
+                        node.x = d3.mean(node.children, d => d.x);
+                    }
+                });
+                const linkGenerator = (d) => {
+                    const startX = d.source.x;
+                    const startY = d.source.y - margin.top + 25;
+                    const endX = d.target.x;
+                    const endY = d.target.y - margin.top + 25;
+                    return `M${startX},${startY}H${endX}V${endY}`;
+                };
+                svg.append("g").selectAll("path").data(root.links()).join("path")
+                    .attr("d", linkGenerator)
+                    .style("fill", "none")
+                    .style("stroke", "#888")
+                    .style("stroke-width", 1);
             }
             const maxCount = d3.max(heatmapData, d => d.count);
             const colorScale = d3.scaleSequential().interpolator(interpolate).domain([maxCount > 0 ? 0 : 0, maxCount || 1]);
