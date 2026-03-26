@@ -142,9 +142,8 @@ export default function MapPanel({ onSelectionChange, onSummaryChange }) {
     if (activeMode !== "source" && selectedId) {
       let cancelled = false;
       const ac = new AbortController();
-      api.get4dData(activeMode === "instance" ? pastDays : 90, true, null, futureEnd, true, selectedId, {
+      api.get4dData(activeMode === "instance" ? pastDays : 90, true, null, futureEnd-1, false, selectedId, futureStart, {
         signal: ac.signal,
-        d3Start: futureStart,
       })
       .then((data) => { 
         if (cancelled) return;
@@ -670,7 +669,6 @@ export default function MapPanel({ onSelectionChange, onSummaryChange }) {
                   getAriaValueText={(v) =>
                     Array.isArray(v) ? `${v[0]}–${v[1]} days after anchor` : `${v} days after anchor`
                   }
-                  minDistance={1}
                   step={1}
                   min={0}
                   max={30}
