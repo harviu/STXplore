@@ -1,6 +1,7 @@
 import { isoRangeDays } from "./dates.js";
 
-/**
+/**Fills in missing daily counts between start and end dates.
+ * 
  * @param {string} start YYYY-MM-DD
  * @param {string} end YYYY-MM-DD
  * @param {{ date: string, count: number }[] | null | undefined} rows

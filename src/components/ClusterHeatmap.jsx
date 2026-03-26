@@ -11,15 +11,38 @@ const getDistance = (a, b) => {
 
 //clustering function
 const getClusterOrder = (matrix, ids) => {
-    if (matrix.length <= 1) return ids;
-    let remaining = [...matrix.map((data, i) => ({ data, id: ids[i] }))];
-    const orderedIds = [remaining.shift().id]; // start with first id
-    while (remaining.length > 0) {
-        const lastData = matrix[ids.indexOf(orderedIds[orderedIds.length - 1])];
-        remaining.sort((a, b) => getDistance(lastData, a.data) - getDistance(lastData, b.data)); //sort by distance
-        orderedIds.push(remaining.shift().id); // add closest next
+    if (matrix.length < 1) return null; //handle empty data
+
+    let nodes = matrix.map((data, i) => ({ id: ids[i], data: data, isLeaf: true })); //initially all are their own cluster
+    while (nodes.length > 1) {
+        let minDist = Infinity;
+        let toMerge = [0, 0];
+        //find closest pair of clusters
+        for (let i = 0; i < nodes.length; i++) {
+            for (let j = i + 1; j < nodes.length; j++) {
+                const dist = getDistance(nodes[i].data, nodes[j].data);
+                if (dist < minDist) {
+                    minDist = dist;
+                    toMerge = [i, j];
+                }
+            }
+        }
+        const [i, j] = toMerge;
+        const nodeA = nodes[i];
+        const nodeB = nodes[j];
+        //Create new merged cluster
+        const newNode = {
+            id: `${nodeA.id}-${nodeB.id}`,
+            data: nodeA.data.map((val, idx) => (val + (nodeB.data[idx] || 0)) / 2), 
+            children: [nodeA, nodeB]
+        };
+        //Remove merged nodes and add new cluster
+        nodes = nodes.filter((_, idx) => idx !== i && idx !== j);
+        nodes.push(newNode);
     }
-    return orderedIds;
+
+    return nodes[0];
+
 };
 
 /**
@@ -96,8 +119,9 @@ export default function ClusterHeatmap({ data, selectedId, isRelationMap = false
                 return entry ? entry.count : 0;
             });
         });
-        return getClusterOrder(matrix, ids);
-
+        const root = getClusterOrder(matrix, ids);
+        const hierarchy = d3.hierarchy(root);
+        return [hierarchy.leaves().map(d => d.data.id), root];
     }, [heatmapData, isSelected, isRelationMap]);
 
     const clusteredDates = useMemo(() => {
@@ -112,7 +136,9 @@ export default function ClusterHeatmap({ data, selectedId, isRelationMap = false
                 return entry ? entry.count : 0;
             });
         });
-        return getClusterOrder(matrix, dates);
+        const root = getClusterOrder(matrix, dates);
+        const hierarchy = d3.hierarchy(root);
+        return [[hierarchy.leaves().map(d => d.data.id)], root];
     }, [heatmapData, dateCluster, isFuture, isRelationMap]);
 
     useEffect(() => {
@@ -134,7 +160,7 @@ export default function ClusterHeatmap({ data, selectedId, isRelationMap = false
                 `${isRelationMap ? "Relation" : "Count"}: ${d.count}`; 
 
             d3.select(svgRef.current).selectAll("*").remove();
-            const margin = { top: isRelationMap ? 20 : 40, right: 30, bottom: 30, left: 50 };
+            const margin = { top: dateCluster ? 140 : 40, right: 30, bottom: 30, left: isSelected ? 150 : 50 };
             const width = containerWidth - margin.left - margin.right;
             const height = 1200 - margin.top - margin.bottom;
             const svg = d3.select(svgRef.current)
@@ -142,10 +168,39 @@ export default function ClusterHeatmap({ data, selectedId, isRelationMap = false
                 .attr("height", height + margin.top + margin.bottom)
                 .append("g")
                 .attr("transform", `translate(${margin.left},${margin.top})`);
-            const xScale = d3.scaleBand().domain(clusteredDates).range([isRelationMap ? 0 : 10, width]).padding(0.12);
+            const xScale = d3.scaleBand().domain(dateCluster ? clusteredDates[0] : clusteredDates).range([isRelationMap ? 0 : 10, width]).padding(0.12);
             svg.append("g").style("font-size", "11px").style("fill", "#b0b0b0").call(d3.axisBottom(xScale).tickSize(0).tickFormat(xTickFormat)).select(".domain").remove();
-            const yScale = d3.scaleBand().domain(clusteredIds).range([10, height]).padding(0.12);
+            const yScale = d3.scaleBand().domain(isSelected ? clusteredIds[0] : clusteredIds).range([10, height]).padding(0.12);
             svg.append("g").style("font-size", "11px").style("fill", "#b0b0b0").call(d3.axisLeft(yScale).tickSize(0).tickFormat(d => isRelationMap ? d+1 : d)).select(".domain").remove();
+            if (isSelected) {
+                const rootNode = clusteredIds[1];
+                const root = d3.hierarchy(rootNode);
+                const clusterLayout = d3.cluster().size([height, margin.left - 60]);
+                
+                clusterLayout(root);
+                root.leaves().forEach(leaf => {leaf.x = yScale(leaf.data.id) + yScale.bandwidth() / 2; });
+                root.eachAfter(node => {
+                    if (node.children) {
+                        node.x = d3.mean(node.children, d => d.x);
+                    }
+                });
+                // A custom generator for "elbow" or square connections
+                const linkGenerator = (d) => {
+                    const startX = d.source.y - margin.left + 40;
+                    const startY = d.source.x;
+                    const endX = d.target.y - margin.left + 40;
+                    const endY = d.target.x;
+
+                    // Move to source, draw horizontal to target's x, then vertical to target's y
+                    return `M${startX},${startY}V${endY}H${endX}`;
+                };
+                svg.append("g").selectAll("path").data(root.links()).join("path")
+                    .attr("d", linkGenerator)
+                    .style("fill", "none")
+                    .style("stroke", "#888")
+                    .style("stroke-width", 1);
+
+            }
             const maxCount = d3.max(heatmapData, d => d.count);
             const colorScale = d3.scaleSequential().interpolator(interpolate).domain([maxCount > 0 ? 0 : 0, maxCount || 1]);
             const tooltip = d3.select(divRef.current);
@@ -182,7 +237,7 @@ export default function ClusterHeatmap({ data, selectedId, isRelationMap = false
                 .on("mouseleave", mouseleave);
             svg.append("text")
                 .attr("x", width / 2)
-                .attr("y",  isRelationMap ? 0 : -10 )
+                .attr("y", -margin.top + 20)
                 .style("text-anchor", "middle")
                 .style("font-size", "13px")
                 .style("fill", "#e0e0e0")
@@ -191,7 +246,7 @@ export default function ClusterHeatmap({ data, selectedId, isRelationMap = false
             svg.append("text")
                 .attr("transform", "rotate(-90)")
                 .attr("x", -height / 2)
-                .attr("y", -20)
+                .attr("y", -margin.left +30)
                 .style("text-anchor", "middle")
                 .style("font-size", "13px")
                 .style("fill", "#e0e0e0")
