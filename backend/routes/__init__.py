@@ -8,6 +8,7 @@ from backend.routes.modelLevelRelation import router as model_level_router
 from backend.routes.selectionAllDaily import router as selectionAllDaily_router
 from backend.routes.instanceLevelRelation import router as instance_level_router
 from backend.routes.data4d import router as data4d_router
+from backend.routes.predictions import router as predictions_router
 routers = [
     health_router,
     count_router,
@@ -19,4 +20,5 @@ routers = [
     model_level_router,
     instance_level_router,
     data4d_router,
+    predictions_router,
 ]
