@@ -79,7 +79,6 @@ export default function ClusterHeatmap({ data, selectedId, isRelationMap = false
 
     //2D array of counts for each community and day, ensuring day is a num
     const heatmapData = useMemo(() => {
-        console.log(data);
         if(isRelationMap){
             if (!data) return;
             return data.flatMap((community, cid) => 

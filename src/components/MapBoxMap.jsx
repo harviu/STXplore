@@ -431,7 +431,7 @@ export default function MapBoxMap({
       text += ` - ${count} relation`;
     }
     onHoverRef.current({ x, y, text, id, layer: layerRef.current });
-  }, [crimeCounts]);
+  }, [crimeCounts, loading]);
 
   //Make sure user can use Mapbox otherswise show message to add token in .env file. This should be for devs only, add a permanent token for production use.
   const token = getMapboxToken().trim();

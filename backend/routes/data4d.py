@@ -26,9 +26,10 @@ def get_data4d(
         lo = int(d3_start) if d3_start is not None else 0
         sliced = loadedArray[:s1, s2, lo:s3, s4]
     elif b1:
-        sliced = loadedArray[:s1, s2, s3, s4]
+        sliced = loadedArray[:s1, s2, s3-1, s4]
     elif b3:
-        sliced = loadedArray[s1, s2, :s3, s4]
+        lo = int(d3_start) if d3_start is not None else 0
+        sliced = loadedArray[s1, s2, lo:s3, s4]
     else:
         sliced = loadedArray[s1, s2, s3, s4]
 

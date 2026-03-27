@@ -16,6 +16,7 @@ import { createTheme, ThemeProvider } from "@mui/material/styles";
 import { addDaysISO, sourceRange, targetRange, todayISO } from "../lib/dates.js";
 import { responseToCounts } from "../lib/crimeAggregates.js";
 import { initialMapFaces, mapFacesReducer } from "../lib/mapFacesReducer.js";
+import { active } from "d3";
 
 const RTL_THEME = createTheme({ direction: "rtl" });
 
@@ -421,6 +422,11 @@ export default function MapPanel({ onSelectionChange, onSummaryChange }) {
     }
   }, [secondaryMode, secondaryLayer, futureStart, futureEnd, anchorDate, canShowActualError]);
 
+  const isLoadingLeft = activeMode === "source" 
+    ? leftTotalsLoading 
+    : activeMode === "relation" 
+        ? relationLoading 
+        : (instanceRelationLoading || instanceSourceLoading);
   return (
     <Panel title="Crime Map" fill style={{ minHeight: 0 }}>
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", flex: "1 1 auto", minHeight: 0 }}>
@@ -810,7 +816,7 @@ export default function MapPanel({ onSelectionChange, onSummaryChange }) {
                   />
                 </div>
               {/* Tooltip */}
-              {hover && (
+              {hover && (hover.which === "right" ? !rightTotalsLoading : true) && (hover.which ==="left" ? !isLoadingLeft : true) && (
                 <div
                   style={{position: "fixed", left: hover.x + 12, top: hover.y + 12, background: "rgba(0,0,0,0.85)", color: "white", padding: "8px 10px", borderRadius: 6, fontSize: 12, pointerEvents: "none", zIndex: 9999, width: "420px", maxWidth: "calc(100vw - 24px)"}}
                 >
@@ -821,10 +827,10 @@ export default function MapPanel({ onSelectionChange, onSummaryChange }) {
                       overflow: "hidden",
                       textOverflow: "ellipsis",
                   }}
-                >
-                  {hover.text}
-                </div>
-                {canShowHoverData && (
+                  >
+                    {hover.text}
+                  </div>
+                  {canShowHoverData && (
                     <>
                       {hoverDailyLoading && (
                         <div style={{ marginTop: 6, opacity: 0.75 }}>Loading...</div>
