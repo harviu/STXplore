@@ -664,7 +664,14 @@ export default function MapPanel({ onSelectionChange, onSummaryChange }) {
                   id="futureRange"
                   aria-label="Target window after anchor date"
                   value={futureRange}
-                  onChange={(_e, value) => setFutureRange(value)}
+                  onChange={(_e, value) => {
+                    // Ensure the two thumbs are not the same
+                    if (value[0] === value[1]) {
+                      if (value[1] === 30) value[0] = 29;
+                      else value[1] = value[0] + 1;
+                    }
+                    setFutureRange(value);
+                  }}
                   valueLabelDisplay="auto"
                   getAriaValueText={(v) =>
                     Array.isArray(v) ? `${v[0]}–${v[1]} days after anchor` : `${v} days after anchor`
