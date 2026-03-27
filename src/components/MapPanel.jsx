@@ -279,6 +279,12 @@ export default function MapPanel({ onSelectionChange, onSummaryChange }) {
     { keepPreviousData: false }
   );
 
+  const {data: leftDailyResp} = useApi(({ signal }) => {
+    if (!leftSelection) return Promise.resolve(null);
+    const { start, end } = sourceRange(pastDays, anchorDate);
+    return api.selectionDaily(leftSelection.layer, leftSelection.id, start, end, { signal });
+  }, [leftSelection?.mode, leftSelection?.layer, leftSelection?.id, pastDays, anchorDate], { keepPreviousData: false });
+
   const {data: rightSummary, loading: rightSummaryLoading, error: rightSummaryError} = useApi(({ signal }) => {
       if (!rightSelection) return Promise.resolve(null);
 
@@ -347,7 +353,7 @@ export default function MapPanel({ onSelectionChange, onSummaryChange }) {
   useEffect(() => {
     onSummaryChange?.({
       //summaries (split)
-      left: {selection: leftSelection, summary: leftSummary, loading: leftSummaryLoading, error: leftSummaryError, range: sourceRange(pastDays, anchorDate), days: pastDays},
+      left: {selection: leftSelection, summary: leftSummary, loading: leftSummaryLoading, error: leftSummaryError, range: sourceRange(pastDays, anchorDate), days: pastDays, daily: leftDailyResp?.daily ?? null},
       right: {selection: rightSelection, summary: rightSummary, loading: rightSummaryLoading, error: rightSummaryError, range: targetRange(futureStart, futureEnd, anchorDate), days: futureSpanDays, offset: futureStart},
     });
   }, [
@@ -355,6 +361,7 @@ export default function MapPanel({ onSelectionChange, onSummaryChange }) {
     leftSummary,
     leftSummaryLoading,
     leftSummaryError,
+    leftDailyResp,
     pastDays,
 
     rightSelection,

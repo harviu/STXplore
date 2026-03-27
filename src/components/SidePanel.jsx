@@ -1,4 +1,6 @@
 import Panel from "./Panel.jsx";
+import TooltipMap from "./tooltipMap.jsx";
+import { fillDaily } from "../lib/crimeAggregates.js"
 
 // convert mode to a title
 function titleForMode(mode) {
@@ -40,6 +42,7 @@ function SelectionBlock({ heading, payload, showApi = true, isLeft }) {
   const loading = !!payload?.loading;
   const error = payload?.error ?? null;
   const range = payload?.range ?? null;
+  const daily = payload?.daily ?? null;
 
   return (
     <div>
@@ -139,6 +142,18 @@ function SelectionBlock({ heading, payload, showApi = true, isLeft }) {
               ) : null}
             </>
           ) : null}
+          {isLeft && daily && range?.start && range?.end && (
+            <div style={{ marginTop: 12 }}>
+              <strong style={{ fontSize: 13 }}>Daily crime counts:</strong>
+              <div style={{ marginTop: 6 }}>
+                <TooltipMap
+                  days={fillDaily(range.start, range.end, daily)}
+                  isRelationMap={false}
+                  height={14}
+                />
+              </div>
+            </div>
+          )}
         </>
       )}
     </div>
