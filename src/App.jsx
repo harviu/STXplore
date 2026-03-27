@@ -49,7 +49,7 @@ export default function App() {
   });
   const [summaries, setSummaries] = useState({ 
     left: { selection: null, summary: null, loading: false, error: null, range: null, days: null },
-    right: { selection: null, summary: null, loading: false, error: null, range: null, days: null },
+    right: { selection: null, summary: null, loading: false, error: null, range: null, days: null, offset: null },
   });
 
   const activeSelection = state[state.activeMode];
@@ -109,12 +109,8 @@ export default function App() {
             selection={activeSelection}
             inactiveMode={state.secondaryMode}
             inactiveSelection={secondarySelection}
-            activeSummary={summaries.left?.summary}
-            inactiveSummary={summaries.right?.summary}
-            activeLoading={summaries.left?.loading}
-            inactiveLoading={summaries.right?.loading}
-            pastDays={summaries.left?.days}
-            futureDays={summaries.right?.days}
+            left={summaries.left}
+            right={summaries.right}
             heatData={state.heatData}
             targetHeatData={state.targetHeatData}
           />

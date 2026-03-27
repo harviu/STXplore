@@ -61,17 +61,13 @@ function capitalizeFirst(string) {
  * @param {Object} props.selection - The current selection object containing details about the active selected boundary.
  * @param {string} props.inactiveMode - The mode of the inactive selection (actual, target, error).
  * @param {Object} props.inactiveSelection - The current inactive selection object containing details about the inactive selected boundary.
- * @param {Object} props.activeSummary - The summary data for the active selection, including top crime types and counts.
- * @param {Object} props.inactiveSummary - The summary data for the inactive selection, including top crime types and counts.
- * @param {number} props.pastDays - The number of past days included in the active selection's time range.
- * @param {number} props.futureDays - The number of future days included in the inactive selection's time range.
+ * @param {Object} props.left - The summary data for the active selection, including loading state and error information.
+ * @param {Object} props.right - The summary data for the inactive selection, including loading state and error information.
  * @param {Object} props.heatData - The data for the past map cluster heatmap.
  * @param {Object} props.targetHeatData - The data for the future map cluster heatmap.
- * @param {boolean} props.activeLoading - Indicates if the active selection's summary data is currently loading.
- * @param {boolean} props.inactiveLoading - Indicates if the inactive selection's summary data is currently loading.
  * @returns {JSX.Element} The rendered DashboardPanel component.
  */
-export default function DashboardPanel({ mode, selection, inactiveMode, inactiveSelection, activeSummary, inactiveSummary, pastDays, futureDays, heatData, targetHeatData, activeLoading, inactiveLoading }) {
+export default function DashboardPanel({ mode, selection, inactiveMode, inactiveSelection, left, right, heatData, targetHeatData }) {
   const barsRef = useRef();
   const labelsRef = useRef();
   const countsRef = useRef();
@@ -91,13 +87,13 @@ export default function DashboardPanel({ mode, selection, inactiveMode, inactive
   const hasActive = Boolean(selection);
   const hasInactive = Boolean(inactiveSelection);
 
-  const summary = activeSummary?.top_types ?? null;
-  const actual = inactiveSummary?.top_types ?? null;
-  const averageSummary = (activeSummary?.top_types && pastDays > 0)
-      ? activeSummary?.top_types?.map((t) => ({ ...t, count: t.count / pastDays }))
+  const summary = left?.summary?.top_types ?? null;
+  const actual = right?.summary?.top_types ?? null;
+  const averageSummary = (left?.summary?.top_types && left?.days > 0)
+      ? left?.summary?.top_types?.map((t) => ({ ...t, count: t.count / left?.days }))
       : null;
-  const averageActual = (inactiveSummary?.top_types && futureDays > 0)
-      ? inactiveSummary?.top_types?.map((t) => ({ ...t, count: t.count / futureDays }))
+  const averageActual = (right?.summary?.top_types && right?.days > 0)
+      ? right?.summary?.top_types?.map((t) => ({ ...t, count: t.count / right?.days }))
       : null;
 
   //maps the source data to the source map graph in source map stats below
@@ -140,7 +136,7 @@ export default function DashboardPanel({ mode, selection, inactiveMode, inactive
                     <strong>{capitalizeFirst(selection.mode)}:</strong> Current stats for{" "}
                     <strong>{selection.name}</strong>.
                     </p>
-                    {activeLoading ? (
+                    {left?.loading ? (
                       <p style={{ opacity: 0.6, marginTop: 8 }}>Loading...</p>
                     ) : (
                       <>
@@ -199,7 +195,7 @@ export default function DashboardPanel({ mode, selection, inactiveMode, inactive
                     <strong>{capitalizeFirst(inactiveSelection.mode)}</strong> stats for{" "}
                     <strong>{inactiveSelection.name}</strong>.
                   </p>
-                  {inactiveLoading ? (
+                  {right?.loading ? (
                     <p style={{ opacity: 0.6, marginTop: 8 }}>Loading...</p>
                   ) : (
                     <>
@@ -249,7 +245,7 @@ export default function DashboardPanel({ mode, selection, inactiveMode, inactive
         {heatData && (selection?.id || mode === "source") && <p style={{ opacity: 1, margin: 0, fill: "white" }}> Past map cluster heatmap </p>}
         {heatData && (selection?.id || mode === "source") && <ClusterHeatmap data={heatData} selectedId={selection?.id || null} isRelationMap= {mode !== "source"} />}
         {targetHeatData && inactiveMode === "actual" && <p style={{ opacity: 1, margin: 0, fill: "white" }}> Future map cluster heatmap </p>}
-        {targetHeatData && inactiveMode === "actual" && <ClusterHeatmap data={targetHeatData} selectedId={inactiveSelection?.id || null} isRelationMap= {false} isFuture={true} />}
+        {targetHeatData && inactiveMode === "actual" && <ClusterHeatmap data={targetHeatData} selectedId={inactiveSelection?.id || null} isRelationMap= {false} isFuture={true} offset={right?.offset}/>}
       </div>
     </Panel>
   );

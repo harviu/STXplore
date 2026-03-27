@@ -54,9 +54,10 @@ const getClusterOrder = (matrix, ids) => {
  * @param {string|number|null} props.selectedId Currently selected community ID to highlight (1-based for relation map, numeric for source/target). Null if no selection.
  * @param {boolean} [props.isRelationMap=false] Whether this heatmap is for relation data (true) or source/target data (false). Affects color scheme and formatting.
  * @param {boolean} [props.isFuture=false] Whether the date axis represents future days (true) or past days (false). Affects date sorting and axis label.
+ * @param {number} [props.offset=0] Offset for the date axis.
  * @returns {JSX.Element}
  */
-export default function ClusterHeatmap({ data, selectedId, isRelationMap = false, isFuture = false }) {
+export default function ClusterHeatmap({ data, selectedId, isRelationMap = false, isFuture = false, offset = 0 }) {
     const svgRef = useRef(null);
     const divRef = useRef(null);
     const [containerWidth, setContainerWidth] = useState(document.documentElement.clientWidth);
@@ -78,6 +79,7 @@ export default function ClusterHeatmap({ data, selectedId, isRelationMap = false
 
     //2D array of counts for each community and day, ensuring day is a num
     const heatmapData = useMemo(() => {
+        console.log(data);
         if(isRelationMap){
             if (!data) return;
             return data.flatMap((community, cid) => 
@@ -127,7 +129,7 @@ export default function ClusterHeatmap({ data, selectedId, isRelationMap = false
     const clusteredDates = useMemo(() => {
         if (!heatmapData || heatmapData.length === 0) return [];
         const ids = Array.from(new Set(heatmapData.map(d => d.id))).sort((a, b) => a - b);
-        const dates = Array.from(new Set(heatmapData.map(d => d.date))).sort((a,b) => isFuture ? d3.ascending(a,b) : d3.ascending(b,a));
+        const dates = Array.from(new Set(heatmapData.map(d => d.date))).sort((a,b) => d3.ascending(b,a));
         if (isRelationMap) dates.sort((a,b) => d3.ascending(Number(a), Number(b)));
         if(!dateCluster) return dates; //dont cluster
         const matrix = dates.map(date => {
@@ -147,7 +149,10 @@ export default function ClusterHeatmap({ data, selectedId, isRelationMap = false
                 selectedId !== null &&
                 String(isRelationMap ? d.id + 1 : Number(d.id)) === String(selectedId);
 
-            const xTickFormat = isRelationMap
+            const xTickFormat = 
+            isFuture && isRelationMap
+                ? (d) => d+ 1 + offset
+                : isFuture ? (d) => Math.abs(Math.round((d3.min(heatmapData.map(d => new Date(d.date).getTime())) - new Date(d).getTime()) / (1000 * 60 * 60 * 24)))+1+offset : isRelationMap
                 ? (d) => d+ 1
                 : (d) => Math.round((d3.max(heatmapData.map(d => new Date(d.date).getTime())) - new Date(d).getTime()) / (1000 * 60 * 60 * 24))+1;
 

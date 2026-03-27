@@ -142,7 +142,7 @@ export default function MapPanel({ onSelectionChange, onSummaryChange }) {
     if (activeMode !== "source" && selectedId) {
       let cancelled = false;
       const ac = new AbortController();
-      api.get4dData(activeMode === "instance" ? pastDays : 90, true, null, futureEnd-1, false, selectedId, futureStart, {
+      api.get4dData(activeMode === "instance" ? pastDays : 90, true, null, futureEnd, false, selectedId, futureStart, {
         signal: ac.signal,
       })
       .then((data) => { 
@@ -347,7 +347,7 @@ export default function MapPanel({ onSelectionChange, onSummaryChange }) {
     onSummaryChange?.({
       //summaries (split)
       left: {selection: leftSelection, summary: leftSummary, loading: leftSummaryLoading, error: leftSummaryError, range: sourceRange(pastDays, anchorDate), days: pastDays},
-      right: {selection: rightSelection, summary: rightSummary, loading: rightSummaryLoading, error: rightSummaryError, range: targetRange(futureStart, futureEnd, anchorDate), days: futureSpanDays},
+      right: {selection: rightSelection, summary: rightSummary, loading: rightSummaryLoading, error: rightSummaryError, range: targetRange(futureStart, futureEnd, anchorDate), days: futureSpanDays, offset: futureStart},
     });
   }, [
     leftSelection,
