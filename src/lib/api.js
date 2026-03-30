@@ -40,11 +40,25 @@ export const api = {
       opts
     ),
 
-  mapPredictions: (layer, start, end, opts) =>
+  mapCountsPivot: (start, end, opts) =>
     request(
-      `/api/map/predictions?layer=${encodeURIComponent(layer)}&start=${encodeURIComponent(
-        start
-      )}&end=${encodeURIComponent(end)}`,
+      `/api/map/counts/pivot?start=${encodeURIComponent(start)}&end=${encodeURIComponent(end)}`,
+      opts
+    ),
+
+  predictionByDate: (date, model, opts) =>
+    request(
+      `/api/predictions/by-date?date=${encodeURIComponent(date)}&model=${encodeURIComponent(
+        model
+      )}`,
+      opts
+    ),
+
+  mapPredictions: (layer, date, model, opts) =>
+    request(
+      `/api/map/predictions?layer=${encodeURIComponent(layer)}&date=${encodeURIComponent(
+        date
+      )}&model=${encodeURIComponent(model)}`,
       opts
     ),
 
