@@ -46,6 +46,8 @@ export const api = {
       opts
     ),
 
+  predictionAnchorBounds: (opts) => request("/api/predictions/anchor-bounds", opts),
+
   predictionByDate: (date, model, opts) =>
     request(
       `/api/predictions/by-date?date=${encodeURIComponent(date)}&model=${encodeURIComponent(

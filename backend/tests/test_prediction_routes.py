@@ -5,7 +5,21 @@ import numpy as np
 from fastapi import HTTPException
 
 from backend.prediction.schemas import MapPredictionResult, PredictionResult
-from backend.routes.predictions import map_predictions, predictions_by_date
+from backend.routes.predictions import map_predictions, predictions_anchor_bounds, predictions_by_date
+
+
+def test_predictions_anchor_bounds():
+    with patch(
+        "backend.routes.predictions.get_available_date_range",
+        return_value=(date(2001, 1, 1), date(2024, 12, 31), "csv_pivot"),
+    ):
+        out = predictions_anchor_bounds()
+
+    assert out["data_min"] == "2001-01-01"
+    assert out["data_max"] == "2024-12-31"
+    assert out["anchor_min"] == "2001-03-31"
+    assert out["anchor_max"] == "2024-12-31"
+    assert out["seq_len"] == 90
 
 
 def test_predictions_by_date_shape():
@@ -19,7 +33,7 @@ def test_predictions_by_date_shape():
     )
 
     with patch("backend.routes.predictions.prediction_service.predict_by_date", return_value=(pred, "db")):
-        out = predictions_by_date(date="2025-01-31", model="GRU", db=None)
+        out = predictions_by_date(date="2025-01-31", model="GRU")
 
     assert out["model"] == "GRU"
     assert out["date"] == "2025-01-31"
@@ -30,7 +44,7 @@ def test_predictions_by_date_shape():
 
 def test_map_predictions_rejects_non_community_layer():
     try:
-        map_predictions(layer="beat", date="2025-01-31", model="GRU", db=None)
+        map_predictions(layer="beat", date="2025-01-31", model="GRU")
         assert False, "Expected HTTPException"
     except HTTPException as exc:
         assert exc.status_code == 400
@@ -46,7 +60,7 @@ def test_map_predictions_shape():
     )
 
     with patch("backend.routes.predictions.prediction_service.map_prediction", return_value=(mp, "csv")):
-        out = map_predictions(layer="community_area", date="2025-01-31", model="GRU", db=None)
+        out = map_predictions(layer="community_area", date="2025-01-31", model="GRU")
 
     assert out["layer"] == "community_area"
     assert out["start"] == "2025-02-01"

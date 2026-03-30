@@ -13,7 +13,7 @@ import { useInstanceRelationCounts } from "../hooks/useInstanceRelationCounts.js
 import TooltipMap from "./tooltipMap.jsx";
 import Slider from "@mui/material/Slider";
 import { createTheme, ThemeProvider } from "@mui/material/styles";
-import { addDaysISO, sourceRange, targetRange, todayISO } from "../lib/dates.js";
+import { addDaysISO, clampDateIso, sourceRange, targetRange, todayISO } from "../lib/dates.js";
 import { responseToCounts } from "../lib/crimeAggregates.js";
 import { initialMapFaces, mapFacesReducer } from "../lib/mapFacesReducer.js";
 import { active } from "d3";
@@ -21,6 +21,9 @@ import { active } from "d3";
 const RTL_THEME = createTheme({ direction: "rtl" });
 
 const UI_TO_API_LAYER = { community: "community_area", beat: "beat", district: "district" };
+
+/** Folder names under `models/` with checkpoints (see backend prediction API). */
+const FORECAST_MODEL_OPTIONS = ["Transformer", "iTransformer"];
 
 /**
  * The MapPanel component is responsible for rendering the main map interface and managing the state of the selected boundaries on both the left and right maps. 
@@ -78,6 +81,9 @@ export default function MapPanel({ onSelectionChange, onSummaryChange }) {
   const [sourceCountMode, setSourceCountMode] = useState("total"); // "total" | "average"
   // Target/Actual map: show total crime count vs average per day
   const [targetCountMode, setTargetCountMode] = useState("total"); // "total" | "average"
+
+  // Target map + Community: ML forecast loads automatically (API sums full model horizon)
+  const [forecastModel, setForecastModel] = useState(FORECAST_MODEL_OPTIONS[0]);
 
   // Anchor date — defaults to latest date in dataset once loaded; user can pick another via calendar
   const [anchorDate, setAnchorDate] = useState(() => todayISO());
@@ -218,8 +224,48 @@ export default function MapPanel({ onSelectionChange, onSummaryChange }) {
     [rightTotalsResp]
   );
 
+  const targetForecastEligible =
+    secondaryMode === "target" && secondaryLayer === "community";
+
+  const wantPredBounds = targetForecastEligible;
+
+  const { data: predBounds, loading: predBoundsLoading, error: predBoundsError } = useApi(
+    ({ signal }) => (wantPredBounds ? api.predictionAnchorBounds({ signal }) : Promise.resolve(null)),
+    [wantPredBounds]
+  );
+
+  const anchorDay = anchorDate?.slice(0, 10) ?? "";
+
+  const forecastAnchorDate = useMemo(() => {
+    if (!predBounds?.anchor_min || !predBounds?.anchor_max) return anchorDay;
+    return clampDateIso(anchorDay, predBounds.anchor_min, predBounds.anchor_max);
+  }, [anchorDay, predBounds]);
+
+  const targetForecastReady =
+    targetForecastEligible &&
+    predBounds != null &&
+    Boolean(predBounds.anchor_min) &&
+    Boolean(predBounds.anchor_max);
+
+  const { data: forecastMapResp, loading: forecastMapLoading, error: forecastMapError } = useApi(
+    ({ signal }) => {
+      if (!targetForecastReady) return Promise.resolve(null);
+      return api.mapPredictions("community_area", forecastAnchorDate, forecastModel, { signal });
+    },
+    [targetForecastReady, forecastAnchorDate, forecastModel]
+  );
+
+  const forecastCountsForMap = useMemo(() => responseToCounts(forecastMapResp), [forecastMapResp]);
+
   // When right map shows Actual and "average" mode: show count / span; otherwise raw counts
   const rightCountsForMap = useMemo(() => {
+    if (
+      targetForecastEligible &&
+      forecastCountsForMap != null &&
+      Object.keys(forecastCountsForMap).length > 0
+    ) {
+      return forecastCountsForMap;
+    }
     if (rightCrimeCounts == null) return null;
     if (
       secondaryMode === "actual" &&
@@ -232,7 +278,20 @@ export default function MapPanel({ onSelectionChange, onSummaryChange }) {
       return out;
     }
     return secondaryMode === "actual" ? rightCrimeCounts : null;
-  }, [rightCrimeCounts, secondaryMode, targetCountMode, futureSpanDays]);
+  }, [
+    targetForecastEligible,
+    forecastCountsForMap,
+    rightCrimeCounts,
+    secondaryMode,
+    targetCountMode,
+    futureSpanDays,
+  ]);
+
+  const rightMapLoading = targetForecastEligible
+    ? predBoundsLoading || (targetForecastReady && forecastMapLoading)
+    : rightTotalsLoading;
+
+  const forecastErrorText = predBoundsError || forecastMapError;
 
   // Load dummy crime counts for source mode
   // NOT NEEDED ANYMORE, MAKING SINGLE LINE AND COMMENTING OUT
@@ -727,6 +786,47 @@ export default function MapPanel({ onSelectionChange, onSummaryChange }) {
                   </button>
                 </div>
               </div>
+              {secondaryMode === "target" && (
+                <div
+                  style={{
+                    display: "flex",
+                    flexWrap: "wrap",
+                    gap: 10,
+                    alignItems: "center",
+                    width: "100%",
+                    fontSize: 13,
+                  }}
+                >
+                  <select
+                    value={forecastModel}
+                    onChange={(e) => setForecastModel(e.target.value)}
+                    disabled={secondaryLayer !== "community"}
+                    aria-label="Forecast model"
+                    style={{
+                      padding: "4px 8px",
+                      borderRadius: 6,
+                      border: "1px solid rgba(255,255,255,0.25)",
+                      background: "rgba(255,255,255,0.08)",
+                      color: "inherit",
+                      fontSize: "inherit",
+                    }}
+                  >
+                    {FORECAST_MODEL_OPTIONS.map((m) => (
+                      <option key={m} value={m}>
+                        {m}
+                      </option>
+                    ))}
+                  </select>
+                  {forecastErrorText && targetForecastEligible ? (
+                    <span
+                      style={{ color: "#ff6b6b", fontSize: 11, maxWidth: "100%", wordBreak: "break-word" }}
+                      title={forecastErrorText}
+                    >
+                      {forecastErrorText.length > 160 ? `${forecastErrorText.slice(0, 160)}…` : forecastErrorText}
+                    </span>
+                  ) : null}
+                </div>
+              )}
               <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                 <strong>Layer:</strong>
                 <label>
@@ -806,24 +906,26 @@ export default function MapPanel({ onSelectionChange, onSummaryChange }) {
                     legendTitle={
                       secondaryMode === "error"
                         ? "Difference (actual - target)"
-                        : secondaryMode === "target" && activeMode === "relation"
-                          ? "Predicted Crime Count"
-                          : secondaryMode === "target"
+                        : secondaryMode === "target" && targetForecastEligible
+                          ? `Forecast total (${forecastModel}, full horizon)`
+                          : secondaryMode === "target" && activeMode === "relation"
                             ? "Predicted Crime Count"
-                            : secondaryMode === "actual" && targetCountMode === "average"
-                              ? "Avg crimes per day"
-                              : "Crime Count"
+                            : secondaryMode === "target"
+                              ? "Predicted Crime Count"
+                              : secondaryMode === "actual" && targetCountMode === "average"
+                                ? "Avg crimes per day"
+                                : "Crime Count"
                     }
                     layer={secondaryLayer}
                     selectedId={secondarySelectedId}
                     onSelectId={setSecondarySelectedId}
                     onHover={(h) => setHover(h ? { ...h, which: "right" } : null)}
                     recenterTrigger={recenterTrigger}
-                    loading={rightTotalsLoading}
+                    loading={rightMapLoading}
                   />
                 </div>
               {/* Tooltip */}
-              {hover && (hover.which === "right" ? !rightTotalsLoading : true) && (hover.which ==="left" ? !isLoadingLeft : true) && (
+              {hover && (hover.which === "right" ? !rightMapLoading : true) && (hover.which ==="left" ? !isLoadingLeft : true) && (
                 <div
                   style={{position: "fixed", left: hover.x + 12, top: hover.y + 12, background: "rgba(0,0,0,0.85)", color: "white", padding: "8px 10px", borderRadius: 6, fontSize: 12, pointerEvents: "none", zIndex: 9999, width: "420px", maxWidth: "calc(100vw - 24px)"}}
                 >

@@ -6,18 +6,21 @@ import { fillDaily } from "../lib/crimeAggregates.js";
 /**
  * Debounced fetch of daily series for the map hover tooltip (standard selectionDaily or 4D relation path).
  */
-export function useHoverDailySeries({hover, activeMode, secondaryMode, relationSelectedId, instanceSelectedId, selectedId, pastDays, futureStart, futureEnd, anchorDate}) {
+/** @param {string|null|undefined} tensorSourceId Community id used as tensor source for relation/instance visualization (Predicted map selection). */
+export function useHoverDailySeries({ hover, activeMode, secondaryMode, tensorSourceId, pastDays, futureStart, futureEnd, anchorDate }) {
+
   //Check if the hover data can be shown
-  const canShowHoverData = useMemo(() =>
+  const canShowHoverData = useMemo(
+    () =>
       !!(
         hover &&
         ((hover.which === "left" &&
           (activeMode === "source" ||
-            (activeMode === "relation" && !!relationSelectedId) ||
-            (activeMode === "instance" && !!instanceSelectedId))) ||
+            (activeMode === "relation" && !!tensorSourceId) ||
+            (activeMode === "instance" && !!tensorSourceId))) ||
           (hover.which === "right" && secondaryMode === "actual"))
       ),
-    [hover, activeMode, secondaryMode, relationSelectedId, instanceSelectedId]
+    [hover, activeMode, secondaryMode, tensorSourceId]
   );
 
   //State for the hover daily series
@@ -77,9 +80,9 @@ export function useHoverDailySeries({hover, activeMode, secondaryMode, relationS
       setHoverDailyLoading(true);
 
       //If the hover is on the left and the selected id is not null
-      if (isRelation && selectedId) {
+      if (isRelation && tensorSourceId) {
         api
-          .get4dData(pastDays, true, hover.id, futureEnd - 1, false, selectedId, {
+          .get4dData(pastDays, true, hover.id, futureEnd - 1, false, tensorSourceId, {
             signal: ac.signal,
           })
           .then((data) => {
@@ -125,7 +128,7 @@ export function useHoverDailySeries({hover, activeMode, secondaryMode, relationS
       if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
       if (hoverAbortRef.current) hoverAbortRef.current.abort();
     };
-  }, [  hover?.which, hover?.id, hover?.layer, activeMode, secondaryMode, relationSelectedId, instanceSelectedId, selectedId, pastDays, futureStart, futureEnd, anchorDate, canShowHoverData]);
+  }, [hover?.which, hover?.id, hover?.layer, activeMode, secondaryMode, tensorSourceId, pastDays, futureStart, futureEnd, anchorDate, canShowHoverData]);
 
   //Return the hover daily series, loading state, and whether the hover data can be shown
   return { hoverDaily, hoverDailyLoading, canShowHoverData };

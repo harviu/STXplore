@@ -1,9 +1,11 @@
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, timedelta
 
 from fastapi import APIRouter, HTTPException, Query
 
+from backend.prediction.config import SEQ_LEN
+from backend.prediction.data_source import get_available_date_range
 from backend.prediction.service import prediction_service
 from backend.prediction.windowing import forecast_window, history_window
 
@@ -16,6 +18,27 @@ def _parse_date(value: str) -> date:
         return date.fromisoformat(value)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail="date must be YYYY-MM-DD") from exc
+
+
+@router.get("/predictions/anchor-bounds")
+def predictions_anchor_bounds() -> dict:  # type: ignore
+    """Anchor dates valid for prediction (pivot CSV), independent of SQL `crime_data` date range."""
+    try:
+        min_day, max_day, source = get_available_date_range()
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except RuntimeError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    anchor_min = min_day + timedelta(days=SEQ_LEN - 1)
+    return {
+        "data_min": min_day.isoformat(),
+        "data_max": max_day.isoformat(),
+        "anchor_min": anchor_min.isoformat(),
+        "anchor_max": max_day.isoformat(),
+        "seq_len": SEQ_LEN,
+        "source": source,
+    }
 
 
 @router.get("/predictions/by-date")

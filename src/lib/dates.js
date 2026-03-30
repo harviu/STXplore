@@ -71,3 +71,18 @@ export function targetRange(futureStartOffset, futureEndOffset, anchorISO) {
   const end = addDaysISO(anchorISO, futureEndOffset);
   return { start, end };
 }
+
+/**
+ * Clamp a calendar day (YYYY-MM-DD) to [minIso, maxIso] inclusive.
+ * @param {string} iso
+ * @param {string} minIso
+ * @param {string} maxIso
+ * @returns {string}
+ */
+export function clampDateIso(iso, minIso, maxIso) {
+  const d = iso?.slice(0, 10) ?? "";
+  if (!d || !minIso || !maxIso) return d;
+  if (d < minIso) return minIso;
+  if (d > maxIso) return maxIso;
+  return d;
+}
