@@ -54,6 +54,15 @@ export const api = {
       opts
     ),
 
+  predictionInstanceShap: (date, model, horizon, targetCommunity, opts = {}) => {
+    const params = new URLSearchParams();
+    params.append("date", String(date));
+    params.append("model", String(model));
+    params.append("horizon", String(horizon));
+    params.append("target_community", String(targetCommunity));
+    return request(`/api/predictions/instance-shap?${params.toString()}`, opts);
+  },
+
   mapPredictions: (layer, date, model, opts) =>
     request(
       `/api/map/predictions?layer=${encodeURIComponent(layer)}&date=${encodeURIComponent(

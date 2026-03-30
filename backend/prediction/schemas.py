@@ -31,3 +31,17 @@ class MapPredictionResult:
     end_exclusive: date
     model_name: str
     totals: np.ndarray
+
+
+@dataclass(frozen=True)
+class InstanceShapResult:
+    model_name: str
+    anchor_date: date
+    target_date: date
+    target_horizon: int  # 1-based day-ahead horizon
+    target_community_id: int  # 1..77
+    history_dates: list[date]
+    prediction: float
+    baseline: float
+    shap_values: np.ndarray  # [seq_len, 77]
+    top_features: list[dict[str, float | int | str]]

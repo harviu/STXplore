@@ -100,3 +100,50 @@ def map_predictions(  # type: ignore
         "source": source,
         "data": data,
     }
+
+
+@router.get("/predictions/instance-shap")
+def instance_shap(  # type: ignore
+    date: str = Query(..., description="Anchor date in YYYY-MM-DD"),
+    model: str = Query(..., description="Model folder name under Community-Heatmaps/models"),
+    horizon: int = Query(..., ge=1, description="1-based forecast horizon (1..30)"),
+    target_community: int = Query(..., ge=1, le=77, description="Community ID in 1..77"),
+):
+    anchor_date = _parse_date(date)
+
+    try:
+        result, source = prediction_service.explain_instance_shap(
+            anchor_date=anchor_date,
+            model_name=model,
+            target_horizon=horizon,
+            target_community_id=target_community,
+        )
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    shap_by_day = [
+        {
+            "date": d.isoformat(),
+            "values": result.shap_values[i, :].astype(float).tolist(),
+        }
+        for i, d in enumerate(result.history_dates)
+    ]
+
+    return {
+        "model": result.model_name,
+        "date": result.anchor_date.isoformat(),
+        "target_date": result.target_date.isoformat(),
+        "horizon": result.target_horizon,
+        "target_community": result.target_community_id,
+        "source": source,
+        "prediction": float(result.prediction),
+        "baseline": float(result.baseline),
+        "shap_sum": float(result.shap_values.sum()),
+        "approx_error": float(result.prediction - result.baseline - result.shap_values.sum()),
+        "history_start": result.history_dates[0].isoformat(),
+        "history_end": result.history_dates[-1].isoformat(),
+        "top_features": result.top_features,
+        "shap_values": shap_by_day,
+    }

@@ -6,6 +6,7 @@ sqlalchemy
 psycopg2-binary
 numpy
 pandas
+shap
 torch==2.6.0
 torchvision==0.21.0
 torchaudio==2.6.0
