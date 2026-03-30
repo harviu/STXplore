@@ -1,22 +1,42 @@
 import numpy as np
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, HTTPException, Query
 from typing import Optional
+from backend.prediction.config import PRED_MODELS_DIR
 
 router = APIRouter(tags=["data4d"])
-loadedArray = np.load("data/Chicago-Data/mi_result_io.npy")
 
-#This allows us to slice the 4d tensor on any combination of dimensions
+_cache: dict[str, np.ndarray] = {}
+
+def _load_array(model: str) -> np.ndarray:
+    if model in _cache:
+        return _cache[model]
+    path = PRED_MODELS_DIR / model / "mi" / "mi_input_output.npy"
+    if not path.exists():
+        raise FileNotFoundError(f"MI file not found for model '{model}': {path}")
+    arr = np.load(path)
+    if arr.ndim != 4 or arr.shape != (90, 77, 30, 77):
+        raise RuntimeError(f"Unexpected tensor shape for model '{model}': {arr.shape}")
+    _cache[model] = arr
+    return arr
+
 @router.get("/data4d")
 def get_data4d(
+    model: str = Query(..., description="Model folder name (e.g. Transformer)"),
     d1: Optional[int] = Query(None),
     b1: bool = Query(False),
     d2: Optional[int] = Query(None),
     d3: Optional[int] = Query(None),
     b3: bool = Query(False),
     d4: Optional[int] = Query(None),
-    d3_start: Optional[int] = Query(None, ge=0, le=29, description="Inclusive start index on future-day axis (with b1+b3)"),
+    d3_start: Optional[int] = Query(None, ge=0, le=29),
 ):
-    #Check for dimensions else take slice
+    try:
+        loadedArray = _load_array(model)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except RuntimeError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
     s1 = d1 if d1 is not None else slice(None)
     s2 = d2 if d2 is not None else slice(None)
     s3 = d3 if d3 is not None else slice(None)

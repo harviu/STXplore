@@ -7,7 +7,7 @@ import { fillDaily } from "../lib/crimeAggregates.js";
  * Debounced fetch of daily series for the map hover tooltip (standard selectionDaily or 4D relation path).
  */
 /** @param {string|null|undefined} tensorSourceId Community id used as tensor source for relation/instance visualization (Predicted map selection). */
-export function useHoverDailySeries({ hover, activeMode, secondaryMode, tensorSourceId, pastDays, futureStart, futureEnd, anchorDate }) {
+export function useHoverDailySeries({ hover, activeMode, secondaryMode, tensorSourceId, model, pastDays, futureStart, futureEnd, anchorDate }) {
 
   //Check if the hover data can be shown
   const canShowHoverData = useMemo(
@@ -82,7 +82,7 @@ export function useHoverDailySeries({ hover, activeMode, secondaryMode, tensorSo
       //If the hover is on the left and the selected id is not null
       if (isRelation && tensorSourceId) {
         api
-          .get4dData(pastDays, true, hover.id, futureEnd - 1, false, tensorSourceId, {
+          .get4dData(pastDays, true, hover.id, futureEnd - 1, false, tensorSourceId, model, {
             signal: ac.signal,
           })
           .then((data) => {
@@ -128,7 +128,7 @@ export function useHoverDailySeries({ hover, activeMode, secondaryMode, tensorSo
       if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
       if (hoverAbortRef.current) hoverAbortRef.current.abort();
     };
-  }, [hover?.which, hover?.id, hover?.layer, activeMode, secondaryMode, tensorSourceId, pastDays, futureStart, futureEnd, anchorDate, canShowHoverData]);
+  }, [hover?.which, hover?.id, hover?.layer, activeMode, secondaryMode, tensorSourceId, pastDays, futureStart, futureEnd, anchorDate, canShowHoverData, model]);
 
   //Return the hover daily series, loading state, and whether the hover data can be shown
   return { hoverDaily, hoverDailyLoading, canShowHoverData };

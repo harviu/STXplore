@@ -85,6 +85,8 @@ export default function MapPanel({ onSelectionChange, onSummaryChange }) {
   // Target map + Community: ML forecast loads automatically (API sums full model horizon)
   const [forecastModel, setForecastModel] = useState(FORECAST_MODEL_OPTIONS[0]);
 
+  const [relationModel, setRelationModel] = useState(FORECAST_MODEL_OPTIONS[0]);
+
   // Anchor date — defaults to latest date in dataset once loaded; user can pick another via calendar
   const [anchorDate, setAnchorDate] = useState(() => todayISO());
   const [calendarOpen, setCalendarOpen] = useState(false);
@@ -106,13 +108,13 @@ export default function MapPanel({ onSelectionChange, onSummaryChange }) {
 
   //Hover daily series
   const tensorSourceId = activeMode === "relation" ? relationSelectedId : activeMode === "instance" ? instanceSelectedId : null;
-  const { hoverDaily, hoverDailyLoading, canShowHoverData } = useHoverDailySeries({hover, activeMode, secondaryMode, tensorSourceId, pastDays, futureStart, futureEnd, anchorDate});
+  const { hoverDaily, hoverDailyLoading, canShowHoverData } = useHoverDailySeries({hover, activeMode, secondaryMode, tensorSourceId, model: relationModel, pastDays, futureStart, futureEnd, anchorDate});
 
   //Model relation counts
-  const { counts: relationCounts, loading: relationLoading, error: relationError } = useModelRelationCounts(activeMode, layer, relationSelectedId);
+  const { counts: relationCounts, loading: relationLoading, error: relationError } = useModelRelationCounts(activeMode, layer, relationSelectedId, relationModel);
 
   //Instance relation counts
-  const { counts: instanceRelationCounts, loading: instanceRelationLoading, error: instanceRelationError } = useInstanceRelationCounts(activeMode, instanceSelectedId, pastDays, futureStart, futureEnd);
+  const { counts: instanceRelationCounts, loading: instanceRelationLoading, error: instanceRelationError } = useInstanceRelationCounts(activeMode, instanceSelectedId, relationModel, pastDays, futureStart, futureEnd);
 
   // Relation tab: community-only on both sides; snap right map to Target
   useEffect(() => {
@@ -150,8 +152,9 @@ export default function MapPanel({ onSelectionChange, onSummaryChange }) {
     if (activeMode !== "source" && selectedId) {
       let cancelled = false;
       const ac = new AbortController();
-      api.get4dData(activeMode === "instance" ? pastDays : 90, true, null, futureEnd, false, selectedId, futureStart, {
+      api.get4dData(activeMode === "instance" ? pastDays : 90, true, null, futureEnd, false, selectedId, relationModel, {
         signal: ac.signal,
+        d3Start: futureStart,
       })
       .then((data) => { 
         if (cancelled) return;
@@ -167,7 +170,7 @@ export default function MapPanel({ onSelectionChange, onSummaryChange }) {
         ac.abort();
       };
     }
-  }, [activeMode, pastDays, futureStart, futureEnd, selectedId]);
+  }, [activeMode, pastDays, futureStart, futureEnd, selectedId, relationModel]);
 
   // Instance-level map on source side: 4D array → per-community time-averaged over slider date range.
   const {data: instanceSourceResp, loading: instanceSourceLoading, error: instanceSourceError} = useApi(({ signal }) => {
@@ -609,6 +612,28 @@ export default function MapPanel({ onSelectionChange, onSummaryChange }) {
                   Model <br/> Level
                 </button>
               </div>
+                            {(activeMode === "relation" || activeMode === "instance") && (
+                <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                  <strong>Relation model:</strong>
+                  <select
+                    value={relationModel}
+                    onChange={(e) => setRelationModel(e.target.value)}
+                    aria-label="Relation model"
+                    style={{
+                      padding: "4px 8px",
+                      borderRadius: 6,
+                      border: "1px solid rgba(255,255,255,0.25)",
+                      background: "rgba(255,255,255,0.08)",
+                      color: "inherit",
+                      fontSize: "inherit",
+                    }}
+                  >
+                    {FORECAST_MODEL_OPTIONS.map((m) => (
+                      <option key={m} value={m}>{m}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
               <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                 <strong>Layer:</strong>
                 <label>
