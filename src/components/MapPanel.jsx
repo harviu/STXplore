@@ -105,6 +105,7 @@ export default function MapPanel({ onSelectionChange, onSummaryChange }) {
   const secondaryGeo = BOUNDARY_GEO[secondaryLayer];
 
   //Hover daily series
+  const tensorSourceId = activeMode === "relation" ? relationSelectedId : activeMode === "instance" ? instanceSelectedId : null;
   const { hoverDaily, hoverDailyLoading, canShowHoverData } = useHoverDailySeries({hover, activeMode, secondaryMode, relationSelectedId, instanceSelectedId, selectedId, pastDays, futureStart, futureEnd, anchorDate});
 
   //Model relation counts
@@ -240,6 +241,8 @@ export default function MapPanel({ onSelectionChange, onSummaryChange }) {
     if (!predBounds?.anchor_min || !predBounds?.anchor_max) return anchorDay;
     return clampDateIso(anchorDay, predBounds.anchor_min, predBounds.anchor_max);
   }, [anchorDay, predBounds]);
+
+  const anchorIsClamped = targetForecastEligible && predBounds?.anchor_max && anchorDay > predBounds.anchor_max;
 
   const targetForecastReady =
     targetForecastEligible &&
@@ -825,6 +828,11 @@ export default function MapPanel({ onSelectionChange, onSummaryChange }) {
                       {forecastErrorText.length > 160 ? `${forecastErrorText.slice(0, 160)}…` : forecastErrorText}
                     </span>
                   ) : null}
+                  {anchorIsClamped && (
+                    <span style={{ fontSize: 16, color: "#f0a500" }}>
+                      Predicted Anchor Date: {forecastAnchorDate} (model max)
+                    </span>
+              )}
                 </div>
               )}
               <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
