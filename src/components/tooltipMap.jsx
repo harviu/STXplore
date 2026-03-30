@@ -68,7 +68,7 @@ export default function TooltipMap({ days, height = 12, isRelationMap = false })
           const background =
             c === 0 || max === 0
               ? "rgba(255,255,255, 0.9)"
-              : choroplethColor(isRelationMap ? (c - min) / (max - min) : c / max, isRelationMap);
+              : choroplethColor((max === min ? 1 : (c-min) / (max - min)), isRelationMap);
 
           return (
             <div

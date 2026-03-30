@@ -106,7 +106,7 @@ export default function MapPanel({ onSelectionChange, onSummaryChange }) {
 
   //Hover daily series
   const tensorSourceId = activeMode === "relation" ? relationSelectedId : activeMode === "instance" ? instanceSelectedId : null;
-  const { hoverDaily, hoverDailyLoading, canShowHoverData } = useHoverDailySeries({hover, activeMode, secondaryMode, relationSelectedId, instanceSelectedId, selectedId, pastDays, futureStart, futureEnd, anchorDate});
+  const { hoverDaily, hoverDailyLoading, canShowHoverData } = useHoverDailySeries({hover, activeMode, secondaryMode, tensorSourceId, pastDays, futureStart, futureEnd, anchorDate});
 
   //Model relation counts
   const { counts: relationCounts, loading: relationLoading, error: relationError } = useModelRelationCounts(activeMode, layer, relationSelectedId);
@@ -250,15 +250,40 @@ export default function MapPanel({ onSelectionChange, onSummaryChange }) {
     Boolean(predBounds.anchor_min) &&
     Boolean(predBounds.anchor_max);
 
-  const { data: forecastMapResp, loading: forecastMapLoading, error: forecastMapError } = useApi(
-    ({ signal }) => {
-      if (!targetForecastReady) return Promise.resolve(null);
-      return api.mapPredictions("community_area", forecastAnchorDate, forecastModel, { signal });
-    },
-    [targetForecastReady, forecastAnchorDate, forecastModel]
-  );
+  // Daily forecast series for selected right-map community (for side panel tootip)
+  const { data: forecastDailyResp, loading: forecastDailyLoading, error: forecastDailyError } = useApi(({ signal }) => {
+    if (!targetForecastReady) return Promise.resolve(null);
+    return api.predictionByDate(forecastAnchorDate, forecastModel, { signal });
+  }, [targetForecastReady, forecastAnchorDate, forecastModel, secondarySelectedId]);
+  
+  const forecastDailySeries = useMemo(() => {
+    if (!forecastDailyResp?.forecast_daily || !secondarySelectedId) return null;
+    const commIndex = parseInt(secondarySelectedId) - 1;
+    return forecastDailyResp.forecast_daily.map((row) => ({
+      date: row.date,
+      count: row.values[commIndex] ?? 0,
+    }));
+  }, [forecastDailyResp, secondarySelectedId]);
 
-  const forecastCountsForMap = useMemo(() => responseToCounts(forecastMapResp), [forecastMapResp]);
+  const forecastTotal = useMemo(() => {
+    if (!forecastDailyResp?.forecast_totals || !secondarySelectedId) return null;
+    const entry = forecastDailyResp.forecast_totals.find((t) => t.feature_id === String(secondarySelectedId));
+    return entry?.count ?? null;
+  }, [forecastDailyResp, secondarySelectedId]);
+
+    const forecastCountsForMap = useMemo(() => {
+  if (!forecastDailyResp?.forecast_daily) return null;
+  const sliced = forecastDailyResp.forecast_daily.slice(futureStart, futureEnd);
+  if (sliced.length === 0) return null;
+  const totals = {};
+  sliced.forEach((row) => {
+    row.values.forEach((val, i) => {
+      const id = String(i + 1);
+      totals[id] = (totals[id] ?? 0) + val;
+    });
+  });
+  return totals;
+  }, [forecastDailyResp, futureStart, futureEnd]);
 
   // When right map shows Actual and "average" mode: show count / span; otherwise raw counts
   const rightCountsForMap = useMemo(() => {
@@ -291,10 +316,10 @@ export default function MapPanel({ onSelectionChange, onSummaryChange }) {
   ]);
 
   const rightMapLoading = targetForecastEligible
-    ? predBoundsLoading || (targetForecastReady && forecastMapLoading)
+    ? predBoundsLoading || (targetForecastReady && forecastDailyLoading)
     : rightTotalsLoading;
 
-  const forecastErrorText = predBoundsError || forecastMapError;
+  const forecastErrorText = predBoundsError || forecastDailyError;
 
   // Load dummy crime counts for source mode
   // NOT NEEDED ANYMORE, MAKING SINGLE LINE AND COMMENTING OUT
@@ -416,7 +441,7 @@ export default function MapPanel({ onSelectionChange, onSummaryChange }) {
     onSummaryChange?.({
       //summaries (split)
       left: {selection: leftSelection, summary: leftSummary, loading: leftSummaryLoading, error: leftSummaryError, range: sourceRange(pastDays, anchorDate), days: pastDays, daily: leftDailyResp?.daily ?? null},
-      right: {selection: rightSelection, summary: rightSummary, loading: rightSummaryLoading, error: rightSummaryError, range: targetRange(futureStart, futureEnd, anchorDate), days: futureSpanDays, offset: futureStart},
+      right: {selection: rightSelection, summary: rightSummary, loading: rightSummaryLoading, error: rightSummaryError, range: targetRange(futureStart, futureEnd, anchorDate), days: futureSpanDays, offset: futureStart, forecastDaily: forecastDailySeries, forecastTotal,},
     });
   }, [
     leftSelection,

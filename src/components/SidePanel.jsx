@@ -145,9 +145,31 @@ function SelectionBlock({ heading, payload, showApi = true, isLeft }) {
           {isLeft && daily && range?.start && range?.end && (
             <div style={{ marginTop: 12 }}>
               <strong style={{ fontSize: 13 }}>Daily crime counts:</strong>
+              <div style={{ fontSize: 12, opacity: 0.8, marginTop: 2 }}>
+                {payload?.summary?.total_crimes != null && (
+                  <span>{selection.days} days total: {payload.summary.total_crimes}</span>
+                )}
+              </div>
               <div style={{ marginTop: 6 }}>
                 <TooltipMap
                   days={fillDaily(range.start, range.end, daily)}
+                  isRelationMap={false}
+                  height={14}
+                />
+              </div>
+            </div>
+          )}
+          {!isLeft && payload?.forecastDaily && (
+            <div style={{ marginTop: 12 }}>
+              <strong style={{ fontSize: 13 }}>Predicted daily counts:</strong>
+              {payload.forecastTotal != null && (
+                <div style={{ fontSize: 12, opacity: 0.8, marginTop: 2 }}>
+                  30-day total: {Math.round(payload.forecastTotal)}
+                </div>
+              )}
+              <div style={{ marginTop: 6 }}>
+                <TooltipMap
+                  days={payload.forecastDaily}
                   isRelationMap={false}
                   height={14}
                 />
