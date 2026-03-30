@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useMemo } from 'react';
 import * as d3 from 'd3';
-import { CHOROPLETH_STOPS, RELATION_STOPS } from "../lib/colors.js"
+import { CHOROPLETH_STOPS, RELATION_STOPS, SAGE_STOPS } from "../lib/colors.js"
 
 const EMPTY_CELL_FILL = "rgba(255, 255, 255, 0.2)"; // subtle gray for zero/missing, reads cleaner than black
 
@@ -57,7 +57,7 @@ const getClusterOrder = (matrix, ids) => {
  * @param {number} [props.offset=0] Offset for the date axis.
  * @returns {JSX.Element}
  */
-export default function ClusterHeatmap({ data, selectedId, isRelationMap = false, isFuture = false, offset = 0 }) {
+export default function ClusterHeatmap({ data, selectedId, isRelationMap = false, isSageMap = false, isFuture = false, offset = 0 }) {
     const svgRef = useRef(null);
     const divRef = useRef(null);
     const [containerWidth, setContainerWidth] = useState(document.documentElement.clientWidth);
@@ -74,8 +74,9 @@ export default function ClusterHeatmap({ data, selectedId, isRelationMap = false
     }, []);
 
     const interpolate = useMemo(() => {
-        return d3.interpolateRgbBasis(isRelationMap ? RELATION_STOPS : CHOROPLETH_STOPS);
-    }, [isRelationMap]);
+        // SAGE uses a diverging scale: red (suppressive/negative) → white (zero) → green (amplifying/positive)
+        return d3.interpolateRgbBasis(isSageMap ? SAGE_STOPS : isRelationMap ? RELATION_STOPS : CHOROPLETH_STOPS);
+    }, [isRelationMap, isSageMap]);
 
     //2D array of counts for each community and day, ensuring day is a num
     const heatmapData = useMemo(() => {
@@ -229,7 +230,12 @@ export default function ClusterHeatmap({ data, selectedId, isRelationMap = false
                     .style("stroke-width", 1);
             }
             const maxCount = d3.max(heatmapData, d => d.count);
-            const colorScale = d3.scaleSequential().interpolator(interpolate).domain([maxCount > 0 ? 0 : 0, maxCount || 1]);
+            const minCount = d3.min(heatmapData, d => d.count);
+            // SAGE values are signed: use diverging domain [min, max] so negative=red, zero=white, positive=green
+            // For MI/choropleth: domain starts at 0
+            const colorScale = isSageMap
+                ? d3.scaleSequential().interpolator(interpolate).domain([minCount, maxCount])
+                : d3.scaleSequential().interpolator(interpolate).domain([maxCount > 0 ? 0 : 0, maxCount || 1]);
             const tooltip = d3.select(divRef.current);
             const mouseover = function(event, d) {
                 tooltip.style("opacity", 1);
@@ -255,7 +261,7 @@ export default function ClusterHeatmap({ data, selectedId, isRelationMap = false
                 .attr("ry", 2)
                 .attr("width", xScale.bandwidth())
                 .attr("height", yScale.bandwidth())
-                .style("fill", d => (d.count == null || d.count === 0) ? EMPTY_CELL_FILL : colorScale(d.count))
+                .style("fill", d => (d.count == null || (!isSageMap && d.count === 0)) ? EMPTY_CELL_FILL : colorScale(d.count))
                 .style("stroke", d => (selectedId !== null && String(isRelationMap ? d.id+1 : Number(d.id)) === String(selectedId)) ? "blue" : "none")
                 .style("stroke-width", d => (selectedId !== null && String(isRelationMap ? d.id+1 : Number(d.id)) === String(selectedId)) ? 2 : 0)
                 .style("opacity", 0.92)

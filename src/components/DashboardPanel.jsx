@@ -67,7 +67,7 @@ function capitalizeFirst(string) {
  * @param {Object} props.targetHeatData - The data for the future map cluster heatmap.
  * @returns {JSX.Element} The rendered DashboardPanel component.
  */
-export default function DashboardPanel({ mode, selection, inactiveMode, inactiveSelection, left, right, heatData, targetHeatData }) {
+export default function DashboardPanel({ mode, selection, inactiveMode, inactiveSelection, left, right, heatData, targetHeatData, isSageMap = false }) {
   const barsRef = useRef();
   const labelsRef = useRef();
   const countsRef = useRef();
@@ -243,7 +243,7 @@ export default function DashboardPanel({ mode, selection, inactiveMode, inactive
       {/* Cluster Heatmaps */}
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", width: "100%", gap: 16 }}>
         {heatData && (selection?.id || mode === "source") && <p style={{ opacity: 1, margin: 0, fill: "white" }}> Past map cluster heatmap </p>}
-        {heatData && (selection?.id || mode === "source") && <ClusterHeatmap data={heatData} selectedId={selection?.id || null} isRelationMap= {mode !== "source"} />}
+        {heatData && (selection?.id || mode === "source") && <ClusterHeatmap data={heatData} selectedId={selection?.id || null} isRelationMap={mode !== "source"} isSageMap={isSageMap} />}
         {targetHeatData && inactiveMode === "actual" && <p style={{ opacity: 1, margin: 0, fill: "white" }}> Future map cluster heatmap </p>}
         {targetHeatData && inactiveMode === "actual" && <ClusterHeatmap data={targetHeatData} selectedId={inactiveSelection?.id || null} isRelationMap= {false} isFuture={true} offset={right?.offset}/>}
       </div>

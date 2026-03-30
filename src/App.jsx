@@ -113,6 +113,7 @@ export default function App() {
             right={summaries.right}
             heatData={state.heatData}
             targetHeatData={state.targetHeatData}
+            isSageMap={state.relationDataMode === "sage"}
           />
         </section>
       </main>

@@ -2,7 +2,7 @@ import { useEffect, useRef, useMemo, useState } from "react";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { getBoundaryId, getBoundaryLabel } from "../lib/boundaries.js";
-import { CHOROPLETH_STOPS, RELATION_STOPS } from "../lib/colors.js"
+import { CHOROPLETH_STOPS, RELATION_STOPS, SAGE_STOPS } from "../lib/colors.js"
 
 export const CHICAGO_CENTER = [-87.70, 41.84]; // Approximate center of Chicago
 export const CHICAGO_ZOOM = 9.1; // Initial zoom level to show the whole city
@@ -100,9 +100,13 @@ export default function MapBoxMap({
   onHover = null,
   recenterTrigger = null,
   isRelationMap = false,
-  loading = false
+  isSageMap = false,
+  loading = false,
 }) {
-  const stops = isRelationMap ? RELATION_STOPS : CHOROPLETH_STOPS;
+  // SAGE uses a signed diverging scale (red=suppressive, white=zero, green=amplifying).
+  // Relation uses a sequential scale (low=cool, high=warm).
+  // Source/target uses the choropleth scale.
+  const stops = isSageMap ? SAGE_STOPS : isRelationMap ? RELATION_STOPS : CHOROPLETH_STOPS;
   //Hooks to ensure updates
   const containerRef = useRef(null);
   const mapRef = useRef(null);
@@ -189,8 +193,8 @@ export default function MapBoxMap({
 
 
   const { mergedGeo, minCount, maxCount } = useMemo(
-    () => buildMergedGeo(geo, crimeCounts, layer, isRelationMap),
-    [geo, crimeCounts, layer, isRelationMap]
+    () => buildMergedGeo(geo, crimeCounts, layer, isRelationMap && !isSageMap),
+    [geo, crimeCounts, layer, isRelationMap, isSageMap]
   );
 
   const fillColorPaint = useMemo(
@@ -199,8 +203,8 @@ export default function MapBoxMap({
   );
 
   const legendSteps = useMemo(
-    () => getLegendSteps(minCount, maxCount, stops, isRelationMap),
-    [minCount, maxCount, stops, isRelationMap]
+    () => getLegendSteps(minCount, maxCount, stops, isRelationMap || isSageMap),
+    [minCount, maxCount, stops, isRelationMap, isSageMap]
   );
 
   //Create the Mapbox

@@ -1,4 +1,4 @@
-import { CHOROPLETH_STOPS, RELATION_STOPS } from "../lib/colors.js"
+import { CHOROPLETH_STOPS, RELATION_STOPS, SAGE_STOPS} from "../lib/colors.js"
 
 //Helper functions:
 //Converts hex color to rgb color
@@ -24,8 +24,8 @@ function lerpColor(aHex, bHex, t) {
 }
 
 //Assigns a color
-function choroplethColor(t, isRelationMap = false) {
-  const stops = isRelationMap ? RELATION_STOPS : CHOROPLETH_STOPS;
+function choroplethColor(t, isRelationMap = false, isSageMap = false) {
+  const stops = isSageMap ? SAGE_STOPS : isRelationMap ? RELATION_STOPS : CHOROPLETH_STOPS;
   const n = stops.length - 1;
   const x = Math.max(0, Math.min(1, t)) * n;
   const i = Math.floor(x);
@@ -46,7 +46,7 @@ function choroplethColor(t, isRelationMap = false) {
  * @returns {JSX.Element}
  */
 //The box component you see when you hover
-export default function TooltipMap({ days, height = 12, isRelationMap = false }) {
+export default function TooltipMap({ days, height = 12, isRelationMap = false, isSageMap = false }) {
   const max = (days ?? []).reduce((m, d) => Math.max(m, d.count || 0), 0);
   const min = (days ?? []).reduce((m, d) => Math.min(m, d.count || max), max);
   const tickHeight = height + 8; // taller than bars
@@ -68,6 +68,9 @@ export default function TooltipMap({ days, height = 12, isRelationMap = false })
           const background =
             c === 0 || max === 0
               ? "rgba(255,255,255, 0.9)"
+              :  isSageMap
+              // SAGE: map signed value to [0,1] where 0.5 = zero, <0.5 = suppressive (red), >0.5 = amplifying (green)
+              ? choroplethColor((max === min ? 0.5 : (c-min) / (max - min)), false, true)
               : choroplethColor((max === min ? 1 : (c-min) / (max - min)), isRelationMap);
 
           return (

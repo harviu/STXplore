@@ -21,3 +21,19 @@ export const RELATION_STOPS = [
   "#2ca25f",
   "#006d2c", //dark green (high)
 ];
+
+/**
+ * SAGE attribution color stops: red (negative/suppressive) → white (zero) → green (positive/amplifying).
+ * Used when visualizing SAGE values which are signed, unlike MI which is always non-negative.
+ * Negative = source community suppresses target crime prediction.
+ * Positive = source community amplifies target crime prediction.
+ */
+export const SAGE_STOPS = [
+  "#d73027", // strong red - highly suppressive
+  "#f46d43",
+  "#fdae61",
+  "#ffffff", // white - no influence (zero)
+  "#a6d96a",
+  "#66bd63",
+  "#1a9850", // strong green - highly amplifying
+];

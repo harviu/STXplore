@@ -3,7 +3,7 @@ import { api } from "../lib/api.js";
 import { RELATION_TARGET_LEN, targetsToCountsByCommunityId } from "../lib/relationTargets.js";
 
 /** Model-level relation map counts when left tab is "relation" and a community is selected. */
-export function useModelRelationCounts(activeMode, layer, relationSelectedId, model) {
+export function useModelRelationCounts(activeMode, layer, relationSelectedId, model, dataMode = "mi") {
   const [counts, setCounts] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -52,7 +52,9 @@ export function useModelRelationCounts(activeMode, layer, relationSelectedId, mo
 
     //Fetch the model relation counts
     api
-      .relationalModel(sourceIdx, model, { signal: ac.signal })
+      dataMode === "sage"
+      ? api.sageLevelRouter(sourceIdx, model, { signal: ac.signal })
+      : api.relationalModel(sourceIdx, model, { signal: ac.signal })
       .then((data) => {
         if (cancelled) return;
         //Format the data
@@ -83,7 +85,7 @@ export function useModelRelationCounts(activeMode, layer, relationSelectedId, mo
       //Abort the abort controller
       ac.abort();
     };
-  }, [activeMode, layer, relationSelectedId, model]);
+  }, [activeMode, layer, relationSelectedId, model, dataMode]);
 
   //Return the counts, loading state, and error state
   return { counts, loading, error };

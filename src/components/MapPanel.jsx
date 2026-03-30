@@ -87,6 +87,10 @@ export default function MapPanel({ onSelectionChange, onSummaryChange }) {
 
   const [relationModel, setRelationModel] = useState(FORECAST_MODEL_OPTIONS[0]);
 
+  // "mi" = mutual information (ground truth from data)
+  // "sage" = model attribution (what the model learned to pay attention to)
+  const [relationDataMode, setRelationDataMode] = useState("mi");
+
   // Anchor date — defaults to latest date in dataset once loaded; user can pick another via calendar
   const [anchorDate, setAnchorDate] = useState(() => todayISO());
   const [calendarOpen, setCalendarOpen] = useState(false);
@@ -108,13 +112,13 @@ export default function MapPanel({ onSelectionChange, onSummaryChange }) {
 
   //Hover daily series
   const tensorSourceId = activeMode === "relation" ? relationSelectedId : activeMode === "instance" ? instanceSelectedId : null;
-  const { hoverDaily, hoverDailyLoading, canShowHoverData } = useHoverDailySeries({hover, activeMode, secondaryMode, tensorSourceId, model: relationModel, pastDays, futureStart, futureEnd, anchorDate});
+  const { hoverDaily, hoverDailyLoading, canShowHoverData } = useHoverDailySeries({hover, activeMode, secondaryMode, tensorSourceId, model: relationModel, pastDays, futureStart, futureEnd, anchorDate, dataMode: relationDataMode});
 
   //Model relation counts
-  const { counts: relationCounts, loading: relationLoading, error: relationError } = useModelRelationCounts(activeMode, layer, relationSelectedId, relationModel);
+  const { counts: relationCounts, loading: relationLoading, error: relationError } = useModelRelationCounts(activeMode, layer, relationSelectedId, relationModel, relationDataMode);
 
   //Instance relation counts
-  const { counts: instanceRelationCounts, loading: instanceRelationLoading, error: instanceRelationError } = useInstanceRelationCounts(activeMode, instanceSelectedId, relationModel, pastDays, futureStart, futureEnd);
+  const { counts: instanceRelationCounts, loading: instanceRelationLoading, error: instanceRelationError } = useInstanceRelationCounts(activeMode, instanceSelectedId, relationModel, pastDays, futureStart, futureEnd, relationDataMode);
 
   // Relation tab: community-only on both sides; snap right map to Target
   useEffect(() => {
@@ -152,7 +156,7 @@ export default function MapPanel({ onSelectionChange, onSummaryChange }) {
     if (activeMode !== "source" && selectedId) {
       let cancelled = false;
       const ac = new AbortController();
-      api.get4dData(activeMode === "instance" ? pastDays : 90, true, null, futureEnd, false, selectedId, relationModel, {
+      api.get4dData(activeMode === "instance" ? pastDays : 90, true, null, futureEnd, false, selectedId, relationModel, relationDataMode, {
         signal: ac.signal,
         d3Start: futureStart,
       })
@@ -407,6 +411,7 @@ export default function MapPanel({ onSelectionChange, onSummaryChange }) {
       activeMode,
       secondaryMode,
       anchorDate,
+      relationDataMode,
 
       //selections
       source: sourceSelection,
@@ -612,7 +617,7 @@ export default function MapPanel({ onSelectionChange, onSummaryChange }) {
                   Model <br/> Level
                 </button>
               </div>
-                            {(activeMode === "relation" || activeMode === "instance") && (
+              {(activeMode === "relation" || activeMode === "instance") && (
                 <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
                   <strong>Relation model:</strong>
                   <select
@@ -632,6 +637,25 @@ export default function MapPanel({ onSelectionChange, onSummaryChange }) {
                       <option key={m} value={m}>{m}</option>
                     ))}
                   </select>
+                </div>
+              )}
+              {(activeMode === "relation" || activeMode === "instance") && (
+                <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                  <strong>Data:</strong>
+                  <button
+                    onClick={() => setRelationDataMode("mi")}
+                    disabled={relationDataMode === "mi"}
+                    style={{ padding: "4px 10px", borderRadius: 6, border: "1px solid rgba(255,255,255,0.25)", background: relationDataMode === "mi" ? "rgba(255,255,255,0.2)" : "rgba(255,255,255,0.05)", color: "inherit", cursor: "pointer" }}
+                  >
+                    MI
+                  </button>
+                  <button
+                    onClick={() => setRelationDataMode("sage")}
+                    disabled={relationDataMode === "sage"}
+                    style={{ padding: "4px 10px", borderRadius: 6, border: "1px solid rgba(255,255,255,0.25)", background: relationDataMode === "sage" ? "rgba(255,255,255,0.2)" : "rgba(255,255,255,0.05)", color: "inherit", cursor: "pointer" }}
+                  >
+                    SAGE
+                  </button>
                 </div>
               )}
               <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
@@ -712,14 +736,18 @@ export default function MapPanel({ onSelectionChange, onSummaryChange }) {
                     crimeCounts={leftCountsForMap}
                     legendTitle={
                       activeMode === "source"
-                      ? sourceCountMode === "average"
-                        ? "Avg crimes per day"
-                        : "Crime Count"
-                      : activeMode === "instance"
+                        ? sourceCountMode === "average"
+                          ? "Avg crimes per day"
+                          : "Crime Count"
+                        : activeMode === "instance"
                           ? instanceRelationError
                             ? "Relation Error"
-                           : "Instance Relation Weight"
-                          : "Model Relation Weight"
+                            : relationDataMode === "sage"
+                              ? "SAGE (red=suppressive, green=amplifying)"
+                              : "Instance Relation Weight"
+                          : relationDataMode === "sage"
+                            ? "SAGE (red=suppressive, green=amplifying)"
+                            : "Model Relation Weight"
                     }
                     layer={layer}
                     selectedId={selectedId}
@@ -727,6 +755,7 @@ export default function MapPanel({ onSelectionChange, onSummaryChange }) {
                     onHover={(h) => setHover(h ? { ...h, which: "left" } : null)}
                     recenterTrigger={recenterTrigger}
                     isRelationMap={activeMode === "relation" || activeMode === "instance"}
+                    isSageMap={relationDataMode === "sage" && (activeMode === "relation" || activeMode === "instance")}
                     loading={
                       activeMode === "source"
                         ? leftTotalsLoading
@@ -1006,6 +1035,7 @@ export default function MapPanel({ onSelectionChange, onSummaryChange }) {
                         <TooltipMap
                           days={hoverDaily}
                           isRelationMap={(activeMode === "relation" || activeMode === "instance")&&hover.which === "left"}
+                          isSageMap={relationDataMode === "sage" && (activeMode === "relation" || activeMode === "instance") && hover.which === "left"}
                           />
                       )}
                     </>

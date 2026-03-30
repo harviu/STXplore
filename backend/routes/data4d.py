@@ -7,21 +7,31 @@ router = APIRouter(tags=["data4d"])
 
 _cache: dict[str, np.ndarray] = {}
 
-def _load_array(model: str) -> np.ndarray:
-    if model in _cache:
-        return _cache[model]
-    path = PRED_MODELS_DIR / model / "mi" / "mi_input_output.npy"
+def _load_array(model: str, data_mode: str) -> np.ndarray:
+    """Load and cache the 4D tensor for a given model and data mode.
+    
+    data_mode='mi'   -> models/<model>/mi/mi_input_output.npy
+    data_mode='sage' -> models/<model>/sage/sage_4d_history_source_horizon_target.npy
+    """
+    cache_key = f"{model}_{data_mode}"
+    if cache_key in _cache:
+        return _cache[cache_key]
+    if data_mode == "sage":
+        path = PRED_MODELS_DIR / model / "sage" / "sage_4d_history_source_horizon_target.npy"
+    else:
+        path = PRED_MODELS_DIR / model / "mi" / "mi_input_output.npy"
     if not path.exists():
-        raise FileNotFoundError(f"MI file not found for model '{model}': {path}")
+        raise FileNotFoundError(f"{data_mode.upper()} file not found for model '{model}': {path}")
     arr = np.load(path)
     if arr.ndim != 4 or arr.shape != (90, 77, 30, 77):
         raise RuntimeError(f"Unexpected tensor shape for model '{model}': {arr.shape}")
-    _cache[model] = arr
+    _cache[cache_key] = arr
     return arr
 
 @router.get("/data4d")
 def get_data4d(
     model: str = Query(..., description="Model folder name (e.g. Transformer)"),
+    data_mode: str = Query("mi", description="Data source: 'mi' or 'sage'"),
     d1: Optional[int] = Query(None),
     b1: bool = Query(False),
     d2: Optional[int] = Query(None),
@@ -31,7 +41,7 @@ def get_data4d(
     d3_start: Optional[int] = Query(None, ge=0, le=29),
 ):
     try:
-        loadedArray = _load_array(model)
+        loadedArray = _load_array(model, data_mode)
     except FileNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except RuntimeError as exc:
