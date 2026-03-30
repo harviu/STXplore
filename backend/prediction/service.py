@@ -2,8 +2,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import date, timedelta
+from typing import Any, Callable
 
 import numpy as np
+import torch
 from sqlalchemy.orm import Session
 
 from backend.prediction.config import COMMUNITY_IDS
@@ -13,7 +15,7 @@ from backend.prediction.data_source import (
     get_daily_rows,
 )
 from backend.prediction.runtime import RuntimeRegistry
-from backend.prediction.schemas import MapPredictionResult, PredictionResult, TensorSample
+from backend.prediction.schemas import InstanceShapResult, MapPredictionResult, PredictionResult, TensorSample
 from backend.prediction.windowing import forecast_dates, forecast_window, history_dates, history_window
 
 
@@ -95,6 +97,208 @@ class PredictionService:
             anchor_date=anchor_date,
             sample=sample,
             history_matrix=history_matrix,
+        )
+
+    def _background_anchor_dates(
+        self,
+        seq_len: int,
+        requested_size: int,
+        db: Session | None,
+    ) -> list[date]:
+        min_day, max_day, _ = get_available_date_range(db=db)
+        earliest_anchor = min_day + timedelta(days=seq_len - 1)
+        latest_anchor = max_day
+        if latest_anchor < earliest_anchor:
+            raise RuntimeError("Not enough available history to build SHAP background set")
+
+        total = (latest_anchor - earliest_anchor).days + 1
+        sample_n = min(max(1, requested_size), total)
+        rng = np.random.default_rng()
+        offsets = rng.choice(total, size=sample_n, replace=False)
+        return [earliest_anchor + timedelta(days=int(off)) for off in offsets]
+
+    def _make_kernel_predict_fn(
+        self,
+        *,
+        model: torch.nn.Module,
+        device: torch.device,
+        seq_len: int,
+        enc_in: int,
+        label_len: int,
+        pred_len: int,
+        horizon_idx: int,
+        community_idx: int,
+        include_marks: bool,
+        mark_dim: int,
+        fixed_y_mark: torch.Tensor | None,
+    ) -> Callable[[np.ndarray], np.ndarray]:
+        @torch.no_grad()
+        def predict_fn(z_flat_np: np.ndarray) -> np.ndarray:
+            z = torch.tensor(z_flat_np, dtype=torch.float32, device=device)
+            batch = z.shape[0]
+            x_dim_flat = seq_len * enc_in
+
+            if include_marks:
+                mark_flat = seq_len * mark_dim
+                x_part = z[:, :x_dim_flat].view(-1, seq_len, enc_in)
+                x_mark_part = z[:, x_dim_flat : x_dim_flat + mark_flat].view(-1, seq_len, mark_dim)
+            else:
+                x_part = z[:, :x_dim_flat].view(-1, seq_len, enc_in)
+                x_mark_part = None
+
+            label_hist = x_part[:, -label_len:, :]
+            zeros = torch.zeros((batch, pred_len, enc_in), device=device, dtype=x_part.dtype)
+            dec_inp = torch.cat([label_hist, zeros], dim=1)
+
+            if include_marks and fixed_y_mark is not None:
+                y_mark_part = fixed_y_mark.repeat(batch, 1, 1)
+            else:
+                y_mark_part = None
+
+            outputs = model(x_part, x_mark_part, dec_inp, y_mark_part)
+            if isinstance(outputs, (tuple, list)):
+                outputs = outputs[0]
+            outputs = outputs[:, -pred_len:, :]
+            scalar = outputs[:, horizon_idx, community_idx]
+            return scalar.detach().cpu().numpy()
+
+        return predict_fn
+
+    def explain_instance_shap(
+        self,
+        anchor_date: date,
+        model_name: str,
+        target_horizon: int,
+        target_community_id: int,
+        background_size: int = 128,
+        nsamples: int = 128,
+        top_k: int = 20,
+        db: Session | None = None,
+    ) -> tuple[InstanceShapResult, str]:
+        # Lazy import so non-SHAP prediction endpoints do not require shap.
+        try:
+            import shap  # type: ignore
+        except Exception as exc:  # pragma: no cover
+            raise RuntimeError("SHAP is not installed. Install with `pip install shap`.") from exc
+
+        bundle = self.registry.get(model_name)
+        seq_len = int(bundle.cfg["seq_len"])
+        pred_len = int(bundle.cfg["pred_len"])
+        label_len = int(bundle.cfg["label_len"])
+        enc_in = int(bundle.cfg["enc_in"])
+
+        if target_horizon < 1 or target_horizon > pred_len:
+            raise RuntimeError(f"target_horizon must be in [1, {pred_len}]")
+        if target_community_id < 1 or target_community_id > len(COMMUNITY_IDS):
+            raise RuntimeError(f"target_community_id must be in [1, {len(COMMUNITY_IDS)}]")
+
+        horizon_idx = target_horizon - 1
+        community_idx = target_community_id - 1
+
+        history_matrix, hist_days, source = self._build_history_matrix(anchor_date, seq_len=seq_len, db=db)
+        sample = bundle.prepare_sample(history_matrix, anchor_date)
+
+        include_marks = sample.x_mark_enc is not None and sample.x_mark_dec is not None
+        x_explain = np.asarray(sample.x_enc[0], dtype=np.float32)
+        x_dim_flat = seq_len * enc_in
+
+        if include_marks:
+            x_mark_explain = np.asarray(sample.x_mark_enc[0], dtype=np.float32)
+            mark_dim = int(x_mark_explain.shape[-1])
+            fixed_y_mark = torch.tensor(sample.x_mark_dec, dtype=torch.float32, device=bundle.device)
+        else:
+            x_mark_explain = None
+            mark_dim = 0
+            fixed_y_mark = None
+
+        bg_anchor_dates = self._background_anchor_dates(
+            seq_len=seq_len,
+            requested_size=max(1, background_size),
+            db=db,
+        )
+
+        bg_x: list[np.ndarray] = []
+        bg_x_mark: list[np.ndarray] = []
+        for bg_anchor in bg_anchor_dates:
+            bg_history, _, _ = self._build_history_matrix(bg_anchor, seq_len=seq_len, db=db)
+            bg_sample = bundle.prepare_sample(bg_history, bg_anchor)
+            bg_x.append(np.asarray(bg_sample.x_enc[0], dtype=np.float32))
+            if include_marks:
+                if bg_sample.x_mark_enc is None:
+                    raise RuntimeError("Background sample is missing x_mark_enc while marks are required")
+                bg_x_mark.append(np.asarray(bg_sample.x_mark_enc[0], dtype=np.float32))
+
+        bg_x_np = np.stack(bg_x, axis=0)
+        bg_features_flat = bg_x_np.reshape(bg_x_np.shape[0], -1)
+
+        if include_marks and x_mark_explain is not None:
+            bg_x_mark_np = np.stack(bg_x_mark, axis=0)
+            bg_features_flat = np.concatenate([bg_features_flat, bg_x_mark_np.reshape(bg_x_mark_np.shape[0], -1)], axis=1)
+            x_query_flat = np.concatenate([x_explain.reshape(1, -1), x_mark_explain.reshape(1, -1)], axis=1)
+        else:
+            x_query_flat = x_explain.reshape(1, -1)
+
+        predict_fn = self._make_kernel_predict_fn(
+            model=bundle.model,
+            device=bundle.device,
+            seq_len=seq_len,
+            enc_in=enc_in,
+            label_len=label_len,
+            pred_len=pred_len,
+            horizon_idx=horizon_idx,
+            community_idx=community_idx,
+            include_marks=include_marks,
+            mark_dim=mark_dim,
+            fixed_y_mark=fixed_y_mark,
+        )
+
+        prediction = float(predict_fn(x_query_flat)[0])
+        explainer = shap.KernelExplainer(predict_fn, bg_features_flat)
+        raw_values = explainer.shap_values(x_query_flat, nsamples=max(1, int(nsamples)))
+        if isinstance(raw_values, list):
+            raw_values = raw_values[0]
+
+        shap_flat = np.asarray(raw_values, dtype=np.float32).reshape(-1)
+        shap_x = shap_flat[:x_dim_flat].reshape(seq_len, enc_in)
+
+        expected = explainer.expected_value
+        if isinstance(expected, np.ndarray):
+            baseline = float(np.asarray(expected).reshape(-1)[0])
+        else:
+            baseline = float(expected)
+
+        abs_vals = np.abs(shap_x)
+        k = max(1, min(int(top_k), shap_x.size))
+        flat_idx = np.argpartition(abs_vals.ravel(), -k)[-k:]
+        ordered = flat_idx[np.argsort(abs_vals.ravel()[flat_idx])[::-1]]
+
+        top_features: list[dict[str, float | int | str]] = []
+        for idx in ordered:
+            lag_idx, comm_idx = np.unravel_index(int(idx), shap_x.shape)
+            top_features.append(
+                {
+                    "history_index": int(lag_idx),
+                    "history_date": hist_days[lag_idx].isoformat(),
+                    "community_id": int(comm_idx + 1),
+                    "shap_value": float(shap_x[lag_idx, comm_idx]),
+                    "abs_shap_value": float(abs_vals[lag_idx, comm_idx]),
+                }
+            )
+
+        return (
+            InstanceShapResult(
+                model_name=model_name,
+                anchor_date=anchor_date,
+                target_date=anchor_date + timedelta(days=target_horizon),
+                target_horizon=target_horizon,
+                target_community_id=target_community_id,
+                history_dates=hist_days,
+                prediction=prediction,
+                baseline=baseline,
+                shap_values=shap_x,
+                top_features=top_features,
+            ),
+            source,
         )
 
 
