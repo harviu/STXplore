@@ -51,56 +51,26 @@ export function useModelRelationCounts(activeMode, layer, relationSelectedId, mo
     setError(null);
 
     //Fetch the model relation counts
-    api
-      dataMode === "sage"
+    //Fetch the model relation counts
+    (dataMode === "sage"
       ? api.sageLevelRelation(sourceIdx, model, { signal: ac.signal })
-      .then((data) => {
-        if (cancelled) return;
-        //Format the data
-        const targets = data?.targets;
-        if (!Array.isArray(targets) || targets.length !== RELATION_TARGET_LEN) {
-          throw new Error("Relation API returned invalid targets array.");
-        }
-        //Set the counts to the formatted data
-        setCounts(targetsToCountsByCommunityId(targets));
-        setLoading(false);
-      })
-      .catch((err) => {
-        //If the error is an abort error, return
-        if (err?.name === "AbortError") return;
-        //If the request is cancelled, return
-        if (cancelled) return;
-        console.error("relationModel failed:", err);
-        //Set the error to the error message
-        setError(String(err?.message ?? err));
-        //Set the counts to null
-        setCounts(null);
-        setLoading(false);
-      })
       : api.relationalModel(sourceIdx, model, { signal: ac.signal })
-      .then((data) => {
-        if (cancelled) return;
-        //Format the data
-        const targets = data?.targets;
-        if (!Array.isArray(targets) || targets.length !== RELATION_TARGET_LEN) {
-          throw new Error("Relation API returned invalid targets array.");
-        }
-        //Set the counts to the formatted data
-        setCounts(targetsToCountsByCommunityId(targets));
-        setLoading(false);
-      })
-      .catch((err) => {
-        //If the error is an abort error, return
-        if (err?.name === "AbortError") return;
-        //If the request is cancelled, return
-        if (cancelled) return;
-        console.error("relationModel failed:", err);
-        //Set the error to the error message
-        setError(String(err?.message ?? err));
-        //Set the counts to null
-        setCounts(null);
-        setLoading(false);
-      });
+    ).then((data) => {
+      if (cancelled) return;
+      const targets = data?.targets;
+      if (!Array.isArray(targets) || targets.length !== RELATION_TARGET_LEN) {
+        throw new Error("Relation API returned invalid targets array.");
+      }
+      setCounts(targetsToCountsByCommunityId(targets));
+      setLoading(false);
+    }).catch((err) => {
+      if (err?.name === "AbortError") return;
+      if (cancelled) return;
+      console.error("relationModel failed:", err);
+      setError(String(err?.message ?? err));
+      setCounts(null);
+      setLoading(false);
+    });
     //Abort the abort controller
     return () => {
       //Set the cancelled flag to true

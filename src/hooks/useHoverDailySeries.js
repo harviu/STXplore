@@ -82,7 +82,7 @@ export function useHoverDailySeries({ hover, activeMode, secondaryMode, tensorSo
       //If the hover is on the left and the selected id is not null
       if (isRelation && tensorSourceId) {
         api
-          .get4dData(pastDays, true, hover.id, futureEnd - 1, false, tensorSourceId, model, dataMode, {
+          .get4dData(pastDays, true, Number(hover.id) - 1, futureEnd - 1, false, tensorSourceId, model, dataMode, {
             signal: ac.signal,
           })
           .then((data) => {

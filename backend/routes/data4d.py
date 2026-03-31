@@ -47,6 +47,12 @@ def get_data4d(
     except RuntimeError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
+    # Validate indices are in bounds before slicing (tensor axes are 0-indexed, size 77)
+    if d2 is not None and not (0 <= d2 <= 76):
+        raise HTTPException(status_code=422, detail=f"d2={d2} is out of bounds — must be 0..76 (0-indexed community id)")
+    if d4 is not None and not (0 <= d4 <= 76):
+        raise HTTPException(status_code=422, detail=f"d4={d4} is out of bounds — must be 0..76 (0-indexed community id)")
+
     s1 = d1 if d1 is not None else slice(None)
     s2 = d2 if d2 is not None else slice(None)
     s3 = d3 if d3 is not None else slice(None)
