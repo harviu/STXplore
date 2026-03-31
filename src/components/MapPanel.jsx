@@ -322,6 +322,20 @@ export default function MapPanel({ onSelectionChange, onSummaryChange }) {
     futureSpanDays,
   ]);
 
+  const errorForMap = useMemo(() => {
+    if (forecastCountsForMap == null || rightCrimeCounts == null) return null;
+    const out = {};
+    for (const id of Object.keys(forecastCountsForMap)) {
+      const forecastVal = forecastCountsForMap[id] ?? 0;
+      const actualVal = rightCrimeCounts[id] ?? 0;
+      out[id] = actualVal - forecastVal;
+    }
+    console.log(forecastCountsForMap);
+    console.log(rightCrimeCounts);
+    console.log(out);
+    return out;
+  }, [forecastCountsForMap, rightCrimeCounts]);
+
   const rightMapLoading = targetForecastEligible
     ? predBoundsLoading || (targetForecastReady && forecastDailyLoading)
     : rightTotalsLoading;
@@ -989,7 +1003,7 @@ export default function MapPanel({ onSelectionChange, onSummaryChange }) {
                 >
                   <MapBoxMap
                     geo={secondaryGeo}
-                    crimeCounts={rightCountsForMap}
+                    crimeCounts={secondaryMode === "error" ? errorForMap : rightCountsForMap}
                     legendTitle={
                       secondaryMode === "error"
                         ? "Difference (actual - target)"
