@@ -53,7 +53,30 @@ export function useModelRelationCounts(activeMode, layer, relationSelectedId, mo
     //Fetch the model relation counts
     api
       dataMode === "sage"
-      ? api.sageLevelRouter(sourceIdx, model, { signal: ac.signal })
+      ? api.sageLevelRelation(sourceIdx, model, { signal: ac.signal })
+      .then((data) => {
+        if (cancelled) return;
+        //Format the data
+        const targets = data?.targets;
+        if (!Array.isArray(targets) || targets.length !== RELATION_TARGET_LEN) {
+          throw new Error("Relation API returned invalid targets array.");
+        }
+        //Set the counts to the formatted data
+        setCounts(targetsToCountsByCommunityId(targets));
+        setLoading(false);
+      })
+      .catch((err) => {
+        //If the error is an abort error, return
+        if (err?.name === "AbortError") return;
+        //If the request is cancelled, return
+        if (cancelled) return;
+        console.error("relationModel failed:", err);
+        //Set the error to the error message
+        setError(String(err?.message ?? err));
+        //Set the counts to null
+        setCounts(null);
+        setLoading(false);
+      })
       : api.relationalModel(sourceIdx, model, { signal: ac.signal })
       .then((data) => {
         if (cancelled) return;
