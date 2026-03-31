@@ -156,7 +156,7 @@ export default function MapPanel({ onSelectionChange, onSummaryChange }) {
     if (activeMode !== "source" && selectedId) {
       let cancelled = false;
       const ac = new AbortController();
-      api.get4dData(activeMode === "instance" ? pastDays : 90, true, null, futureEnd, false, selectedId, relationModel, relationDataMode, {
+      api.get4dData(activeMode === "instance" ? pastDays : 90, true, null, futureEnd, false, Number(selectedId) - 1, relationModel, relationDataMode, {
         signal: ac.signal,
         d3Start: futureStart,
       })
