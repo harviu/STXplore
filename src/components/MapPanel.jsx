@@ -628,7 +628,7 @@ export default function MapPanel({ onSelectionChange, onSummaryChange }) {
                       padding: "4px 8px",
                       borderRadius: 6,
                       border: "1px solid rgba(255,255,255,0.25)",
-                      background: "rgba(255,255,255,0.08)",
+                      background: "rgb(68, 68, 68)",
                       color: "inherit",
                       fontSize: "inherit",
                     }}
@@ -888,7 +888,7 @@ export default function MapPanel({ onSelectionChange, onSummaryChange }) {
                       padding: "4px 8px",
                       borderRadius: 6,
                       border: "1px solid rgba(255,255,255,0.25)",
-                      background: "rgba(255,255,255,0.08)",
+                      background: "rgb(68, 68, 68)",
                       color: "inherit",
                       fontSize: "inherit",
                     }}

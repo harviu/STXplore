@@ -243,7 +243,7 @@ export default function DashboardPanel({ mode, selection, inactiveMode, inactive
       {/* Cluster Heatmaps */}
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", width: "100%", gap: 16 }}>
         {heatData && (selection?.id || mode === "source") && <p style={{ opacity: 1, margin: 0, fill: "white" }}> Past map cluster heatmap </p>}
-        {heatData && (selection?.id || mode === "source") && <ClusterHeatmap data={heatData} selectedId={selection?.id || null} isRelationMap={mode !== "source"} isSageMap={isSageMap} />}
+        {heatData && (selection?.id || mode === "source") && <ClusterHeatmap data={heatData} selectedId={selection?.id || null} isRelationMap={mode !== "source"} isSageMap={isSageMap && mode !== "source"} />}
         {targetHeatData && inactiveMode === "actual" && <p style={{ opacity: 1, margin: 0, fill: "white" }}> Future map cluster heatmap </p>}
         {targetHeatData && inactiveMode === "actual" && <ClusterHeatmap data={targetHeatData} selectedId={inactiveSelection?.id || null} isRelationMap= {false} isFuture={true} offset={right?.offset}/>}
       </div>
