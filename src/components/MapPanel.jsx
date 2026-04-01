@@ -123,7 +123,7 @@ export default function MapPanel({ onSelectionChange, onSummaryChange }) {
   const { hoverDaily, hoverDailyLoading, canShowHoverData } = useHoverDailySeries({hover, activeMode, secondaryMode, tensorSourceId, model: relationModel, pastDays, futureStart, futureEnd, anchorDate, dataMode: relationDataMode});
 
   const targetForecastEligible =
-    secondaryMode === "target" && secondaryLayer === "community";
+    secondaryMode === "target" || secondaryMode === "error" && secondaryLayer === "community";
 
   const wantPredBounds = targetForecastEligible;
 
@@ -308,6 +308,18 @@ export default function MapPanel({ onSelectionChange, onSummaryChange }) {
   return totals;
   }, [forecastDailyResp, futureStart, futureEnd]);
 
+  // Error for error map = actual - forecast
+  const errorForMap = useMemo(() => {
+    if (forecastCountsForMap == null || rightCrimeCounts == null) return null;
+    const out = {};
+    for (const id of Object.keys(forecastCountsForMap)) {
+      const forecastVal = forecastCountsForMap[id] ?? 0;
+      const actualVal = rightCrimeCounts[id] ?? 0;
+      out[id] = actualVal - forecastVal;
+    }
+    return out;
+  }, [forecastCountsForMap, rightCrimeCounts]);
+
   // When right map shows Actual and "average" mode: show count / span; otherwise raw counts
   const rightCountsForMap = useMemo(() => {
     if (
@@ -328,6 +340,9 @@ export default function MapPanel({ onSelectionChange, onSummaryChange }) {
         out[id] = val / futureSpanDays;
       return out;
     }
+    if (secondaryMode === "error") {
+      return errorForMap;
+    }
     return secondaryMode === "actual" ? rightCrimeCounts : null;
   }, [
     targetForecastEligible,
@@ -337,17 +352,6 @@ export default function MapPanel({ onSelectionChange, onSummaryChange }) {
     targetCountMode,
     futureSpanDays,
   ]);
-
-  const errorForMap = useMemo(() => {
-    if (forecastCountsForMap == null || rightCrimeCounts == null) return null;
-    const out = {};
-    for (const id of Object.keys(forecastCountsForMap)) {
-      const forecastVal = forecastCountsForMap[id] ?? 0;
-      const actualVal = rightCrimeCounts[id] ?? 0;
-      out[id] = actualVal - forecastVal;
-    }
-    return out;
-  }, [forecastCountsForMap, rightCrimeCounts]);
 
   const rightMapLoading = targetForecastEligible
     ? predBoundsLoading || (targetForecastReady && forecastDailyLoading)
@@ -544,9 +548,7 @@ export default function MapPanel({ onSelectionChange, onSummaryChange }) {
           cancelled = true;
           ac.abort();
         };
-      } else { 
-        setFutureCounts(null);
-      }
+      } 
       
     }
   }, [secondaryMode, secondaryLayer, futureStart, futureEnd, anchorDate, canShowActualError]);
