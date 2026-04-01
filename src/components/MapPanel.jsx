@@ -1053,6 +1053,7 @@ export default function MapPanel({ onSelectionChange, onSummaryChange }) {
                     onSelectId={setSecondarySelectedId}
                     onHover={(h) => setHover(h ? { ...h, which: "right" } : null)}
                     recenterTrigger={recenterTrigger}
+                    isErrorMap={secondaryMode === "error"}
                     loading={rightMapLoading}
                   />
                 </div>

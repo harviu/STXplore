@@ -37,3 +37,11 @@ export const SAGE_STOPS = [
   "#66bd63",
   "#1a9850", // strong green - highly amplifying
 ];
+
+export const ERROR_STOPS = [
+  "#313695", 
+  "#4575b4",
+  "#ffffbf", // white (zero error)
+  "#f46d43",
+  "#a50026", 
+];
