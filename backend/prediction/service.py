@@ -170,8 +170,8 @@ class PredictionService:
         model_name: str,
         target_horizon: int,
         target_community_id: int,
-        background_size: int = 128,
-        nsamples: int = 128,
+        background_size: int = 1,
+        nsamples: int = 1,
         top_k: int = 20,
         db: Session | None = None,
     ) -> tuple[InstanceShapResult, str]:

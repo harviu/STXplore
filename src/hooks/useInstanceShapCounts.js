@@ -1,0 +1,70 @@
+import { useEffect, useState, useMemo } from "react";
+import { api } from "../lib/api.js";
+
+/**
+ * Fetches SHAP values for a target community and aggregates them per source community
+ * for use as instance-level map counts.
+ * shap_values shape: (90 history days, 77 communities)
+ * We sum abs SHAP across history days per community to get a single attribution weight per community.
+ */
+export function useInstanceShapCounts(activeMode, instanceSelectedId, model, forecastAnchorDate, horizon) {
+  const [counts, setCounts] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    if (activeMode !== "instance" || !instanceSelectedId || !forecastAnchorDate || !horizon) {
+      setCounts(null);
+      setLoading(false);
+      setError(null);
+      return;
+    }
+
+    let cancelled = false;
+    const ac = new AbortController();
+    setLoading(true);
+    setError(null);
+
+    api.predictionInstanceShap(
+      forecastAnchorDate,
+      model,
+      horizon,
+      Number(instanceSelectedId),
+      { signal: ac.signal }
+    ).then((data) => {
+      if (cancelled) return;
+      if (!data?.shap_values) {
+        setCounts(null);
+        setLoading(false);
+        return;
+      }
+      // Sum absolute SHAP values across all 90 history days per community
+      // to get a single attribution weight per community for the map
+      const perCommunity = new Array(77).fill(0);
+      for (const row of data.shap_values) {
+        row.values.forEach((v, i) => {
+          perCommunity[i] += Math.abs(v);
+        });
+      }
+      // Convert to { "1": val, "2": val, ... } keyed by 1-based community id
+      const result = {};
+      perCommunity.forEach((v, i) => { result[String(i + 1)] = v; });
+      setCounts(result);
+      setLoading(false);
+    }).catch((err) => {
+      if (err?.name === "AbortError") return;
+      if (cancelled) return;
+      console.error("instanceShap failed:", err);
+      setError(String(err?.message ?? err));
+      setCounts(null);
+      setLoading(false);
+    });
+
+    return () => {
+      cancelled = true;
+      ac.abort();
+    };
+  }, [activeMode, instanceSelectedId, model, forecastAnchorDate, horizon]);
+
+  return { counts, loading, error };
+}

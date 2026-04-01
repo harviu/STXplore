@@ -16,6 +16,7 @@ import { createTheme, ThemeProvider } from "@mui/material/styles";
 import { addDaysISO, clampDateIso, sourceRange, targetRange, todayISO } from "../lib/dates.js";
 import { responseToCounts } from "../lib/crimeAggregates.js";
 import { initialMapFaces, mapFacesReducer } from "../lib/mapFacesReducer.js";
+import { useInstanceShapCounts } from "../hooks/useInstanceShapCounts.js";
 import { active } from "d3";
 
 const RTL_THEME = createTheme({ direction: "rtl" });
@@ -65,6 +66,7 @@ export default function MapPanel({ onSelectionChange, onSummaryChange }) {
   const instanceSelectedId = mapFaces.instance.selectedId;
   const targetLayer = mapFaces.target.layer;
   const targetSelectedId = mapFaces.target.selectedId;
+  const relationTargetCommunityReady = targetLayer === "community" && !!targetSelectedId;
   const actualLayer = mapFaces.actual.layer;
   const actualSelectedId = mapFaces.actual.selectedId;
   const errorLayer = mapFaces.error.layer;
@@ -91,6 +93,12 @@ export default function MapPanel({ onSelectionChange, onSummaryChange }) {
   // "sage" = model attribution (what the model learned to pay attention to)
   const [relationDataMode, setRelationDataMode] = useState("mi");
 
+  // Horizon for SHAP — midpoint of future range slider, clamped to 1..30
+  const shapHorizon = useMemo(() => {
+    const mid = Math.round((futureStart + futureEnd) / 2);
+    return Math.max(1, Math.min(30, mid || 1));
+  }, [futureStart, futureEnd]);
+
   // Anchor date — defaults to latest date in dataset once loaded; user can pick another via calendar
   const [anchorDate, setAnchorDate] = useState(() => todayISO());
   const [calendarOpen, setCalendarOpen] = useState(false);
@@ -111,14 +119,37 @@ export default function MapPanel({ onSelectionChange, onSummaryChange }) {
   const secondaryGeo = BOUNDARY_GEO[secondaryLayer];
 
   //Hover daily series
-  const tensorSourceId = activeMode === "relation" ? relationSelectedId : activeMode === "instance" ? instanceSelectedId : null;
+  const tensorSourceId = targetSelectedId ?? null;
   const { hoverDaily, hoverDailyLoading, canShowHoverData } = useHoverDailySeries({hover, activeMode, secondaryMode, tensorSourceId, model: relationModel, pastDays, futureStart, futureEnd, anchorDate, dataMode: relationDataMode});
 
+  const targetForecastEligible =
+    secondaryMode === "target" && secondaryLayer === "community";
+
+  const wantPredBounds = targetForecastEligible;
+
+  const { data: predBounds, loading: predBoundsLoading, error: predBoundsError } = useApi(
+    ({ signal }) => (wantPredBounds ? api.predictionAnchorBounds({ signal }) : Promise.resolve(null)),
+    [wantPredBounds]
+  );
+
+  const anchorDay = anchorDate?.slice(0, 10) ?? "";
+
+  const forecastAnchorDate = useMemo(() => {
+    if (!predBounds?.anchor_min || !predBounds?.anchor_max) return anchorDay;
+    return clampDateIso(anchorDay, predBounds.anchor_min, predBounds.anchor_max);
+  }, [anchorDay, predBounds]);
+  
   //Model relation counts
-  const { counts: relationCounts, loading: relationLoading, error: relationError } = useModelRelationCounts(activeMode, layer, relationSelectedId, relationModel, relationDataMode);
+  const { counts: relationCounts, loading: relationLoading, error: relationError } = useModelRelationCounts(activeMode, layer, targetSelectedId, relationModel, relationDataMode);
 
   //Instance relation counts
-  const { counts: instanceRelationCounts, loading: instanceRelationLoading, error: instanceRelationError } = useInstanceRelationCounts(activeMode, instanceSelectedId, relationModel, pastDays, futureStart, futureEnd, relationDataMode);
+  const { counts: instanceRelationCounts, loading: instanceRelationLoading, error: instanceRelationError } = useInstanceRelationCounts(activeMode, targetSelectedId, relationModel, pastDays, futureStart, futureEnd, relationDataMode);
+
+  // Instance-level SHAP: target = right map selection, left map shows source attributions
+  const { counts: shapCounts, loading: shapLoading, error: shapError } = useInstanceShapCounts(
+    activeMode, targetSelectedId, relationModel, forecastAnchorDate, shapHorizon
+  );
+
 
   // Relation tab: community-only on both sides; snap right map to Target
   useEffect(() => {
@@ -153,10 +184,14 @@ export default function MapPanel({ onSelectionChange, onSummaryChange }) {
 
   //get data for relational heatmaps
   useEffect(() => {
-    if (activeMode !== "source" && selectedId) {
+    if (activeMode === "source") return;
+    if (!relationTargetCommunityReady || !targetSelectedId) {
+      setRelationValues(null);
+      return;
+    }
       let cancelled = false;
       const ac = new AbortController();
-      api.get4dData(activeMode === "instance" ? pastDays : 90, true, null, futureEnd, false, Number(selectedId) - 1, relationModel, relationDataMode, {
+      api.get4dData(activeMode === "instance" ? pastDays : 90, true, null, futureEnd, false, Number(targetSelectedId) - 1, relationModel, relationDataMode, {
         signal: ac.signal,
         d3Start: futureStart,
       })
@@ -173,8 +208,7 @@ export default function MapPanel({ onSelectionChange, onSummaryChange }) {
         cancelled = true;
         ac.abort();
       };
-    }
-  }, [activeMode, pastDays, futureStart, futureEnd, selectedId, relationModel]);
+    }, [activeMode, pastDays, futureStart, futureEnd, targetSelectedId, relationModel]);
 
   // Instance-level map on source side: 4D array → per-community time-averaged over slider date range.
   const {data: instanceSourceResp, loading: instanceSourceLoading, error: instanceSourceError} = useApi(({ signal }) => {
@@ -202,8 +236,8 @@ export default function MapPanel({ onSelectionChange, onSummaryChange }) {
     const raw =
       activeMode === "relation"
         ? relationCounts
-        : activeMode === "instance" && instanceSelectedId && instanceRelationCounts
-          ? instanceRelationCounts
+        : activeMode === "instance" && relationTargetCommunityReady && shapCounts
+          ? shapCounts
           : leftCrimeCounts;
     if (raw == null) return raw;
     if (
@@ -216,7 +250,7 @@ export default function MapPanel({ onSelectionChange, onSummaryChange }) {
       return out;
     }
     return raw;
-  }, [activeMode, relationCounts, instanceSelectedId, instanceRelationCounts, leftCrimeCounts, sourceCountMode, pastDays]);
+  }, [activeMode, relationCounts, relationTargetCommunityReady, shapCounts, leftCrimeCounts, sourceCountMode, pastDays]);
 
 
   //Get Data for Actual Heatmap
@@ -231,24 +265,6 @@ export default function MapPanel({ onSelectionChange, onSummaryChange }) {
     () => responseToCounts(rightTotalsResp),
     [rightTotalsResp]
   );
-
-  const targetForecastEligible =
-    secondaryMode === "target" && secondaryLayer === "community";
-
-  const wantPredBounds = targetForecastEligible;
-
-  const { data: predBounds, loading: predBoundsLoading, error: predBoundsError } = useApi(
-    ({ signal }) => (wantPredBounds ? api.predictionAnchorBounds({ signal }) : Promise.resolve(null)),
-    [wantPredBounds]
-  );
-
-  const anchorDay = anchorDate?.slice(0, 10) ?? "";
-
-  const forecastAnchorDate = useMemo(() => {
-    if (!predBounds?.anchor_min || !predBounds?.anchor_max) return anchorDay;
-    return clampDateIso(anchorDay, predBounds.anchor_min, predBounds.anchor_max);
-  }, [anchorDay, predBounds]);
-
   const anchorIsClamped = targetForecastEligible && predBounds?.anchor_max && anchorDay > predBounds.anchor_max;
 
   const targetForecastReady =
@@ -330,9 +346,6 @@ export default function MapPanel({ onSelectionChange, onSummaryChange }) {
       const actualVal = rightCrimeCounts[id] ?? 0;
       out[id] = actualVal - forecastVal;
     }
-    console.log(forecastCountsForMap);
-    console.log(rightCrimeCounts);
-    console.log(out);
     return out;
   }, [forecastCountsForMap, rightCrimeCounts]);
 
@@ -542,7 +555,7 @@ export default function MapPanel({ onSelectionChange, onSummaryChange }) {
     ? leftTotalsLoading 
     : activeMode === "relation" 
         ? relationLoading 
-        : (instanceRelationLoading || instanceSourceLoading);
+        : (shapLoading || instanceSourceLoading);
   return (
     <Panel title="Crime Map" fill style={{ minHeight: 0 }}>
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", flex: "1 1 auto", minHeight: 0 }}>
@@ -624,12 +637,22 @@ export default function MapPanel({ onSelectionChange, onSummaryChange }) {
                 <button onClick={() => setActiveMode("source")} disabled={activeMode === "source"}>
                   Past
                 </button>
-                <button onClick={() => setActiveMode("instance")} disabled={activeMode === "instance"} style={{fontSize:"0.65rem"}}>
-                  Instance <br/> Level
-                </button>
-                <button onClick={() => { setActiveMode("relation"); setSecondaryMode("target"); }} disabled={activeMode === "relation"} style={{fontSize:"0.65rem"}}>
-                  Model <br/> Level
-                </button>
+                  <button
+                    onClick={() => setActiveMode("instance")}
+                    disabled={activeMode === "instance" || !relationTargetCommunityReady}
+                    title={!relationTargetCommunityReady && activeMode !== "instance" ? "Select a community on the Predicted map first." : undefined}
+                    style={{fontSize:"0.65rem"}}
+                  >
+                    Instance <br/> Level
+                  </button>
+                  <button
+                    onClick={() => { setActiveMode("relation"); setSecondaryMode("target"); }}
+                    disabled={activeMode === "relation" || !relationTargetCommunityReady}
+                    title={!relationTargetCommunityReady && activeMode !== "relation" ? "Select a community on the Predicted map first." : undefined}
+                    style={{fontSize:"0.65rem"}}
+                  >
+                    Model <br/> Level
+                  </button>
               </div>
               {(activeMode === "relation" || activeMode === "instance") && (
                 <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
@@ -653,7 +676,13 @@ export default function MapPanel({ onSelectionChange, onSummaryChange }) {
                   </select>
                 </div>
               )}
-              {(activeMode === "relation" || activeMode === "instance") && (
+              {activeMode === "instance" && relationTargetCommunityReady && (
+                <div style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 13, opacity: 0.8 }}>
+                  <strong>SHAP horizon:</strong>
+                  <span>day {shapHorizon} (slider midpoint)</span>
+                </div>
+              )}
+              {activeMode === "relation" && (
                 <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
                   <strong>Data:</strong>
                   <button
@@ -754,11 +783,11 @@ export default function MapPanel({ onSelectionChange, onSummaryChange }) {
                           ? "Avg crimes per day"
                           : "Crime Count"
                         : activeMode === "instance"
-                          ? instanceRelationError
-                            ? "Relation Error"
-                            : relationDataMode === "sage"
-                              ? "SAGE (red=suppressive, green=amplifying)"
-                              : "Instance Relation Weight"
+                          ? shapError
+                            ? "SHAP Error"
+                            : relationTargetCommunityReady
+                              ? `SHAP Attribution (horizon ${shapHorizon})`
+                              : "Select a community on the Predicted map"
                           : relationDataMode === "sage"
                             ? "SAGE (red=suppressive, green=amplifying)"
                             : "Model Relation Weight"
@@ -774,7 +803,7 @@ export default function MapPanel({ onSelectionChange, onSummaryChange }) {
                       activeMode === "source"
                         ? leftTotalsLoading
                         : activeMode === "instance"
-                          ? instanceRelationLoading || instanceSourceLoading
+                          ? shapLoading || instanceSourceLoading
                           : relationLoading
                     }
                   />
