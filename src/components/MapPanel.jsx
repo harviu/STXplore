@@ -641,7 +641,7 @@ export default function MapPanel({ onSelectionChange, onSummaryChange }) {
                     onClick={() => setActiveMode("instance")}
                     disabled={activeMode === "instance" || !relationTargetCommunityReady}
                     title={!relationTargetCommunityReady && activeMode !== "instance" ? "Select a community on the Predicted map first." : undefined}
-                    style={{fontSize:"0.65rem"}}
+                    style={{fontSize:"0.65rem", opacity: !relationTargetCommunityReady ? 0.4 : 1 }}
                   >
                     Instance <br/> Level
                   </button>
@@ -649,7 +649,7 @@ export default function MapPanel({ onSelectionChange, onSummaryChange }) {
                     onClick={() => { setActiveMode("relation"); setSecondaryMode("target"); }}
                     disabled={activeMode === "relation" || !relationTargetCommunityReady}
                     title={!relationTargetCommunityReady && activeMode !== "relation" ? "Select a community on the Predicted map first." : undefined}
-                    style={{fontSize:"0.65rem"}}
+                    style={{fontSize:"0.65rem", opacity: !relationTargetCommunityReady ? 0.4 : 1 }}
                   >
                     Model <br/> Level
                   </button>
