@@ -263,6 +263,7 @@ export default function MapBoxMap({
 
     //handles clicking on layers
     const handleClick = (e) => {
+      if (!map.getLayer(BOUNDARIES_LAYER_ID)) return;
       const features = map.queryRenderedFeatures(e.point, {
         layers: [BOUNDARIES_LAYER_ID],
       });
@@ -277,6 +278,7 @@ export default function MapBoxMap({
 
     //gets the community the user is hovering over
     const handleMouseMove = (e) => {
+      if (!map.getLayer(BOUNDARIES_LAYER_ID)) return;
       const features = map.queryRenderedFeatures(e.point, {
         layers: [BOUNDARIES_LAYER_ID],
       });
