@@ -152,7 +152,7 @@ export default function ClusterHeatmap({ data, selectedId, isRelationMap = false
             const xTickFormat = 
             isFuture && isRelationMap
                 ? (d) => d+ 1 + offset
-                : isFuture ? (d) => Math.abs(Math.round((d3.min(heatmapData.map(d => new Date(d.date).getTime())) - new Date(d).getTime()) / (1000 * 60 * 60 * 24)))+1+offset : isRelationMap
+                : isFuture ? (d) => Math.abs(Math.round((d3.min(heatmapData.map(d => new Date(d.date).getTime())) - new Date(d).getTime()) / (1000 * 60 * 60 * 24)))+offset : isRelationMap
                 ? (d) => d+ 1
                 : (d) => Math.round((d3.max(heatmapData.map(d => new Date(d.date).getTime())) - new Date(d).getTime()) / (1000 * 60 * 60 * 24))+1;
 
