@@ -208,7 +208,7 @@ export default function MapPanel({ onSelectionChange, onSummaryChange }) {
         cancelled = true;
         ac.abort();
       };
-    }, [activeMode, pastDays, futureStart, futureEnd, targetSelectedId, relationModel]);
+    }, [activeMode, pastDays, futureStart, futureEnd, targetSelectedId, relationModel, relationDataMode]);
 
   // Instance-level map on source side: 4D array → per-community time-averaged over slider date range.
   const {data: instanceSourceResp, loading: instanceSourceLoading, error: instanceSourceError} = useApi(({ signal }) => {
