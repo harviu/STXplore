@@ -53,7 +53,7 @@ function getCount(crimeCounts, id) {
 }
 
 //Adds crime count data to map data
-function buildMergedGeo(geo, crimeCounts, layer, isRelationMap = false) {
+function buildMergedGeo(geo, crimeCounts, layer, isRelationMap = false, isErrorMap = false) {
   if (!geo?.features?.length) return { mergedGeo: geo, minCount: 0, maxCount: 1 };
   const hasCounts = hasAnyCounts(crimeCounts);
   const features = geo.features.map((f) => {
@@ -65,8 +65,13 @@ function buildMergedGeo(geo, crimeCounts, layer, isRelationMap = false) {
     };
   });
   const counts = features.map((f) => f.properties.count);
-  const minCount = isRelationMap ? 0 : (counts.length ? Math.min(...counts) : 0);
-  const maxCount = isRelationMap ? 100 : (counts.length ? Math.max(...counts, 1) : 1);
+  let minCount = isRelationMap ? 0 : (counts.length ? Math.min(...counts) : 0);
+  let maxCount = isRelationMap ? 100 : (counts.length ? Math.max(...counts, 1) : 1);
+  if (isErrorMap) { // Set the range to the max abs to scale correctly around zero
+    const absMax = Math.max(...counts.map(c => Math.abs(c)), 1);
+    minCount = -absMax;
+    maxCount = absMax;
+  }
   return {
     mergedGeo: { type: "FeatureCollection", features },
     minCount,
@@ -194,8 +199,8 @@ export default function MapBoxMap({
 
 
   const { mergedGeo, minCount, maxCount } = useMemo(
-    () => buildMergedGeo(geo, crimeCounts, layer, isRelationMap && !isSageMap),
-    [geo, crimeCounts, layer, isRelationMap, isSageMap]
+    () => buildMergedGeo(geo, crimeCounts, layer, isRelationMap && !isSageMap, isErrorMap),
+    [geo, crimeCounts, layer, isRelationMap, isSageMap, isErrorMap]
   );
 
   const fillColorPaint = useMemo(

@@ -39,9 +39,9 @@ export const SAGE_STOPS = [
 ];
 
 export const ERROR_STOPS = [
-  "#313695", 
-  "#4575b4",
-  "#ffffbf", // white (zero error)
-  "#f46d43",
+  "#171e9b", 
+  "#306dbc",
+  "#d0d1c6", // white (zero error)
+  "#ff511c",
   "#a50026", 
 ];
