@@ -58,7 +58,7 @@ const getClusterOrder = (matrix, ids) => {
  * @param {number} [props.offset=0] Offset for the date axis.
  * @returns {JSX.Element}
  */
-export default function ClusterHeatmap({ data, selectedId, isRelationMap = false, isSageMap = false, isFuture = false, offset = 0 }) {
+export default function ClusterHeatmap({ data, selectedId, isRelationMap = false, isSageMap = false, isFuture = false, offset = 0, onHighlight }) {
     const svgRef = useRef(null);
     const divRef = useRef(null);
     const [containerWidth, setContainerWidth] = useState(document.documentElement.clientWidth);
@@ -158,6 +158,10 @@ export default function ClusterHeatmap({ data, selectedId, isRelationMap = false
         const selectedNode = root.descendants().find(n => n.data.id === selectedDateBranch);
         return selectedNode ? selectedNode.descendants().map(n => n.data.id) : [];
     }, [selectedDateBranch, clusteredDates]);
+
+    useEffect(() => {
+        onHighlight?.({community: selectedCommunities, date: selectedDates});
+    }, [selectedCommunities, selectedDates, onHighlight]);
 
     useEffect(() => {
         if (heatmapData.length > 0 && svgRef.current) { //isRelation

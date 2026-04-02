@@ -51,6 +51,8 @@ export default function App() {
     left: { selection: null, summary: null, loading: false, error: null, range: null, days: null },
     right: { selection: null, summary: null, loading: false, error: null, range: null, days: null, offset: null },
   });
+  const [sourcehighlights, setSourceHighlights] = useState({community: null, date: null}); // For highlights coming from source cluster heatmap
+  const [targetHighlights, setTargetHighlights] = useState({community: null, date: null}); // For highlights coming from target cluster heatmap
 
   const activeSelection = state[state.activeMode];
   const secondarySelection = state[state.secondaryMode];
@@ -114,6 +116,8 @@ export default function App() {
             heatData={state.heatData}
             targetHeatData={state.targetHeatData}
             isSageMap={state.relationDataMode === "sage"}
+            onSourceHighlight={setSourceHighlights}
+            onTargetHighlight={setTargetHighlights}
           />
         </section>
       </main>
