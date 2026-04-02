@@ -80,9 +80,9 @@ export default function MapPanel({ onSelectionChange, onSummaryChange }) {
   const futureSpanDays = futureEnd - futureStart;
 
   // Source map: show total crime count vs average per day
-  const [sourceCountMode, setSourceCountMode] = useState("total"); // "total" | "average"
+  const [sourceCountMode, setSourceCountMode] = useState("average"); // "total" | "average"
   // Target/Actual map: show total crime count vs average per day
-  const [targetCountMode, setTargetCountMode] = useState("total"); // "total" | "average"
+  const [targetCountMode, setTargetCountMode] = useState("average"); // "total" | "average"
 
   // Target map + Community: ML forecast loads automatically (API sums full model horizon)
   const [forecastModel, setForecastModel] = useState(FORECAST_MODEL_OPTIONS[0]);
@@ -942,7 +942,7 @@ export default function MapPanel({ onSelectionChange, onSummaryChange }) {
                     </span>
                   ) : null}
                   {anchorIsClamped && (
-                    <span style={{ fontSize: 16, color: "#f0a500" }}>
+                    <span style={{ fontSize: 15.5, color: "#f0a500" }}>
                       Predicted Anchor Date: {forecastAnchorDate} (model max)
                     </span>
                   )}
