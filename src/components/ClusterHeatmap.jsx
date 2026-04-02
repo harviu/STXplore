@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useMemo } from 'react';
 import * as d3 from 'd3';
 import { CHOROPLETH_STOPS, RELATION_STOPS, SAGE_STOPS } from "../lib/colors.js"
+import { se } from 'date-fns/locale';
 
 const EMPTY_CELL_FILL = "rgba(255, 255, 255, 0.2)"; // subtle gray for zero/missing, reads cleaner than black
 
@@ -63,6 +64,8 @@ export default function ClusterHeatmap({ data, selectedId, isRelationMap = false
     const [containerWidth, setContainerWidth] = useState(document.documentElement.clientWidth);
     const [isSelected, setIsSelected] = useState(false); //for toggle community clustering
     const [dateCluster, setDateCluster] = useState(false); //for toggle date clustering
+    const [selectedBranch, setSelectedBranch] = useState(null); //for storing selected branch in cluster
+    const [selectedDateBranch, setSelectedDateBranch] = useState(null); //for storing selected branch in cluster
 
     useEffect(() => {
         const handleResize = () => {
@@ -198,12 +201,36 @@ export default function ClusterHeatmap({ data, selectedId, isRelationMap = false
                     // Move to source, draw horizontal to target's x, then vertical to target's y
                     return `M${startX},${startY}V${endY}H${endX}`;
                 };
-                svg.append("g").selectAll("path").data(root.links()).join("path")
+                const links = svg.append("g")
+                    .attr("class", "community-links")
+                    .selectAll("g")
+                    .data(root.links())
+                    .join("g")
+                    .style("cursor", "pointer")
+                    .on("click", (event, d) => {
+                        event.stopPropagation();
+                        setSelectedBranch(selectedBranch === d.target.data.id ? null : d.target.data.id);
+                    });
+                links.append("path")
                     .attr("d", linkGenerator)
                     .style("fill", "none")
-                    .style("stroke", "#888")
-                    .style("stroke-width", 1);
-
+                    .style("stroke", "transparent")
+                    .style("stroke-width", 10);
+                links.append("path")
+                    .attr("d", linkGenerator)
+                    .style("fill", "none")
+                    .style("stroke", d => {
+                        if(!selectedBranch) return "#888";
+                        const selected = root.descendants().find(n => n.data.id === selectedBranch);
+                        const inBranch = selected && (d.target.data.id === selectedBranch || (selected.descendants().map(a => a.data.id).includes(d.target.data.id)));
+                        return inBranch ? "#00d4ff" : "#888"
+                    })
+                    .style("stroke-width", d => {
+                        if(!selectedBranch) return 1;
+                        const selected = root.descendants().find(n => n.data.id === selectedBranch);
+                        const inBranch = selected && (d.target.data.id === selectedBranch || (selected.descendants().map(a => a.data.id).includes(d.target.data.id)));
+                        return inBranch ? 2 : 1;
+                    });
             }
             if (dateCluster) {
                 const rootNode = clusteredDates[1];
@@ -223,11 +250,36 @@ export default function ClusterHeatmap({ data, selectedId, isRelationMap = false
                     const endY = d.target.y - margin.top + 25;
                     return `M${startX},${startY}H${endX}V${endY}`;
                 };
-                svg.append("g").selectAll("path").data(root.links()).join("path")
+                const dLinks = svg.append("g")
+                    .attr("class", "date-links")
+                    .selectAll("g")
+                    .data(root.links())
+                    .join("g")
+                    .style("cursor", "pointer")
+                    .on("click", (event, d) => {
+                        event.stopPropagation();
+                        setSelectedDateBranch(selectedDateBranch === d.target.data.id ? null : d.target.data.id);
+                    });
+                dLinks.append("path")
                     .attr("d", linkGenerator)
                     .style("fill", "none")
-                    .style("stroke", "#888")
-                    .style("stroke-width", 1);
+                    .style("stroke", "transparent")
+                    .style("stroke-width", 10);
+                dLinks.append("path")
+                    .attr("d", linkGenerator)
+                    .style("fill", "none")
+                    .style("stroke", d => {
+                        if(!selectedDateBranch) return "#888";
+                        const selected = root.descendants().find(n => n.data.id === selectedDateBranch);
+                        const inBranch = selected && (d.target.data.id === selectedDateBranch || (selected.descendants().map(a => a.data.id).includes(d.target.data.id)));
+                        return inBranch ? "#00d4ff" : "#888"
+                    })
+                    .style("stroke-width", d => {
+                        if(!selectedDateBranch) return 1;
+                        const selected = root.descendants().find(n => n.data.id === selectedDateBranch);
+                        const inBranch = selected && (d.target.data.id === selectedDateBranch || (selected.descendants().map(a => a.data.id).includes(d.target.data.id)));
+                        return inBranch ? 2 : 1;
+                    });
             }
             const maxCount = d3.max(heatmapData, d => d.count);
             const minCount = d3.min(heatmapData, d => d.count);
@@ -286,7 +338,7 @@ export default function ClusterHeatmap({ data, selectedId, isRelationMap = false
                 .style("font-weight", "500")
                 .text("Community Number");
         }
-    }, [heatmapData, selectedId, interpolate, containerWidth, isSelected, dateCluster, isFuture, isRelationMap]);
+    }, [heatmapData, selectedId, interpolate, containerWidth, isSelected, dateCluster, isFuture, isRelationMap, selectedBranch, selectedDateBranch]);
         
 
     return (
