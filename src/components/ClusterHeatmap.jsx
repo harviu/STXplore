@@ -146,6 +146,19 @@ export default function ClusterHeatmap({ data, selectedId, isRelationMap = false
         return [hierarchy.leaves().map(d => d.data.id), root];
     }, [heatmapData, dateCluster, isFuture, isRelationMap]);
 
+    const selectedCommunities = useMemo(() => {
+        if (!selectedBranch || !clusteredIds[1]) return [];
+        const root = d3.hierarchy(clusteredIds[1]);
+        const selectedNode = root.descendants().find(n => n.data.id === selectedBranch);
+        return selectedNode ? selectedNode.descendants().map(n => n.data.id) : [];
+    }, [selectedBranch, clusteredIds]);
+    const selectedDates = useMemo(() => {
+        if (!selectedDateBranch || !clusteredDates[1]) return [];
+        const root = d3.hierarchy(clusteredDates[1]);
+        const selectedNode = root.descendants().find(n => n.data.id === selectedDateBranch);
+        return selectedNode ? selectedNode.descendants().map(n => n.data.id) : [];
+    }, [selectedDateBranch, clusteredDates]);
+
     useEffect(() => {
         if (heatmapData.length > 0 && svgRef.current) { //isRelation
             const matchesSelected = (d) => 
@@ -303,7 +316,25 @@ export default function ClusterHeatmap({ data, selectedId, isRelationMap = false
             const mouseleave = function(event, d) {
                 tooltip.style("opacity", 0);
                 const isSelected = selectedId !== null && matchesSelected(d);
-                d3.select(this).style("stroke", d => isSelected ? "blue" : "none").style("stroke-width", d => isSelected ? 2 : 0).style("opacity", 0.92);
+                d3.select(this).style("stroke", d => {
+                    if(isSelected) return "blue";
+                    if(selectedCommunities.includes(d.id) && selectedDates.includes(d.date)) {
+                        return "grey";
+                    }
+                    if (selectedDates.includes(d.date)) {
+                        return "magenta";
+                    }
+                    if (selectedCommunities.includes(d.id)) {
+                        return "cyan";
+                    }
+                    return "none";
+                }).style("stroke-width", d => {
+                    if (isSelected) return 2;
+                    if (selectedCommunities.includes(d.id) || selectedDates.includes(d.date)) {
+                        return 2;
+                    }
+                    return 0;
+                }).style("opacity", 0.92);
             };
             svg.selectAll().data(heatmapData, d => d.id + ':' + d.date)
                 .join("rect")
@@ -314,8 +345,33 @@ export default function ClusterHeatmap({ data, selectedId, isRelationMap = false
                 .attr("width", xScale.bandwidth())
                 .attr("height", yScale.bandwidth())
                 .style("fill", d => (d.count == null || (!isSageMap && d.count === 0)) ? EMPTY_CELL_FILL : colorScale(d.count))
-                .style("stroke", d => (selectedId !== null && String(isRelationMap ? d.id+1 : Number(d.id)) === String(selectedId)) ? "blue" : "none")
-                .style("stroke-width", d => (selectedId !== null && String(isRelationMap ? d.id+1 : Number(d.id)) === String(selectedId)) ? 2 : 0)
+                .style("stroke", d => {
+                    if(selectedId !== null && String(isRelationMap ? d.id+1 : Number(d.id)) === String(selectedId)) {
+                        return "blue";
+                    }
+                    if(selectedCommunities.includes(d.id) && selectedDates.includes(d.date)) {
+                        return "grey";
+                    }
+                    if (selectedDates.includes(d.date)) {
+                        return "magenta";
+                    }
+                    if (selectedCommunities.includes(d.id)) {
+                        return "cyan";
+                    }
+                    return "none";
+                })
+                .style("stroke-width", d => {
+                    if(selectedId !== null && String(isRelationMap ? d.id+1 : Number(d.id)) === String(selectedId)) {
+                        return 2;
+                    }
+                    if (selectedCommunities.includes(d.id)) {
+                        return 2;
+                    }
+                    if (selectedDates.includes(d.date)) {
+                        return 2;
+                    }
+                    return 0;
+                })
                 .style("opacity", 0.92)
                 .on("mouseover", mouseover)
                 .on("mousemove", mousemove)
@@ -338,7 +394,7 @@ export default function ClusterHeatmap({ data, selectedId, isRelationMap = false
                 .style("font-weight", "500")
                 .text("Community Number");
         }
-    }, [heatmapData, selectedId, interpolate, containerWidth, isSelected, dateCluster, isFuture, isRelationMap, selectedBranch, selectedDateBranch]);
+    }, [heatmapData, selectedId, interpolate, containerWidth, isSelected, dateCluster, isFuture, isRelationMap, selectedBranch, selectedDateBranch, selectedCommunities, selectedDates]);
         
 
     return (
