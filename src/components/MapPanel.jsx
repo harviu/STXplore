@@ -648,16 +648,24 @@ export default function MapPanel({ onSelectionChange, onSummaryChange }) {
                     Instance <br/> Level
                   </button>
                   <button
-                    onClick={() => { setActiveMode("relation"); setSecondaryMode("target"); }}
-                    disabled={activeMode === "relation" || !relationTargetCommunityReady}
+                    onClick={() => { setActiveMode("relation"); setRelationDataMode("sage"); setSecondaryMode("target"); }}
+                    disabled={(activeMode === "relation" && relationDataMode === "sage") || !relationTargetCommunityReady}
                     title={!relationTargetCommunityReady && activeMode !== "relation" ? "Select a community on the Predicted map first." : undefined}
                     style={{fontSize:"0.65rem", opacity: !relationTargetCommunityReady ? 0.4 : 1 }}
                   >
                     Model <br/> Level
                   </button>
+                  <button
+                    onClick={() => { setActiveMode("relation"); setRelationDataMode("mi"); setSecondaryMode("target"); }}
+                    disabled={(relationDataMode === "mi" && activeMode === "relation") || !relationTargetCommunityReady}
+                    title={!relationTargetCommunityReady && activeMode !== "relation" ? "Select a community on the Predicted map first." : undefined}
+                    style={{fontSize:"0.65rem", opacity: !relationTargetCommunityReady ? 0.4 : 1 }}
+                  >
+                    Data <br/> Level
+                  </button>
               </div>
-              {(activeMode === "relation" || activeMode === "instance") && (
-                <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+              {(activeMode === "relation" || activeMode === "instance" || secondaryMode === "target") && (
+                <div style={{ display: "flex", gap: 10, alignItems: "center", fontSize: 15 }}>
                   <strong>Relation model:</strong>
                   <select
                     value={relationModel}
@@ -682,25 +690,6 @@ export default function MapPanel({ onSelectionChange, onSummaryChange }) {
                 <div style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 13, opacity: 0.8 }}>
                   <strong>SHAP horizon:</strong>
                   <span>day {shapHorizon} (slider midpoint)</span>
-                </div>
-              )}
-              {activeMode === "relation" && (
-                <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-                  <strong>Data:</strong>
-                  <button
-                    onClick={() => setRelationDataMode("mi")}
-                    disabled={relationDataMode === "mi"}
-                    style={{ padding: "4px 10px", borderRadius: 6, border: "1px solid rgba(255,255,255,0.25)", background: relationDataMode === "mi" ? "rgba(255,255,255,0.2)" : "rgba(255,255,255,0.05)", color: "inherit", cursor: "pointer" }}
-                  >
-                    MI
-                  </button>
-                  <button
-                    onClick={() => setRelationDataMode("sage")}
-                    disabled={relationDataMode === "sage"}
-                    style={{ padding: "4px 10px", borderRadius: 6, border: "1px solid rgba(255,255,255,0.25)", background: relationDataMode === "sage" ? "rgba(255,255,255,0.2)" : "rgba(255,255,255,0.05)", color: "inherit", cursor: "pointer" }}
-                  >
-                    SAGE
-                  </button>
                 </div>
               )}
               <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
@@ -913,7 +902,7 @@ export default function MapPanel({ onSelectionChange, onSummaryChange }) {
                   </button>
                 </div>
               </div>
-              {secondaryMode === "target" && (
+              {(activeMode === "relation" || activeMode === "instance" || secondaryMode === "target") && (
                 <div
                   style={{
                     display: "flex",
@@ -921,7 +910,7 @@ export default function MapPanel({ onSelectionChange, onSummaryChange }) {
                     gap: 10,
                     alignItems: "center",
                     width: "100%",
-                    fontSize: 13,
+                    fontSize: 15,
                   }}
                 >
                   <select
@@ -956,7 +945,12 @@ export default function MapPanel({ onSelectionChange, onSummaryChange }) {
                     <span style={{ fontSize: 16, color: "#f0a500" }}>
                       Predicted Anchor Date: {forecastAnchorDate} (model max)
                     </span>
+                  )}
+                </div>
               )}
+              {activeMode === "instance" && relationTargetCommunityReady && (
+                <div style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 12, opacity: 0.0, cursor: 'default', userSelect: 'none' }}>
+                  <strong>SHAP horizon</strong>
                 </div>
               )}
               <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
