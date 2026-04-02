@@ -43,6 +43,7 @@ function SelectionBlock({ heading, payload, showApi = true, isLeft }) {
   const error = payload?.error ?? null;
   const range = payload?.range ?? null;
   const daily = payload?.daily ?? null;
+  const days = payload?.days ?? null;
 
   return (
     <div>
@@ -82,8 +83,11 @@ function SelectionBlock({ heading, payload, showApi = true, isLeft }) {
               <hr style={{ margin: "12px 0", opacity: 0.1 }} />
 
               <div>
-                <strong>API:</strong>{" "}
-                {loading ? "Loading..." : error ? `Error: ${String(error)}` : "OK"}
+                {error ? (
+                  <span style={{ color: "red" }}>API Error: {String(error)}</span>
+                ) : loading ? (
+                  <span></span>
+                ) : null}
               </div>
 
               {loading ? (
@@ -105,6 +109,11 @@ function SelectionBlock({ heading, payload, showApi = true, isLeft }) {
                   <div>
                     <strong>Total Crimes:</strong> {summary.total_crimes}
                   </div>
+                  {days > 0 && summary.total_crimes != null && (
+                    <div>
+                      <strong>Avg per day:</strong> {(summary.total_crimes / days).toFixed(2)}
+                    </div>
+                  )}
                   {summary.top_types?.[0] ? (<div>
                     <br />
                     <strong>Top Crimes:</strong>
@@ -148,6 +157,10 @@ function SelectionBlock({ heading, payload, showApi = true, isLeft }) {
               <div style={{ fontSize: 12, opacity: 0.8, marginTop: 2 }}>
                 {payload?.summary?.total_crimes != null && (
                   <span>{selection.days} days total: {payload.summary.total_crimes}</span>
+                )}
+                <br/>
+                {selection.days > 0 && payload?.summary?.total_crimes != null && (
+                  <span>{selection.days} days average: {(payload.summary.total_crimes / selection.days).toFixed(2)}</span>
                 )}
               </div>
               <div style={{ marginTop: 6 }}>
