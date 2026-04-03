@@ -7,7 +7,7 @@ import { fillDaily } from "../lib/crimeAggregates.js";
  * Debounced fetch of daily series for the map hover tooltip (standard selectionDaily or 4D relation path).
  */
 /** @param {string|null|undefined} tensorSourceId Community id used as tensor source for relation/instance visualization (Predicted map selection). */
-export function useHoverDailySeries({ hover, activeMode, secondaryMode, tensorSourceId, model, dataMode = "mi", pastDays, futureStart, futureEnd, anchorDate }) {
+export function useHoverDailySeries({ hover, activeMode, secondaryMode, tensorSourceId, model, dataMode = "mi", pastDays, futureStart, futureEnd, anchorDate, forecastAnchorDate, shapHorizon }) {
 
   //Check if the hover data can be shown
   const canShowHoverData = useMemo(
@@ -42,9 +42,11 @@ export function useHoverDailySeries({ hover, activeMode, secondaryMode, tensorSo
       return;
     }
 
-    //Check if the hover is on the left or right
+
+     //Check if the hover is on the left or right
     const isLeft = hover.which === "left";
-    const isRelation = isLeft && activeMode !== "source";
+    const isInstance = isLeft && activeMode === "instance";
+    const isRelation = isLeft && activeMode === "relation";
 
     //Get the start and end dates
     let start;
@@ -56,7 +58,9 @@ export function useHoverDailySeries({ hover, activeMode, secondaryMode, tensorSo
     }
 
     //Generate a unique key for the hover daily series
-    const key = `${hover.which}:${hover.layer}:${hover.id}:${start}:${end}:${isRelation}`;
+    const key = isInstance
+      ? `instance:${hover.id}:${forecastAnchorDate}:${shapHorizon}:${tensorSourceId}`
+      : `${hover.which}:${hover.layer}:${hover.id}:${start}:${end}:${isRelation}`;
 
     //Check if the hover daily series is cached
     const cached = hoverCacheRef.current.get(key);
@@ -79,8 +83,30 @@ export function useHoverDailySeries({ hover, activeMode, secondaryMode, tensorSo
       setHoverDaily(null);
       setHoverDailyLoading(true);
 
-      //If the hover is on the left and the selected id is not null
-      if (isRelation && tensorSourceId) {
+    //Instance Level: fetch SHAP values and extract daily series for hovered community
+    if (isInstance && tensorSourceId && forecastAnchorDate && shapHorizon) {
+      api
+        .predictionInstanceShap(forecastAnchorDate, model, shapHorizon, Number(tensorSourceId), { signal: ac.signal })
+        .then((data) => {
+          const commIdx = Number(hover.id) - 1;
+          const rows = data?.shap_values ?? [];
+          // shap_values is ordered oldest→newest; map each history row to a real date
+          const formatted = rows.map((row, i) => ({
+            date: addDaysISO(anchorDate, -(rows.length - 1 - i)),
+            count: row.values?.[commIdx] ?? 0,
+          }));
+          hoverCacheRef.current.set(key, formatted);
+          setHoverDaily(formatted);
+          setHoverDailyLoading(false);
+        })
+        .catch((err) => {
+          if (err?.name === "AbortError") return;
+          console.error("Instance SHAP hover fetch failed:", err);
+          setHoverDaily(null);
+          setHoverDailyLoading(false);
+        });
+      //Model/Data Level: fetch daily relation values from 4D tensor
+      } else if (isRelation && tensorSourceId) {
         api
           .get4dData(pastDays, true, Number(hover.id) - 1, futureEnd - 1, false, tensorSourceId, model, dataMode, {
             signal: ac.signal,
@@ -103,7 +129,7 @@ export function useHoverDailySeries({ hover, activeMode, secondaryMode, tensorSo
             setHoverDailyLoading(false);
           });
       } else {
-        //If the hover is on the right
+        //Source mode or right map: fetch actual daily crime counts
         api
           .selectionDaily(hover.layer, hover.id, start, end, { signal: ac.signal })
           .then((data) => {
@@ -128,8 +154,7 @@ export function useHoverDailySeries({ hover, activeMode, secondaryMode, tensorSo
       if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
       if (hoverAbortRef.current) hoverAbortRef.current.abort();
     };
-  }, [hover?.which, hover?.id, hover?.layer, activeMode, secondaryMode, tensorSourceId, pastDays, futureStart, futureEnd, anchorDate, canShowHoverData, model, dataMode]);
-
+  }, [hover?.which, hover?.id, hover?.layer, activeMode, secondaryMode, tensorSourceId, pastDays, futureStart, futureEnd, anchorDate, canShowHoverData, model, dataMode, forecastAnchorDate, shapHorizon]);
   //Return the hover daily series, loading state, and whether the hover data can be shown
   return { hoverDaily, hoverDailyLoading, canShowHoverData };
 }

@@ -154,10 +154,6 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
   const geo = BOUNDARY_GEO[layer];
   const secondaryGeo = BOUNDARY_GEO[secondaryLayer];
 
-  //Hover daily series
-  const tensorSourceId = targetSelectedId ?? null;
-  const { hoverDaily, hoverDailyLoading, canShowHoverData } = useHoverDailySeries({hover, activeMode, secondaryMode, tensorSourceId, model: relationModel, pastDays, futureStart, futureEnd, anchorDate, dataMode: relationDataMode});
-
   const targetForecastEligible =
     secondaryMode === "target" || secondaryMode === "error" && secondaryLayer === "community";
 
@@ -175,6 +171,10 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
     return clampDateIso(anchorDay, predBounds.anchor_min, predBounds.anchor_max);
   }, [anchorDay, predBounds]);
   
+  //Hover daily series
+  const tensorSourceId = targetSelectedId ?? null;
+  const { hoverDaily, hoverDailyLoading, canShowHoverData } = useHoverDailySeries({hover, activeMode, secondaryMode, tensorSourceId, model: relationModel, pastDays, futureStart, futureEnd, anchorDate, dataMode: relationDataMode, forecastAnchorDate, shapHorizon, });
+
   //Model relation counts
   const { counts: relationCounts, loading: relationLoading, error: relationError } = useModelRelationCounts(activeMode, layer, targetSelectedId, relationModel, relationDataMode);
 

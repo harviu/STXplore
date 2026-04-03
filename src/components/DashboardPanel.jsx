@@ -1,7 +1,9 @@
 import Panel from "./Panel.jsx";
 import ClusterHeatmap from "./ClusterHeatmap.jsx";
 import { select } from 'https://esm.sh/d3-selection';
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, useState, useMemo, useCallback } from "react";
+import TooltipMap from "./tooltipMap.jsx";
+import { fillDaily } from "../lib/crimeAggregates.js"
 
 /**A function that renders a horizontal bar chart using D3 
  * 
@@ -96,7 +98,32 @@ export default function DashboardPanel({ mode, selection, inactiveMode, inactive
       ? right?.summary?.top_types?.map((t) => ({ ...t, count: t.count / right?.days }))
       : null;
 
-  //maps the source data to the source map graph in source map stats below
+  const [sourceHighlight, setSourceHighlight] = useState({ community: [], date: [] });
+  const [targetHighlight, setTargetHighlight] = useState({ community: [], date: [] });
+
+  const handleSourceHighlight = useCallback((highlight) => { setSourceHighlight(highlight); onSourceHighlight?.(highlight); }, [onSourceHighlight]);
+  const handleTargetHighlight = useCallback((highlight) => { setTargetHighlight(highlight); onTargetHighlight?.(highlight); }, [onTargetHighlight]);
+
+  // For each highlighted community, extract its data from heatData
+  const communitySeriesList = useMemo(() => {
+  if (!heatData || !Array.isArray(heatData) || sourceHighlight.community.length === 0) return [];
+  const rangeStart = left?.range?.start ?? null;
+  const rangeEnd = left?.range?.end ?? null;
+  return sourceHighlight.community
+    .filter(id => id != null)
+    .map(id => {
+      const rows = heatData
+        .filter(d => String(d.id) === String(id))
+        .map(d => ({ date: d.date, count: d.count }));
+      // Fill to full date range so every community always shows all 90 bars
+      const series = (rangeStart && rangeEnd)
+        ? fillDaily(rangeStart, rangeEnd, rows)
+        : rows.sort((a, b) => a.date.localeCompare(b.date));
+      return { id, series };
+    })
+    .filter(c => c.series.length > 0);
+  }, [heatData, sourceHighlight.community, left?.range]);
+  //aps the source data to the source map graph in source map stats below
   useEffect(() => { 
     renderBarChart(barsRef, labelsRef, countsRef, summary, "steelblue");
     }, [summary]);
@@ -116,138 +143,32 @@ export default function DashboardPanel({ mode, selection, inactiveMode, inactive
 
   return (
     <Panel title="Dashboard">
+      {/* Temporal graph panel — shows per-community crime series when a dendrogram branch is selected */}
+      <div style={{ padding: "0 5%", boxSizing: "border-box", width: "100%" }}>
+        {communitySeriesList.length === 0 ? (
+          <p style={{ opacity: 0.5, margin: "12px 0", fontSize: 13, textAlign: "center" }}>
+            Select a dendrogram branch on the community axis to see temporal crime series.
+          </p>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 10, paddingBottom: 12 }}>
+            {communitySeriesList.map(({ id, series }) => {
+              return (
+                <div key={id}>
+                  <div style={{ fontSize: 11, opacity: 0.7, marginBottom: 2 }}>Community {id}</div>
+                  <TooltipMap days={series} height={14} isRelationMap={false} highlightDates={sourceHighlight.date.length > 0 ? sourceHighlight.date : null} />
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
       {/* Cluster Heatmaps */}
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", width: "100%", gap: 16 }}>
         {heatData && (selection?.id || mode === "source") && <p style={{ opacity: 1, margin: 0, fill: "white" }}> Past map cluster heatmap </p>}
-        {heatData && (selection?.id || mode === "source" || (mode != "source" && right?.selection?.id)) && <ClusterHeatmap data={heatData} selectedId={selection?.id || null} isRelationMap={mode !== "source"} isSageMap={isSageMap && mode !== "source"} onHighlight={onSourceHighlight} />}
+        {heatData && (selection?.id || mode === "source" || (mode != "source" && right?.selection?.id)) && <ClusterHeatmap data={heatData} selectedId={selection?.id || null} isRelationMap={mode !== "source"} isSageMap={isSageMap && mode !== "source"} onHighlight={handleSourceHighlight} />}
         {targetHeatData && inactiveMode === "actual" && <p style={{ opacity: 1, margin: 0, fill: "white" }}> Future map cluster heatmap </p>}
-        {targetHeatData && inactiveMode === "actual" && <ClusterHeatmap data={targetHeatData} selectedId={inactiveSelection?.id || null} isRelationMap= {false} isFuture={true} offset={right?.offset} onHighlight={onTargetHighlight} />}
+        {targetHeatData && inactiveMode === "actual" && <ClusterHeatmap data={targetHeatData} selectedId={inactiveSelection?.id || null} isRelationMap={false} isFuture={true} offset={right?.offset} onHighlight={handleTargetHighlight} />}
       </div>
-      <div style={{ padding: "5%", boxSizing: "border-box" }}>
-        {!hasActive && !hasInactive ? (
-          <div style={{display: "flex", flexDirection: "column", alignItems: "center", width: "100%", gap: 8}}>
-            {/* Message when no selection is made */}
-            <p style={{ opacity: 0.8, marginTop: 0 }}>
-            This will show analytics (crime counts, trends, etc.) derived from selection + time range.
-            </p>
-            <p style={{ opacity: 0.8 }}>Select a boundary to begin.</p>
-          </div>
-        ) : (
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", width: "100%", gap: 16 }}>
-          <div style={{ display: "flex", flex: "1 1 430px", flexDirection: "row", width: "100%", justifyContent: "space-between", flexWrap: "wrap", overflow: "visible", gap: 8}}>
-            <div style={{ display: "flex", flex: "1 1 430px", flexDirection: "column", alignItems: "center", width: "100%", gap: 8 }}>
-              {hasActive && selection.mode === "source"? (
-                <div>
-                  {/* Source Map Stats */}
-                  <p style={{ opacity: 0.95, margin: 0 }}>
-                    <strong>{capitalizeFirst(selection.mode)}:</strong> Current stats for{" "}
-                    <strong>{selection.name}</strong>.
-                    </p>
-                    {left?.loading ? (
-                      <p style={{ opacity: 0.6, marginTop: 8 }}>Loading...</p>
-                    ) : (
-                      <>
-                        {summary && (
-                      <div style={{ marginTop: 8 }}>
-                        <strong>Top Crime Types by count:</strong>
-                        <br/>
-                        <svg width="430" height="240">
-                          <g ref={barsRef} transform="translate(210, 30)"/>
-                          <g ref={labelsRef} transform="translate(198, 30)" style={{fill: "white"}}/>
-                          <g ref={countsRef} transform="translate(220, 32)" style={{fill: "white"}}/>
-                        </svg>
-                      </div>
-                        )}
-                        {averageSummary && (
-                      <div style={{ marginTop: 8 }}>
-                        <strong>Top Crime Types by average/day:</strong>
-                        <br/>
-                        <svg width="430" height="240">
-                          <g ref={avgBarsRef} transform="translate(210, 30)"/>
-                          <g ref={avgLabelsRef} transform="translate(198, 30)" style={{fill: "white"}}/>
-                          <g ref={avgCountsRef} transform="translate(220, 32)" style={{fill: "white"}}/>
-                        </svg>
-                      </div>
-                    )}
-                    </>
-                  )}
-                </div>
-              ) : hasActive && selection.mode === "relation" ? (
-                <div>
-                  {/* Relation Map Stats */}
-                  <p style={{ opacity: 0.9, margin: 0 }}>
-                    <strong>{capitalizeFirst(selection.mode)}</strong> ready to compute stats for{" "}
-                    <strong>{selection.name}</strong>.
-                  </p>
-                </div>
-              ) : hasActive && selection.mode === "instance" ? (
-                <div>
-                  {/* Instance Map Stats */}
-                  <p style={{ opacity: 0.9, margin: 0 }}>
-                    <strong>{capitalizeFirst(selection.mode)}-level</strong> ready to compute stats for{" "}
-                    <strong>{selection.name}</strong>.
-                  </p>
-                </div>
-              ) : (
-                <p style={{ opacity: 0.8, margin: 0 }}>
-                  {mode === "source" ? (<strong>Source</strong>):(<strong>Relation</strong>)} selection not chosen yet.
-                </p>
-              )}
-            </div>
-            <div style={{ display: "flex", flex: "1 1 430px", flexDirection: "column", alignItems: "center", width: "100%", gap: 8 }}>
-              {/* Actual Data Map Stats */}
-              {hasInactive ? (inactiveSelection.mode === "actual" ? (
-                <div>
-                  <p  style={{ opacity: 0.9, margin: 0 }}>
-                    <strong>{capitalizeFirst(inactiveSelection.mode)}</strong> stats for{" "}
-                    <strong>{inactiveSelection.name}</strong>.
-                  </p>
-                  {right?.loading ? (
-                    <p style={{ opacity: 0.6, marginTop: 8 }}>Loading...</p>
-                  ) : (
-                    <>
-                      {actual && (
-                      <div style={{ marginTop: 8 }}>
-                        <strong>Top Crime Types by count:</strong>
-                        <br/>
-                        <svg width="430" height="240">
-                          <g ref={actualBarsRef} transform="translate(210, 30)"/>
-                          <g ref={actualLabelsRef} transform="translate(198, 30)" style={{fill: "white"}}/>
-                          <g ref={actualCountsRef} transform="translate(220, 32)" style={{fill: "white"}}/>
-                        </svg>
-                      </div>
-                      )}
-                    {averageActual && (
-                      <div style={{ marginTop: 8 }}>
-                        <strong>Top Crime Types by average/day:</strong>
-                        <br/>
-                        <svg width="430" height="240">
-                          <g ref={avgActualBarsRef} transform="translate(210, 30)"/>
-                          <g ref={avgActualLabelsRef} transform="translate(198, 30)" style={{fill: "white"}}/>
-                          <g ref={avgActualCountsRef} transform="translate(220, 32)" style={{fill: "white"}}/>
-                        </svg>
-                      </div>
-                    )}
-                  </>
-                  )}
-                </div>
-              ):(
-                <p  style={{ opacity: 0.9, margin: 0 }}>
-                  {/* Target or Error Maps */}
-                  <strong>{capitalizeFirst(inactiveSelection.mode)}</strong> ready to {inactiveSelection.mode === "target" ? "predict" : "compute"} stats for{" "}
-                  <strong>{inactiveSelection.name}</strong>.
-                </p>
-              )) : (
-                <p style={{ opacity: 0.8, margin: 0 }}>
-                  {inactiveMode === "target" ? (<strong>Target</strong>): inactiveMode === "actual" ? (<strong>Actual</strong>): (<strong>Error Map </strong>)} selection not chosen yet.
-                </p>
-              )}
-            </div>
-          </div>
-        </div>
-        )}
-      </div>
-      
     </Panel>
   );
 }

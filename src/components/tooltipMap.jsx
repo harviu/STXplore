@@ -43,14 +43,17 @@ function choroplethColor(t, isRelationMap = false, isSageMap = false) {
  * @param {Array} props.days - An array of objects representing daily counts, where each object has a 'date' and 'count' property. 
  * @param {number} [props.height=12] - The height of the bars in pixels. Default is 12.
  * @param {boolean} [props.isRelationMap=false] - A flag indicating whether to use relation map color stops. Default is false.
+ * @param {boolean} [props.isSageMap=false] - A flag indicating whether to use sage map color stops. Default is false.
+ * @param {Array} [props.highlightDates=null] - An array of dates to highlight.
  * @returns {JSX.Element}
  */
 //The box component you see when you hover
-export default function TooltipMap({ days, height = 12, isRelationMap = false, isSageMap = false }) {
+export default function TooltipMap({ days, height = 12, isRelationMap = false, isSageMap = false, highlightDates = null }) {
   const max = (days ?? []).reduce((m, d) => Math.max(m, d.count || 0), 0);
   const min = (days ?? []).reduce((m, d) => Math.min(m, d.count || max), max);
   const tickHeight = height + 8; // taller than bars
   const tickTop = -4; // extend above and below bar row
+  const hasHighlight = highlightDates != null && highlightDates.length > 0;
 
   return (
     <div
@@ -73,6 +76,8 @@ export default function TooltipMap({ days, height = 12, isRelationMap = false, i
               ? choroplethColor((max === min ? 0.5 : (c-min) / (max - min)), false, true)
               : choroplethColor((max === min ? 1 : (c-min) / (max - min)), isRelationMap);
 
+          const isHighlighted = hasHighlight && highlightDates.includes(d.date);
+          const isDimmed = hasHighlight && !isHighlighted;
           return (
             <div
               key={d.date}
@@ -82,6 +87,9 @@ export default function TooltipMap({ days, height = 12, isRelationMap = false, i
                 height,
                 borderRadius: 2,
                 background,
+                opacity: isDimmed ? 0.2 : 1,
+                outline: isHighlighted ? "1px solid cyan" : "none",
+                outlineOffset: "-1px",
               }}
             />
           );
