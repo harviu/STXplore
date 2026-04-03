@@ -21,6 +21,34 @@ import { active } from "d3";
 
 const RTL_THEME = createTheme({ direction: "rtl" });
 
+/** Visual emphasis for the active map tab (disabled when selected matches browser defaults poorly). */
+function mapTabButtonStyle(selected, extra = {}) {
+  const base = {
+    padding: "6px 12px",
+    borderRadius: 8,
+    cursor: "pointer",
+    fontFamily: "inherit",
+    fontWeight: selected ? 600 : 500,
+    transition: "background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease",
+    color: "inherit",
+    opacity: 1,
+    ...extra,
+  };
+  if (selected) {
+    return {
+      ...base,
+      background: "rgba(100, 115, 255, 0.42)",
+      border: "2px solid rgb(155, 165, 255)",
+      boxShadow: "0 0 14px rgba(120, 130, 255, 0.4)",
+    };
+  }
+  return {
+    ...base,
+    background: "rgba(255, 255, 255, 0.07)",
+    border: "1px solid rgba(255, 255, 255, 0.22)",
+  };
+}
+
 const UI_TO_API_LAYER = { community: "community_area", beat: "beat", district: "district" };
 
 /** Folder names under `models/` with checkpoints (see backend prediction API). */
@@ -635,32 +663,52 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
               style={{width: "100%", marginTop: 6, marginBottom: 6, minHeight: 25}}
             />
             <div style={{ display: "flex", flexDirection: "column", gap: 8, alignItems: "flex-start", width: "100%" }}>
-              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
                 <strong>Map:</strong>
-                <button onClick={() => setActiveMode("source")} disabled={activeMode === "source"}>
+                <button
+                  type="button"
+                  onClick={() => setActiveMode("source")}
+                  disabled={activeMode === "source"}
+                  style={mapTabButtonStyle(activeMode === "source")}
+                >
                   Past
                 </button>
                   <button
+                    type="button"
                     onClick={() => setActiveMode("instance")}
                     disabled={activeMode === "instance" || !relationTargetCommunityReady}
                     title={!relationTargetCommunityReady && activeMode !== "instance" ? "Select a community on the Predicted map first." : undefined}
-                    style={{fontSize:"0.65rem", opacity: !relationTargetCommunityReady ? 0.4 : 1 }}
+                    style={mapTabButtonStyle(activeMode === "instance", {
+                      fontSize: "0.65rem",
+                      lineHeight: 1.2,
+                      opacity: !relationTargetCommunityReady ? 0.25 : 1,
+                    })}
                   >
                     Instance <br/> Level
                   </button>
                   <button
+                    type="button"
                     onClick={() => { setActiveMode("relation"); setRelationDataMode("sage"); setSecondaryMode("target"); }}
                     disabled={(activeMode === "relation" && relationDataMode === "sage") || !relationTargetCommunityReady}
                     title={!relationTargetCommunityReady && activeMode !== "relation" ? "Select a community on the Predicted map first." : undefined}
-                    style={{fontSize:"0.65rem", opacity: !relationTargetCommunityReady ? 0.4 : 1 }}
+                    style={mapTabButtonStyle(activeMode === "relation" && relationDataMode === "sage", {
+                      fontSize: "0.65rem",
+                      lineHeight: 1.2,
+                      opacity: !relationTargetCommunityReady ? 0.25 : 1,
+                    })}
                   >
                     Model <br/> Level
                   </button>
                   <button
+                    type="button"
                     onClick={() => { setActiveMode("relation"); setRelationDataMode("mi"); setSecondaryMode("target"); }}
                     disabled={(relationDataMode === "mi" && activeMode === "relation") || !relationTargetCommunityReady}
                     title={!relationTargetCommunityReady && activeMode !== "relation" ? "Select a community on the Predicted map first." : undefined}
-                    style={{fontSize:"0.65rem", opacity: !relationTargetCommunityReady ? 0.4 : 1 }}
+                    style={mapTabButtonStyle(activeMode === "relation" && relationDataMode === "mi", {
+                      fontSize: "0.65rem",
+                      lineHeight: 1.2,
+                      opacity: !relationTargetCommunityReady ? 0.25 : 1,
+                    })}
                   >
                     Data <br/> Level
                   </button>
@@ -707,7 +755,7 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
                   />
                   Community
                 </label>
-                <label style={{ opacity: (activeMode === "relation" || activeMode === "instance") ? 0.5 : 1 }}>
+                <label style={{ opacity: (activeMode === "relation" || activeMode === "instance") ? 0.25 : 1 }}>
                   <input
                     type="radio"
                     name="layer"
@@ -720,7 +768,7 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
                   />
                   Beat
                 </label>
-                <label style={{ opacity: (activeMode === "relation" || activeMode === "instance") ? 0.5 : 1 }}>
+                <label style={{ opacity: (activeMode === "relation" || activeMode === "instance") ? 0.25 : 1 }}>
                   <input
                     type="radio"
                     name="layer"
@@ -735,7 +783,7 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
                 </label>
               </div>
               {/* Source map: total vs average per day; disabled when not on Source */}
-              <div style={{ display: "flex", gap: 8, alignItems: "center", opacity: activeMode === "source" ? 1 : 0.5 }}>
+              <div style={{ display: "flex", gap: 8, alignItems: "center", opacity: activeMode === "source" ? 1 : 0.25 }}>
                 <strong>Count:</strong>
                 <label>
                   <input
@@ -889,17 +937,33 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
                   style={{width: "100%", marginTop: 6, marginBottom: 6, minHeight: 18, fontSize: 13, fontWeight: 500, color: relationError ? "#ff6b6b" : "#ccc"}}
                 >
                 </div>
-              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
                 <strong>Map:</strong>
-                <button onClick={() => setSecondaryMode("target")} disabled={secondaryMode === "target"}>
+                <button
+                  type="button"
+                  onClick={() => setSecondaryMode("target")}
+                  disabled={secondaryMode === "target"}
+                  style={mapTabButtonStyle(secondaryMode === "target")}
+                >
                   Predicted
                 </button>
-                <div style={{ display: "flex", gap: 8, alignItems: "center", opacity: canShowActualError ? 1 : 0.5 }}>
-                  <button onClick={() => setSecondaryMode("actual")} disabled={secondaryMode === "actual" || !canShowActualError}>
+                <div style={{ display: "flex", gap: 8, alignItems: "center", opacity: canShowActualError ? 1 : 0.25 }}>
+                  <button
+                    type="button"
+                    onClick={() => setSecondaryMode("actual")}
+                    disabled={secondaryMode === "actual" || !canShowActualError}
+                    style={mapTabButtonStyle(secondaryMode === "actual")}
+                  >
                     Actual
                   </button>
-                  <span style={{ opacity: 0.5, padding: "0 4px" }} />
-                  <button onClick={() => setSecondaryMode("error")} disabled={secondaryMode === "error" || !canShowActualError}>
+                </div>
+                <div style={{ display: "flex", gap: 8, alignItems: "center", opacity: canShowActualError ? 1 : 0.25 }}>
+                  <button
+                    type="button"
+                    onClick={() => setSecondaryMode("error")}
+                    disabled={secondaryMode === "error" || !canShowActualError}
+                    style={mapTabButtonStyle(secondaryMode === "error")}
+                  >
                     Error
                   </button>
                 </div>
@@ -969,7 +1033,7 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
                   />
                   Community
                 </label>
-                <label style={{ opacity: (secondaryMode !== "actual") ? 0.5 : 1 }}>
+                <label style={{ opacity: (secondaryMode !== "actual") ? 0.25 : 1 }}>
                   <input
                     type="radio"
                     name="secondaryLayer"
@@ -982,7 +1046,7 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
                   />
                   Beat
                 </label>
-                <label style={{ opacity: (secondaryMode !== "actual") ? 0.5 : 1 }}>
+                <label style={{ opacity: (secondaryMode !== "actual") ? 0.25 : 1 }}>
                   <input
                     type="radio"
                     name="secondaryLayer"
@@ -997,7 +1061,7 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
                 </label>
               </div>
               {/* Actual map: total vs average per day; disabled when not on Actual */}
-              <div style={{ display: "flex", gap: 8, alignItems: "center", opacity: secondaryMode === "actual" ? 1 : 0.5 }}>
+              <div style={{ display: "flex", gap: 8, alignItems: "center", opacity: secondaryMode === "actual" ? 1 : 0.25 }}>
                 <strong>Count:</strong>
                 <label>
                   <input
@@ -1019,7 +1083,7 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
                   />
                   Total
                 </label>
-              </div>
+                </div>
             </div>
             <div
               style={{flex: "1 1 auto", minHeight: 0, overflow: "hidden", position: "relative", padding: 12, boxSizing: "border-box", width: "100%", display: "flex", flexDirection: "column", gap: 10}}
