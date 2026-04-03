@@ -169,6 +169,116 @@ export default function DashboardPanel({ mode, selection, inactiveMode, inactive
         {targetHeatData && inactiveMode === "actual" && <p style={{ opacity: 1, margin: 0, fill: "white" }}> Future map cluster heatmap </p>}
         {targetHeatData && inactiveMode === "actual" && <ClusterHeatmap data={targetHeatData} selectedId={inactiveSelection?.id || null} isRelationMap={false} isFuture={true} offset={right?.offset} onHighlight={handleTargetHighlight} />}
       </div>
+    {/* Bar Charts — crime type breakdowns for left and right map selections */}
+      <div style={{ padding: "5%", boxSizing: "border-box" }}>
+        {!hasActive && !hasInactive ? (
+          <div style={{display: "flex", flexDirection: "column", alignItems: "center", width: "100%", gap: 8}}>
+            <p style={{ opacity: 0.8, marginTop: 0 }}>
+              This will show analytics (crime counts, trends, etc.) derived from selection + time range.
+            </p>
+            <p style={{ opacity: 0.8 }}>Select a boundary to begin.</p>
+          </div>
+        ) : (
+          <div style={{ display: "flex", flex: "1 1 430px", flexDirection: "row", width: "100%", justifyContent: "space-between", flexWrap: "wrap", overflow: "visible", gap: 8 }}>
+            {/* Left map bar charts */}
+            <div style={{ display: "flex", flex: "1 1 430px", flexDirection: "column", alignItems: "center", width: "100%", gap: 8 }}>
+              {hasActive && selection.mode === "source" ? (
+                <div>
+                  <p style={{ opacity: 0.95, margin: 0 }}>
+                    <strong>{capitalizeFirst(selection.mode)}:</strong> Current stats for{" "}
+                    <strong>{selection.name}</strong>.
+                  </p>
+                  {left?.loading ? (
+                    <p style={{ opacity: 0.6, marginTop: 8 }}>Loading...</p>
+                  ) : (
+                    <>
+                      {summary && (
+                        <div style={{ marginTop: 8 }}>
+                          <strong>Top Crime Types by count:</strong>
+                          <br/>
+                          <svg width="430" height="240">
+                            <g ref={barsRef} transform="translate(210, 30)"/>
+                            <g ref={labelsRef} transform="translate(198, 30)" style={{fill: "white"}}/>
+                            <g ref={countsRef} transform="translate(220, 32)" style={{fill: "white"}}/>
+                          </svg>
+                        </div>
+                      )}
+                      {averageSummary && (
+                        <div style={{ marginTop: 8 }}>
+                          <strong>Top Crime Types by average/day:</strong>
+                          <br/>
+                          <svg width="430" height="240">
+                            <g ref={avgBarsRef} transform="translate(210, 30)"/>
+                            <g ref={avgLabelsRef} transform="translate(198, 30)" style={{fill: "white"}}/>
+                            <g ref={avgCountsRef} transform="translate(220, 32)" style={{fill: "white"}}/>
+                          </svg>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              ) : hasActive ? (
+                <p style={{ opacity: 0.9, margin: 0 }}>
+                  <strong>{capitalizeFirst(selection.mode)}</strong> ready to compute stats for{" "}
+                  <strong>{selection.name}</strong>.
+                </p>
+              ) : (
+                <p style={{ opacity: 0.8, margin: 0 }}>
+                  {mode === "source" ? <strong>Source</strong> : <strong>Relation</strong>} selection not chosen yet.
+                </p>
+              )}
+            </div>
+            {/* Right map bar charts */}
+            <div style={{ display: "flex", flex: "1 1 430px", flexDirection: "column", alignItems: "center", width: "100%", gap: 8 }}>
+              {hasInactive ? (inactiveSelection.mode === "actual" ? (
+                <div>
+                  <p style={{ opacity: 0.9, margin: 0 }}>
+                    <strong>{capitalizeFirst(inactiveSelection.mode)}</strong> stats for{" "}
+                    <strong>{inactiveSelection.name}</strong>.
+                  </p>
+                  {right?.loading ? (
+                    <p style={{ opacity: 0.6, marginTop: 8 }}>Loading...</p>
+                  ) : (
+                    <>
+                      {actual && (
+                        <div style={{ marginTop: 8 }}>
+                          <strong>Top Crime Types by count:</strong>
+                          <br/>
+                          <svg width="430" height="240">
+                            <g ref={actualBarsRef} transform="translate(210, 30)"/>
+                            <g ref={actualLabelsRef} transform="translate(198, 30)" style={{fill: "white"}}/>
+                            <g ref={actualCountsRef} transform="translate(220, 32)" style={{fill: "white"}}/>
+                          </svg>
+                        </div>
+                      )}
+                      {averageActual && (
+                        <div style={{ marginTop: 8 }}>
+                          <strong>Top Crime Types by average/day:</strong>
+                          <br/>
+                          <svg width="430" height="240">
+                            <g ref={avgActualBarsRef} transform="translate(210, 30)"/>
+                            <g ref={avgActualLabelsRef} transform="translate(198, 30)" style={{fill: "white"}}/>
+                            <g ref={avgActualCountsRef} transform="translate(220, 32)" style={{fill: "white"}}/>
+                          </svg>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              ) : (
+                <p style={{ opacity: 0.9, margin: 0 }}>
+                  <strong>{capitalizeFirst(inactiveSelection.mode)}</strong> ready to {inactiveSelection.mode === "target" ? "predict" : "compute"} stats for{" "}
+                  <strong>{inactiveSelection.name}</strong>.
+                </p>
+              )) : (
+                <p style={{ opacity: 0.8, margin: 0 }}>
+                  {inactiveMode === "target" ? <strong>Target</strong> : inactiveMode === "actual" ? <strong>Actual</strong> : <strong>Error Map</strong>} selection not chosen yet.
+                </p>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
     </Panel>
   );
 }
