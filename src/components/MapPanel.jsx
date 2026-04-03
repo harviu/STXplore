@@ -741,21 +741,21 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
                   <input
                     type="radio"
                     name="sourceCountMode"
-                    checked={sourceCountMode === "total"}
-                    disabled={activeMode !== "source"}
-                    onChange={() => setSourceCountMode("total")}
-                  />
-                  Total
-                </label>
-                <label>
-                  <input
-                    type="radio"
-                    name="sourceCountMode"
                     checked={sourceCountMode === "average"}
                     disabled={activeMode !== "source"}
                     onChange={() => setSourceCountMode("average")}
                   />
                   Average per day
+                </label>
+                <label>
+                  <input
+                    type="radio"
+                    name="sourceCountMode"
+                    checked={sourceCountMode === "total"}
+                    disabled={activeMode !== "source"}
+                    onChange={() => setSourceCountMode("total")}
+                  />
+                  Total
                 </label>
               </div>
             </div>
@@ -1003,21 +1003,21 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
                   <input
                     type="radio"
                     name="targetCountMode"
-                    checked={targetCountMode === "total"}
-                    disabled={secondaryMode !== "actual"}
-                    onChange={() => setTargetCountMode("total")}
-                  />
-                  Total
-                </label>
-                <label>
-                  <input
-                    type="radio"
-                    name="targetCountMode"
                     checked={targetCountMode === "average"}
                     disabled={secondaryMode !== "actual"}
                     onChange={() => setTargetCountMode("average")}
                   />
                   Average per day
+                </label>
+                <label>
+                  <input
+                    type="radio"
+                    name="targetCountMode"
+                    checked={targetCountMode === "total"}
+                    disabled={secondaryMode !== "actual"}
+                    onChange={() => setTargetCountMode("total")}
+                  />
+                  Total
                 </label>
               </div>
             </div>
