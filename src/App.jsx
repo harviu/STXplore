@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { use, useEffect, useRef, useState } from "react";
 import "./App.css";
 
 import MapPanel from "./components/MapPanel.jsx";
@@ -51,7 +51,7 @@ export default function App() {
     left: { selection: null, summary: null, loading: false, error: null, range: null, days: null },
     right: { selection: null, summary: null, loading: false, error: null, range: null, days: null, offset: null },
   });
-  const [sourcehighlights, setSourceHighlights] = useState({community: null, date: null}); // For highlights coming from source cluster heatmap
+  const [sourceHighlights, setSourceHighlights] = useState({community: null, date: null}); // For highlights coming from source cluster heatmap
   const [targetHighlights, setTargetHighlights] = useState({community: null, date: null}); // For highlights coming from target cluster heatmap
 
   const activeSelection = state[state.activeMode];
@@ -97,7 +97,7 @@ export default function App() {
       <main className="appMain">
         <section className="topRow">
           <div className="mapCell" ref={mapCellRef}>
-            <MapPanel onSelectionChange={setState} onSummaryChange={setSummaries} />
+            <MapPanel onSelectionChange={setState} onSummaryChange={setSummaries} sourceHighlight={sourceHighlights} targetHighlight={targetHighlights} />
           </div>
 
           <div className="sideCell" style={sideCellStyle}>

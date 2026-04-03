@@ -36,7 +36,7 @@ const FORECAST_MODEL_OPTIONS = ["Transformer", "iTransformer"];
  * @param {(summary: Object) => void} props.onSummaryChange Callback that receives the current summary data for the left and right maps whenever it changes. The summary object has the shape: {left: {selection, summary, loading, error, range, days}, right: {selection, summary, loading, error, range, days}}. Keeps track of the returns from api calls regarding the maps. Note that values from this component are in onSelectionChange.
  * @returns {JSX.Element}
  */
-export default function MapPanel({ onSelectionChange, onSummaryChange }) {
+export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHighlight=[], targetHighlight=[] }) {
   const MAP_H = "clamp(450px, 55vh, 550px)";
   const [activeMode, setActiveMode] = useState("source"); // "source" | "relation" | "instance"
   const [secondaryMode, setSecondaryMode] = useState("target"); // "target" | "actual" | "error"
@@ -558,6 +558,7 @@ export default function MapPanel({ onSelectionChange, onSummaryChange }) {
     : activeMode === "relation" 
         ? relationLoading 
         : (shapLoading || instanceSourceLoading);
+
   return (
     <Panel title="Crime Map" fill style={{ minHeight: 0 }}>
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", flex: "1 1 auto", minHeight: 0 }}>
@@ -784,6 +785,7 @@ export default function MapPanel({ onSelectionChange, onSummaryChange }) {
                             : "Model Relation Weight"
                     }
                     layer={layer}
+                    highlights={sourceHighlight}
                     selectedId={selectedId}
                     onSelectId={setSelectedId}
                     onHover={(h) => setHover(h ? { ...h, which: "left" } : null)}

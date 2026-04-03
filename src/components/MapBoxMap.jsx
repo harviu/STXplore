@@ -9,9 +9,10 @@ export const CHICAGO_ZOOM = 9.1; // Initial zoom level to show the whole city
 const BOUNDARIES_SOURCE_ID = "boundaries";
 const BOUNDARIES_LAYER_ID = "boundaries-fill";
 const BOUNDARIES_SELECTED_LAYER_ID = "boundaries-selected";
+const BOUNDARIES_HIGHLIGHT_LAYER_ID = "boundaries-highlight";
+
 
 const getMapboxToken = () => import.meta.env.VITE_MAPBOX_ACCESS_TOKEN ?? "";
-
 
 const LEGEND_TITLE = "Crime count";
 
@@ -100,6 +101,7 @@ export default function MapBoxMap({
   crimeCounts = null,
   legendTitle = LEGEND_TITLE,
   layer = "community",
+  highlights,
   selectedId = null,
   onSelectId = null,
   onHover = null,
@@ -120,6 +122,7 @@ export default function MapBoxMap({
   const geoRef = useRef(geo);
   const crimeCountsRef = useRef(crimeCounts);
   const layerRef = useRef(layer);
+  const highlightsRef = useRef(highlights);
   const onSelectIdRef = useRef(onSelectId);
   const onHoverRef = useRef(onHover);
   const selectedIdRef = useRef(selectedId);
@@ -147,6 +150,9 @@ export default function MapBoxMap({
     layerRef.current = layer;
   }, [layer]);
   useEffect(() => {
+    highlightsRef.current = highlights;
+  }, [highlights]);
+  useEffect(() => {
     isRelationMapRef.current = isRelationMap;
   }, [isRelationMap]);
   useEffect(() => {
@@ -170,7 +176,20 @@ export default function MapBoxMap({
           "fill-outline-color": "#ffffff",
         },
       });
-
+      const communityIds = highlights?.community || [];
+      map.addLayer({
+        id: BOUNDARIES_HIGHLIGHT_LAYER_ID,
+        type: "line",
+        source: BOUNDARIES_SOURCE_ID,
+        // Apply the filter right here instead of waiting for another effect
+        filter: communityIds.length > 0 
+          ? ["in", ["get", "boundary_id"], ["literal", communityIds.map(String)]]
+          : ["==", ["get", "boundary_id"], ""],
+        paint: {
+          "line-color": "#00ffff",
+          "line-width": 3,
+        },
+      });
       map.addLayer({
         id: BOUNDARIES_SELECTED_LAYER_ID,
         type: "line",
@@ -252,6 +271,20 @@ export default function MapBoxMap({
             "fill-color": paint,
             "fill-opacity": 0.65,
             "fill-outline-color": "#ffffff",
+          },
+        });
+        const communityIds = highlights?.community || [];
+        map.addLayer({
+          id: BOUNDARIES_HIGHLIGHT_LAYER_ID,
+          type: "line",
+          source: BOUNDARIES_SOURCE_ID,
+          // Apply the filter right here instead of waiting for another effect
+          filter: communityIds.length > 0 
+            ? ["in", ["get", "boundary_id"], ["literal", communityIds.map(String)]]
+            : ["==", ["get", "boundary_id"], ""],
+          paint: {
+            "line-color": "#00ffff",
+            "line-width": 3,
           },
         });
         map.addLayer({
@@ -394,6 +427,19 @@ export default function MapBoxMap({
           "fill-outline-color": "#ffffff",
         },
       });
+      const communityIds = highlights?.community || [];
+      map.addLayer({
+        id: BOUNDARIES_HIGHLIGHT_LAYER_ID,
+        type: "line",
+        source: BOUNDARIES_SOURCE_ID,
+        filter: communityIds.length > 0 
+          ? ["in", ["get", "boundary_id"], ["literal", communityIds.map(String)]]
+          : ["==", ["get", "boundary_id"], ""],
+        paint: {
+          "line-color": "#00ffff",
+          "line-width": 3,
+        },
+      });
       map.addLayer({
         id: BOUNDARIES_SELECTED_LAYER_ID,
         type: "line",
@@ -406,6 +452,18 @@ export default function MapBoxMap({
       });
     }
   }, [mergedGeo, fillColorPaint]);
+
+  useEffect(() => {
+  const map = mapRef.current;
+  if (!map || !map.getLayer(BOUNDARIES_HIGHLIGHT_LAYER_ID)) return;
+
+  const communityIds = highlights?.community || [];
+  const filter = communityIds.length > 0 
+    ? ["in", ["get", "boundary_id"], ["literal", communityIds.map(String)]]
+    : ["==", ["get", "boundary_id"], ""];
+
+  map.setFilter(BOUNDARIES_HIGHLIGHT_LAYER_ID, filter);
+}, [highlights]);
 
   // Update selected feature outline when selectedId changes
   useEffect(() => {
