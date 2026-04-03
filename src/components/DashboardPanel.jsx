@@ -116,6 +116,13 @@ export default function DashboardPanel({ mode, selection, inactiveMode, inactive
 
   return (
     <Panel title="Dashboard">
+      {/* Cluster Heatmaps */}
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", width: "100%", gap: 16 }}>
+        {heatData && (selection?.id || mode === "source") && <p style={{ opacity: 1, margin: 0, fill: "white" }}> Past map cluster heatmap </p>}
+        {heatData && (selection?.id || mode === "source" || (mode != "source" && right?.selection?.id)) && <ClusterHeatmap data={heatData} selectedId={selection?.id || null} isRelationMap={mode !== "source"} isSageMap={isSageMap && mode !== "source"} onHighlight={onSourceHighlight} />}
+        {targetHeatData && inactiveMode === "actual" && <p style={{ opacity: 1, margin: 0, fill: "white" }}> Future map cluster heatmap </p>}
+        {targetHeatData && inactiveMode === "actual" && <ClusterHeatmap data={targetHeatData} selectedId={inactiveSelection?.id || null} isRelationMap= {false} isFuture={true} offset={right?.offset} onHighlight={onTargetHighlight} />}
+      </div>
       <div style={{ padding: "5%", boxSizing: "border-box" }}>
         {!hasActive && !hasInactive ? (
           <div style={{display: "flex", flexDirection: "column", alignItems: "center", width: "100%", gap: 8}}>
@@ -240,13 +247,7 @@ export default function DashboardPanel({ mode, selection, inactiveMode, inactive
         </div>
         )}
       </div>
-      {/* Cluster Heatmaps */}
-      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", width: "100%", gap: 16 }}>
-        {heatData && (selection?.id || mode === "source") && <p style={{ opacity: 1, margin: 0, fill: "white" }}> Past map cluster heatmap </p>}
-        {heatData && (selection?.id || mode === "source" || (mode != "source" && right?.selection?.id)) && <ClusterHeatmap data={heatData} selectedId={selection?.id || null} isRelationMap={mode !== "source"} isSageMap={isSageMap && mode !== "source"} onHighlight={onSourceHighlight} />}
-        {targetHeatData && inactiveMode === "actual" && <p style={{ opacity: 1, margin: 0, fill: "white" }}> Future map cluster heatmap </p>}
-        {targetHeatData && inactiveMode === "actual" && <ClusterHeatmap data={targetHeatData} selectedId={inactiveSelection?.id || null} isRelationMap= {false} isFuture={true} offset={right?.offset} onHighlight={onTargetHighlight} />}
-      </div>
+      
     </Panel>
   );
 }
