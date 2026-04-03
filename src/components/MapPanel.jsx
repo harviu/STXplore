@@ -49,6 +49,14 @@ function mapTabButtonStyle(selected, extra = {}) {
   };
 }
 
+/** Divide each feature count by spanDays (e.g. total → average per day over the target window). */
+function scaleCountsPerDay(counts, spanDays) {
+  if (counts == null || spanDays <= 0) return counts;
+  const out = {};
+  for (const [id, val] of Object.entries(counts)) out[id] = val / spanDays;
+  return out;
+}
+
 const UI_TO_API_LAYER = { community: "community_area", beat: "beat", district: "district" };
 
 /** Folder names under `models/` with checkpoints (see backend prediction API). */
@@ -348,38 +356,62 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
     return out;
   }, [forecastCountsForMap, rightCrimeCounts]);
 
-  // When right map shows Actual and "average" mode: show count / span; otherwise raw counts
+  // Right map: totals vs average per day over the target window (Predicted, Actual, Error)
   const rightCountsForMap = useMemo(() => {
-    if (
-      targetForecastEligible &&
-      forecastCountsForMap != null &&
-      Object.keys(forecastCountsForMap).length > 0
-    ) {
-      return forecastCountsForMap;
+    const span = futureSpanDays;
+    const wantAvg = targetCountMode === "average" && span > 0;
+
+    if (secondaryMode === "target") {
+      if (
+        !targetForecastEligible ||
+        forecastCountsForMap == null ||
+        Object.keys(forecastCountsForMap).length === 0
+      ) {
+        return null;
+      }
+      return wantAvg ? scaleCountsPerDay(forecastCountsForMap, span) : forecastCountsForMap;
     }
-    if (rightCrimeCounts == null) return null;
-    if (
-      secondaryMode === "actual" &&
-      targetCountMode === "average" &&
-      futureSpanDays > 0
-    ) {
-      const out = {};
-      for (const [id, val] of Object.entries(rightCrimeCounts))
-        out[id] = val / futureSpanDays;
-      return out;
+
+    if (secondaryMode === "actual") {
+      if (rightCrimeCounts == null) return null;
+      return wantAvg ? scaleCountsPerDay(rightCrimeCounts, span) : rightCrimeCounts;
     }
+
     if (secondaryMode === "error") {
-      return errorForMap;
+      if (errorForMap == null) return null;
+      return wantAvg ? scaleCountsPerDay(errorForMap, span) : errorForMap;
     }
-    return secondaryMode === "actual" ? rightCrimeCounts : null;
+
+    return null;
   }, [
+    secondaryMode,
     targetForecastEligible,
     forecastCountsForMap,
     rightCrimeCounts,
-    secondaryMode,
+    errorForMap,
     targetCountMode,
     futureSpanDays,
   ]);
+
+  const rightMapLegendTitle = useMemo(() => {
+    if (secondaryMode === "error") {
+      return targetCountMode === "average"
+        ? "Avg difference per day"
+        : "Difference (actual - target)";
+    }
+    if (secondaryMode === "target") {
+      if (targetForecastEligible) {
+        return targetCountMode === "average"
+          ? "Avg forecast per day"
+          : `Forecast total (${forecastModel}, full horizon)`;
+      }
+      return targetCountMode === "average" ? "Avg predicted crimes per day" : "Predicted Crime Count";
+    }
+    if (secondaryMode === "actual") {
+      return targetCountMode === "average" ? "Avg crimes per day" : "Crime Count";
+    }
+    return "Crime Count";
+  }, [secondaryMode, targetCountMode, targetForecastEligible, forecastModel]);
 
   const rightMapLoading = targetForecastEligible
     ? predBoundsLoading || (targetForecastReady && forecastDailyLoading)
@@ -782,8 +814,15 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
                   District
                 </label>
               </div>
-              {/* Source map: total vs average per day; disabled when not on Source */}
-              <div style={{ display: "flex", gap: 8, alignItems: "center", opacity: activeMode === "source" ? 1 : 0.25 }}>
+              {/* Past map only: total vs average per day (disabled on Instance / Model / Data level) */}
+              <div
+                style={{
+                  display: "flex",
+                  gap: 8,
+                  alignItems: "center",
+                  opacity: activeMode === "source" ? 1 : 0.25,
+                }}
+              >
                 <strong>Count:</strong>
                 <label>
                   <input
@@ -1060,15 +1099,14 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
                   District
                 </label>
               </div>
-              {/* Actual map: total vs average per day; disabled when not on Actual */}
-              <div style={{ display: "flex", gap: 8, alignItems: "center", opacity: secondaryMode === "actual" ? 1 : 0.25 }}>
+              {/* Right map: total vs average preference (averaging applies when Actual map is active) */}
+              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                 <strong>Count:</strong>
                 <label>
                   <input
                     type="radio"
                     name="targetCountMode"
                     checked={targetCountMode === "average"}
-                    disabled={secondaryMode !== "actual"}
                     onChange={() => setTargetCountMode("average")}
                   />
                   Average per day
@@ -1078,12 +1116,11 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
                     type="radio"
                     name="targetCountMode"
                     checked={targetCountMode === "total"}
-                    disabled={secondaryMode !== "actual"}
                     onChange={() => setTargetCountMode("total")}
                   />
                   Total
                 </label>
-                </div>
+              </div>
             </div>
             <div
               style={{flex: "1 1 auto", minHeight: 0, overflow: "hidden", position: "relative", padding: 12, boxSizing: "border-box", width: "100%", display: "flex", flexDirection: "column", gap: 10}}
@@ -1094,20 +1131,8 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
                 >
                   <MapBoxMap
                     geo={secondaryGeo}
-                    crimeCounts={secondaryMode === "error" ? errorForMap : rightCountsForMap}
-                    legendTitle={
-                      secondaryMode === "error"
-                        ? "Difference (actual - target)"
-                        : secondaryMode === "target" && targetForecastEligible
-                          ? `Forecast total (${forecastModel}, full horizon)`
-                          : secondaryMode === "target" && activeMode === "relation"
-                            ? "Predicted Crime Count"
-                            : secondaryMode === "target"
-                              ? "Predicted Crime Count"
-                              : secondaryMode === "actual" && targetCountMode === "average"
-                                ? "Avg crimes per day"
-                                : "Crime Count"
-                    }
+                    crimeCounts={rightCountsForMap}
+                    legendTitle={rightMapLegendTitle}
                     layer={secondaryLayer}
                     selectedId={secondarySelectedId}
                     onSelectId={setSecondarySelectedId}
