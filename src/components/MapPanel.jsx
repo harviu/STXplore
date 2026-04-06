@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState, useEffect, useReducer } from "react";
+import { createPortal } from "react-dom";
 import Panel from "./Panel.jsx";
 import MapBoxMap, { CHICAGO_ZOOM } from "./MapBoxMap.jsx";
 import { BOUNDARY_GEO, getBoundaryId, getBoundaryLabel } from "../lib/boundaries.js";
@@ -138,6 +139,7 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
   // Anchor date — defaults to latest date in dataset once loaded; user can pick another via calendar
   const [anchorDate, setAnchorDate] = useState(() => todayISO());
   const [calendarOpen, setCalendarOpen] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
   const calendarRef = useRef(null);
 
   const [hover, setHover] = useState(null);
@@ -573,6 +575,20 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [calendarOpen]);
 
+  useEffect(() => {
+    if (!helpOpen) return;
+    function onKey(e) {
+      if (e.key === "Escape") setHelpOpen(false);
+    }
+    window.addEventListener("keydown", onKey);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [helpOpen]);
+
   //
   const thirtyDaysAgo = new Date(); 
   // fallback to today if max date not loaded yet
@@ -618,20 +634,6 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
     : activeMode === "relation" 
         ? relationLoading 
         : (shapLoading || instanceSourceLoading);
-
-    const [helpText, setHelpText] = useState("Help \u25BC");
-    const [showHelp, setShowHelp] = useState(false);
-
-    function onHelp() {
-      setShowHelp((h) => !h);
-      setHelpText(() => {
-        if(showHelp){
-          return "Help \u25B6"
-        } else {
-          "Help \u25BC"
-        }
-      })
-    }
 
   return (
     <Panel title="Crime Map" fill style={{ minHeight: 0 }}>
@@ -699,27 +701,111 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
           </div>
         </div>
 
-        <div style={{ display: "flex", flexDirection: "column", width: "100%", alignItems: "center", justifyContent: "center"}}>
-          <button onClick={() => onHelp()} >
-            {helpText}
+        <div style={{ display: "flex", width: "100%", justifyContent: "center", padding: "4px 0 2px" }}>
+          <button
+            type="button"
+            onClick={() => setHelpOpen(true)}
+            title="Open help for the crime map"
+            style={{
+              padding: "6px 14px",
+              cursor: "pointer",
+              border: "1px solid rgba(255,255,255,0.25)",
+              borderRadius: 8,
+              background: "rgba(255,255,255,0.1)",
+              color: "inherit",
+              fontSize: "inherit",
+              fontWeight: 500,
+            }}
+          >
+            Help
           </button>
-          {showHelp && (
-            <div>
-              <p>Anchor Date: the anchor date is the day in which the prediction starts. It is also the point where past data starts to be collected for prediction.</p>
-              <p>Recenter: clicking this button will recenter both maps to Chicago at a predefined zoom level.</p>
-              <p>Past: This shows the map of historical data.</p>
-              <p>Model Level: This shows the map of the mutual information between communities and the selected community in the right map.</p>
-              <p>Data Level: This shows the map of the SHAP values for the selected community in the right map.</p>
-              <p>Prediction: This shows the map of the predicted crimes by the AI.</p>
-              <p>Actual: This shows the map of the actual crimes if they are available.</p>
-              <p>Error: This shows the map of the error between the predicted and actual crimes.</p>
-              <p>Relation Model: This is selection for the model of AI used to make the predictions.</p>
-              <p>Source Date Slider: Controls the date range for the source data used in making a prediction.</p>
-              <p>Target Date Slider: Controls the date range the AI will try making a prediction for.</p>
-              <p>Detailed information about each selected community can be found by clicking on it and will be displayed in the sidebar.</p>
-            </div>
-          )}
         </div>
+        {helpOpen &&
+          createPortal(
+            <div
+              role="presentation"
+              style={{
+                position: "fixed",
+                inset: 0,
+                zIndex: 2000,
+                background: "rgba(0,0,0,0.55)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                padding: 16,
+              }}
+              onClick={() => setHelpOpen(false)}
+            >
+              <div
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="map-help-title"
+                style={{
+                  maxWidth: 520,
+                  width: "100%",
+                  maxHeight: "min(85vh, 680px)",
+                  overflow: "auto",
+                  background: "var(--panel-bg, #1e1e1e)",
+                  borderRadius: 12,
+                  boxShadow: "0 8px 40px rgba(0,0,0,0.5)",
+                  border: "1px solid rgba(255,255,255,0.15)",
+                  padding: "18px 20px 20px",
+                }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: 12,
+                    marginBottom: 14,
+                    position: "sticky",
+                    top: 0,
+                    background: "var(--panel-bg, #1e1e1e)",
+                    paddingBottom: 8,
+                    borderBottom: "1px solid rgba(255,255,255,0.1)",
+                  }}
+                >
+                  <h2 id="map-help-title" style={{ margin: 0, fontSize: "1.05rem", fontWeight: 600 }}>
+                    Crime map help
+                  </h2>
+                  <button
+                    type="button"
+                    onClick={() => setHelpOpen(false)}
+                    style={{
+                      padding: "6px 12px",
+                      cursor: "pointer",
+                      border: "1px solid rgba(255,255,255,0.25)",
+                      borderRadius: 8,
+                      background: "rgba(255,255,255,0.1)",
+                      color: "inherit",
+                      fontSize: "0.9rem",
+                      fontWeight: 500,
+                      flexShrink: 0,
+                    }}
+                  >
+                    Close
+                  </button>
+                </div>
+                <div style={{ fontSize: "0.92rem", lineHeight: 1.5, opacity: 0.95 }}>
+                  <p>Anchor Date: the anchor date is the day in which the prediction starts. It is also the point where past data starts to be collected for prediction.</p>
+                  <p>Recenter: clicking this button will recenter both maps to Chicago at a predefined zoom level.</p>
+                  <p>Past: This shows the map of historical data.</p>
+                  <p>Model Level: This shows the map of the mutual information between communities and the selected community in the right map.</p>
+                  <p>Data Level: This shows the map of the SHAP values for the selected community in the right map.</p>
+                  <p>Prediction: This shows the map of the predicted crimes by the AI.</p>
+                  <p>Actual: This shows the map of the actual crimes if they are available.</p>
+                  <p>Error: This shows the map of the error between the predicted and actual crimes.</p>
+                  <p>Relation Model: This is selection for the model of AI used to make the predictions.</p>
+                  <p>Source Date Slider: Controls the date range for the source data used in making a prediction.</p>
+                  <p>Target Date Slider: Controls the date range the AI will try making a prediction for.</p>
+                  <p>Detailed information about each selected community can be found by clicking on it and will be displayed in the sidebar.</p>
+                </div>
+              </div>
+            </div>,
+            document.body
+          )}
 
         <hr style={{ width: "100%", margin: "12px 0", opacity: 0.8 }} />
 
