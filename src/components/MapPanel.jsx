@@ -619,6 +619,20 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
         ? relationLoading 
         : (shapLoading || instanceSourceLoading);
 
+    const [helpText, setHelpText] = useState("Help \u25B6");
+    const [showHelp, setShowHelp] = useState(false);
+
+    function onHelp() {
+      setShowHelp((h) => !h);
+      setHelpText(() => {
+        if(showHelp){
+          return "Help \u25B6";
+        } else {
+          return "Help \u25BC";
+        }
+      })
+    }
+
   return (
     <Panel title="Crime Map" fill style={{ minHeight: 0 }}>
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", flex: "1 1 auto", minHeight: 0 }}>
@@ -683,6 +697,28 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
               Recenter maps
             </button>
           </div>
+        </div>
+
+        <div style={{ display: "flex", flexDirection: "column", width: "100%", alignItems: "center", justifyContent: "center"}}>
+          <button onClick={() => onHelp()} >
+            {helpText}
+          </button>
+          {showHelp && (
+            <div>
+              <p>Anchor Date: the anchor date is the day in which the prediction starts. It is also the point where past data starts to be collected for prediction.</p>
+              <p>Recenter: clicking this button will recenter both maps to Chicago at a predefined zoom level.</p>
+              <p>Past: This shows the map of historical data.</p>
+              <p>Model Level: This shows the map of the mutual information between communities and the selected community in the right map.</p>
+              <p>Data Level: This shows the map of the SHAP values for the selected community in the right map.</p>
+              <p>Prediction: This shows the map of the predicted crimes by the AI.</p>
+              <p>Actual: This shows the map of the actual crimes if they are available.</p>
+              <p>Error: This shows the map of the error between the predicted and actual crimes.</p>
+              <p>Relation Model: This is selection for the model of AI used to make the predictions.</p>
+              <p>Source Date Slider: Controls the date range for the source data used in making a prediction.</p>
+              <p>Target Date Slider: Controls the date range the AI will try making a prediction for.</p>
+              <p>Detailed information about each selected community can be found by clicking on it and will be displayed in the sidebar.</p>
+            </div>
+          )}
         </div>
 
         <hr style={{ width: "100%", margin: "12px 0", opacity: 0.8 }} />
