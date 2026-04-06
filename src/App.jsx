@@ -4,6 +4,7 @@ import "./App.css";
 import MapPanel from "./components/MapPanel.jsx";
 import SidePanel from "./components/SidePanel.jsx";
 import DashboardPanel from "./components/DashboardPanel.jsx";
+import AppHeaderHelp from "./components/AppHeaderHelp.jsx";
 
 function useMediaQuery(query) {
   const [matches, setMatches] = useState(() => {
@@ -92,6 +93,7 @@ export default function App() {
     <div className="app">
       <header className="appHeader">
         <h1>The Zhuang Project</h1>
+        <AppHeaderHelp />
       </header>
 
       <main className="appMain">
