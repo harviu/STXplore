@@ -627,7 +627,9 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
       setHelpText(() => {
         if(showHelp){
           return "Help \u25B6"
-        } else{}
+        } else {
+          "Help \u25BC"
+        }
       })
     }
 
