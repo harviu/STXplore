@@ -619,17 +619,15 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
         ? relationLoading 
         : (shapLoading || instanceSourceLoading);
 
-    const [helpText, setHelpText] = useState("Help \u25B6");
+    const [helpText, setHelpText] = useState("Help \u25BC");
     const [showHelp, setShowHelp] = useState(false);
 
     function onHelp() {
       setShowHelp((h) => !h);
       setHelpText(() => {
         if(showHelp){
-          return "Help \u25B6";
-        } else {
-          return "Help \u25BC";
-        }
+          return "Help \u25B6"
+        } else{}
       })
     }
 
