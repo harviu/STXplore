@@ -924,13 +924,20 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
                         width: "100%",
                         "& .MuiSlider-rail": { height: 10, borderRadius: 0, backgroundColor: "rgb(255, 255, 255)", strokeWidth: 2 },
                         "& .MuiSlider-track": { height: 10, borderRadius: 0, backgroundColor: "rgb(100, 100, 255)", strokeWidth: 2 },
-                        "& .MuiSlider-thumb": { width: 22, height: 22, backgroundColor: "white", border: "3px solid rgb(92, 92, 92)", marginRight: -2.5 },
+                        "& .MuiSlider-thumb": {
+                          width: 14,
+                          height: 26,
+                          borderRadius: 9999,
+                          backgroundColor: "white",
+                          border: "3px solid rgb(92, 92, 92)",
+                          marginRight: -1.7,
+                        },
                       }}
                     />
                   </div>
                 </ThemeProvider>
                 <div
-                  style={{display: "flex", flexDirection: "column", alignItems: "center", flexShrink: 0, minWidth: 12}}
+                  style={{display: "flex", flexDirection: "column", alignItems: "center", flexShrink: 0, minWidth: 25}}
                   title={`Anchor date: ${anchorDate}`}
                   aria-hidden
                 >
@@ -960,7 +967,13 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
                     width: "100%",
                     "& .MuiSlider-rail": { height: 10, borderRadius: 0, backgroundColor: "rgb(255, 255, 255)" },
                     "& .MuiSlider-track": { height: 10, borderRadius: 0, backgroundColor: "rgb(100, 100, 255)" },
-                    "& .MuiSlider-thumb": { width: 22, height: 22, backgroundColor: "white", border: "3px solid rgb(92, 92, 92)" },
+                    "& .MuiSlider-thumb": {
+                      width: 14,
+                      height: 26,
+                      borderRadius: 9999,
+                      backgroundColor: "white",
+                      border: "3px solid rgb(92, 92, 92)",
+                    },
                   }}
                 />
               </div>
