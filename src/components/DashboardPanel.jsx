@@ -152,12 +152,14 @@ export default function DashboardPanel({ mode, selection, inactiveMode, inactive
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 10, paddingBottom: 12 }}>
             {communitySeriesList.map(({ id, series }) => {
-              return (
-                <div key={id}>
-                  <div style={{ fontSize: 11, opacity: 0.7, marginBottom: 2 }}>Community {id}</div>
-                  <TooltipMap days={series} height={14} isRelationMap={false} highlightDates={sourceHighlight.date.length > 0 ? sourceHighlight.date : null} />
-                </div>
-              );
+              if (id.length < 3){
+                return (
+                  <div key={id}>
+                    <div style={{ fontSize: 11, opacity: 0.7, marginBottom: 2 }}>Community {id}</div>
+                    <TooltipMap days={series} height={14} isRelationMap={false} highlightDates={sourceHighlight.date.length > 0 ? sourceHighlight.date : null} />
+                  </div>
+                );
+              }
             })}
           </div>
         )}

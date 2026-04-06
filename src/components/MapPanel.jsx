@@ -21,42 +21,6 @@ import { active } from "d3";
 
 const RTL_THEME = createTheme({ direction: "rtl" });
 
-/** Visual emphasis for the active map tab (disabled when selected matches browser defaults poorly). */
-function mapTabButtonStyle(selected, extra = {}) {
-  const base = {
-    padding: "6px 12px",
-    borderRadius: 8,
-    cursor: "pointer",
-    fontFamily: "inherit",
-    fontWeight: selected ? 600 : 500,
-    transition: "background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease",
-    color: "inherit",
-    opacity: 1,
-    ...extra,
-  };
-  if (selected) {
-    return {
-      ...base,
-      background: "rgba(100, 115, 255, 0.42)",
-      border: "2px solid rgb(155, 165, 255)",
-      boxShadow: "0 0 14px rgba(120, 130, 255, 0.4)",
-    };
-  }
-  return {
-    ...base,
-    background: "rgba(255, 255, 255, 0.07)",
-    border: "1px solid rgba(255, 255, 255, 0.22)",
-  };
-}
-
-/** Divide each feature count by spanDays (e.g. total → average per day over the target window). */
-function scaleCountsPerDay(counts, spanDays) {
-  if (counts == null || spanDays <= 0) return counts;
-  const out = {};
-  for (const [id, val] of Object.entries(counts)) out[id] = val / spanDays;
-  return out;
-}
-
 const UI_TO_API_LAYER = { community: "community_area", beat: "beat", district: "district" };
 
 /** Folder names under `models/` with checkpoints (see backend prediction API). */
@@ -108,6 +72,8 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
   const errorLayer = mapFaces.error.layer;
   const errorSelectedId = mapFaces.error.selectedId;
 
+  const [helpText, setHelpText] = useState("Help \u25B6");
+  const [showHelp, setShowHelp] = useState(false);
   //date sliders
   const [pastDays, setPastDays] = useState(90);
   /** Inclusive start / exclusive end as day offsets after anchor (matches targetRange / tensor slice). */
@@ -154,6 +120,10 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
   const geo = BOUNDARY_GEO[layer];
   const secondaryGeo = BOUNDARY_GEO[secondaryLayer];
 
+  //Hover daily series
+  const tensorSourceId = targetSelectedId ?? null;
+  const { hoverDaily, hoverDailyLoading, canShowHoverData } = useHoverDailySeries({hover, activeMode, secondaryMode, tensorSourceId, model: relationModel, pastDays, futureStart, futureEnd, anchorDate, dataMode: relationDataMode});
+
   const targetForecastEligible =
     secondaryMode === "target" || secondaryMode === "error" && secondaryLayer === "community";
 
@@ -171,10 +141,6 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
     return clampDateIso(anchorDay, predBounds.anchor_min, predBounds.anchor_max);
   }, [anchorDay, predBounds]);
   
-  //Hover daily series
-  const tensorSourceId = targetSelectedId ?? null;
-  const { hoverDaily, hoverDailyLoading, canShowHoverData } = useHoverDailySeries({hover, activeMode, secondaryMode, tensorSourceId, model: relationModel, pastDays, futureStart, futureEnd, anchorDate, dataMode: relationDataMode, forecastAnchorDate, shapHorizon, });
-
   //Model relation counts
   const { counts: relationCounts, loading: relationLoading, error: relationError } = useModelRelationCounts(activeMode, layer, targetSelectedId, relationModel, relationDataMode);
 
@@ -356,62 +322,38 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
     return out;
   }, [forecastCountsForMap, rightCrimeCounts]);
 
-  // Right map: totals vs average per day over the target window (Predicted, Actual, Error)
+  // When right map shows Actual and "average" mode: show count / span; otherwise raw counts
   const rightCountsForMap = useMemo(() => {
-    const span = futureSpanDays;
-    const wantAvg = targetCountMode === "average" && span > 0;
-
-    if (secondaryMode === "target") {
-      if (
-        !targetForecastEligible ||
-        forecastCountsForMap == null ||
-        Object.keys(forecastCountsForMap).length === 0
-      ) {
-        return null;
-      }
-      return wantAvg ? scaleCountsPerDay(forecastCountsForMap, span) : forecastCountsForMap;
+    if (
+      targetForecastEligible &&
+      forecastCountsForMap != null &&
+      Object.keys(forecastCountsForMap).length > 0
+    ) {
+      return forecastCountsForMap;
     }
-
-    if (secondaryMode === "actual") {
-      if (rightCrimeCounts == null) return null;
-      return wantAvg ? scaleCountsPerDay(rightCrimeCounts, span) : rightCrimeCounts;
+    if (rightCrimeCounts == null) return null;
+    if (
+      secondaryMode === "actual" &&
+      targetCountMode === "average" &&
+      futureSpanDays > 0
+    ) {
+      const out = {};
+      for (const [id, val] of Object.entries(rightCrimeCounts))
+        out[id] = val / futureSpanDays;
+      return out;
     }
-
     if (secondaryMode === "error") {
-      if (errorForMap == null) return null;
-      return wantAvg ? scaleCountsPerDay(errorForMap, span) : errorForMap;
+      return errorForMap;
     }
-
-    return null;
+    return secondaryMode === "actual" ? rightCrimeCounts : null;
   }, [
-    secondaryMode,
     targetForecastEligible,
     forecastCountsForMap,
     rightCrimeCounts,
-    errorForMap,
+    secondaryMode,
     targetCountMode,
     futureSpanDays,
   ]);
-
-  const rightMapLegendTitle = useMemo(() => {
-    if (secondaryMode === "error") {
-      return targetCountMode === "average"
-        ? "Avg difference per day"
-        : "Difference (actual - target)";
-    }
-    if (secondaryMode === "target") {
-      if (targetForecastEligible) {
-        return targetCountMode === "average"
-          ? "Avg forecast per day"
-          : `Forecast total (${forecastModel}, full horizon)`;
-      }
-      return targetCountMode === "average" ? "Avg predicted crimes per day" : "Predicted Crime Count";
-    }
-    if (secondaryMode === "actual") {
-      return targetCountMode === "average" ? "Avg crimes per day" : "Crime Count";
-    }
-    return "Crime Count";
-  }, [secondaryMode, targetCountMode, targetForecastEligible, forecastModel]);
 
   const rightMapLoading = targetForecastEligible
     ? predBoundsLoading || (targetForecastReady && forecastDailyLoading)
@@ -619,6 +561,17 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
         ? relationLoading 
         : (shapLoading || instanceSourceLoading);
 
+  function onHelp() {
+    setShowHelp((h) => !h);
+    setHelpText(() => {
+      if (showHelp) {
+        return "Help \u25B6";
+      } else {
+        return "Help \u25BC";
+      }
+    });
+  }
+
   return (
     <Panel title="Crime Map" fill style={{ minHeight: 0 }}>
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", flex: "1 1 auto", minHeight: 0 }}>
@@ -685,6 +638,28 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
           </div>
         </div>
 
+        <div style={{ display: "flex", flexDirection: "column", width: "100%", alignItems: "center", justifyContent: "center"}}>
+          <button onClick={() => onHelp()} >
+            {helpText}
+          </button>
+          {showHelp && (
+            <div>
+              <p>Anchor Date: the anchor date is the day in which the prediction starts. It is also the point where past data starts to be collected for prediction.</p>
+              <p>Recenter: clicking this button will recenter both maps to Chicago at a predefined zoom level.</p>
+              <p>Past: This shows the map of historical data.</p>
+              <p>Model Level: This shows the map of the mutual information between communities and the selected community in the right map.</p>
+              <p>Data Level: This shows the map of the SHAP values for the selected community in the right map.</p>
+              <p>Prediction: This shows the map of the predicted crimes by the AI.</p>
+              <p>Actual: This shows the map of the actual crimes if they are available.</p>
+              <p>Error: This shows the map of the error between the predicted and actual crimes.</p>
+              <p>Relation Model: This is selection for the model of AI used to make the predictions.</p>
+              <p>Source Date Slider: Controls the date range for the source data used in making a prediction.</p>
+              <p>Target Date Slider: Controls the date range the AI will try making a prediction for.</p>
+              <p>Detailed information about each selected community can be found by clicking on it and will be displayed in the sidebar.</p>
+            </div>
+          )}
+        </div>
+
         <hr style={{ width: "100%", margin: "12px 0", opacity: 0.8 }} />
 
         <div style={{ display: "flex", flex: "1 1 auto", flexDirection: "row", width: "100%", height: "100%", flexWrap: "wrap"}}>
@@ -695,52 +670,32 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
               style={{width: "100%", marginTop: 6, marginBottom: 6, minHeight: 25}}
             />
             <div style={{ display: "flex", flexDirection: "column", gap: 8, alignItems: "flex-start", width: "100%" }}>
-              <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                 <strong>Map:</strong>
-                <button
-                  type="button"
-                  onClick={() => setActiveMode("source")}
-                  disabled={activeMode === "source"}
-                  style={mapTabButtonStyle(activeMode === "source")}
-                >
+                <button onClick={() => setActiveMode("source")} disabled={activeMode === "source"}>
                   Past
                 </button>
                   <button
-                    type="button"
                     onClick={() => setActiveMode("instance")}
                     disabled={activeMode === "instance" || !relationTargetCommunityReady}
                     title={!relationTargetCommunityReady && activeMode !== "instance" ? "Select a community on the Predicted map first." : undefined}
-                    style={mapTabButtonStyle(activeMode === "instance", {
-                      fontSize: "0.65rem",
-                      lineHeight: 1.2,
-                      opacity: !relationTargetCommunityReady ? 0.25 : 1,
-                    })}
+                    style={{fontSize:"0.65rem", opacity: !relationTargetCommunityReady ? 0.4 : 1 }}
                   >
                     Instance <br/> Level
                   </button>
                   <button
-                    type="button"
                     onClick={() => { setActiveMode("relation"); setRelationDataMode("sage"); setSecondaryMode("target"); }}
                     disabled={(activeMode === "relation" && relationDataMode === "sage") || !relationTargetCommunityReady}
                     title={!relationTargetCommunityReady && activeMode !== "relation" ? "Select a community on the Predicted map first." : undefined}
-                    style={mapTabButtonStyle(activeMode === "relation" && relationDataMode === "sage", {
-                      fontSize: "0.65rem",
-                      lineHeight: 1.2,
-                      opacity: !relationTargetCommunityReady ? 0.25 : 1,
-                    })}
+                    style={{fontSize:"0.65rem", opacity: !relationTargetCommunityReady ? 0.4 : 1 }}
                   >
                     Model <br/> Level
                   </button>
                   <button
-                    type="button"
                     onClick={() => { setActiveMode("relation"); setRelationDataMode("mi"); setSecondaryMode("target"); }}
                     disabled={(relationDataMode === "mi" && activeMode === "relation") || !relationTargetCommunityReady}
                     title={!relationTargetCommunityReady && activeMode !== "relation" ? "Select a community on the Predicted map first." : undefined}
-                    style={mapTabButtonStyle(activeMode === "relation" && relationDataMode === "mi", {
-                      fontSize: "0.65rem",
-                      lineHeight: 1.2,
-                      opacity: !relationTargetCommunityReady ? 0.25 : 1,
-                    })}
+                    style={{fontSize:"0.65rem", opacity: !relationTargetCommunityReady ? 0.4 : 1 }}
                   >
                     Data <br/> Level
                   </button>
@@ -787,7 +742,7 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
                   />
                   Community
                 </label>
-                <label style={{ opacity: (activeMode === "relation" || activeMode === "instance") ? 0.25 : 1 }}>
+                <label style={{ opacity: (activeMode === "relation" || activeMode === "instance") ? 0.5 : 1 }}>
                   <input
                     type="radio"
                     name="layer"
@@ -800,7 +755,7 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
                   />
                   Beat
                 </label>
-                <label style={{ opacity: (activeMode === "relation" || activeMode === "instance") ? 0.25 : 1 }}>
+                <label style={{ opacity: (activeMode === "relation" || activeMode === "instance") ? 0.5 : 1 }}>
                   <input
                     type="radio"
                     name="layer"
@@ -814,15 +769,8 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
                   District
                 </label>
               </div>
-              {/* Past map only: total vs average per day (disabled on Instance / Model / Data level) */}
-              <div
-                style={{
-                  display: "flex",
-                  gap: 8,
-                  alignItems: "center",
-                  opacity: activeMode === "source" ? 1 : 0.25,
-                }}
-              >
+              {/* Source map: total vs average per day; disabled when not on Source */}
+              <div style={{ display: "flex", gap: 8, alignItems: "center", opacity: activeMode === "source" ? 1 : 0.5 }}>
                 <strong>Count:</strong>
                 <label>
                   <input
@@ -868,7 +816,7 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
                               ? `SHAP Attribution (horizon ${shapHorizon})`
                               : "Select a community on the Predicted map"
                           : relationDataMode === "sage"
-                            ? "SAGE (red=suppressive, green=amplifying)"
+                            ? `SAGE (red=suppressive, green=amplifying)`
                             : "Model Relation Weight"
                     }
                     layer={layer}
@@ -976,33 +924,17 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
                   style={{width: "100%", marginTop: 6, marginBottom: 6, minHeight: 18, fontSize: 13, fontWeight: 500, color: relationError ? "#ff6b6b" : "#ccc"}}
                 >
                 </div>
-              <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                 <strong>Map:</strong>
-                <button
-                  type="button"
-                  onClick={() => setSecondaryMode("target")}
-                  disabled={secondaryMode === "target"}
-                  style={mapTabButtonStyle(secondaryMode === "target")}
-                >
+                <button onClick={() => setSecondaryMode("target")} disabled={secondaryMode === "target"}>
                   Predicted
                 </button>
-                <div style={{ display: "flex", gap: 8, alignItems: "center", opacity: canShowActualError ? 1 : 0.25 }}>
-                  <button
-                    type="button"
-                    onClick={() => setSecondaryMode("actual")}
-                    disabled={secondaryMode === "actual" || !canShowActualError}
-                    style={mapTabButtonStyle(secondaryMode === "actual")}
-                  >
+                <div style={{ display: "flex", gap: 8, alignItems: "center", opacity: canShowActualError ? 1 : 0.5 }}>
+                  <button onClick={() => setSecondaryMode("actual")} disabled={secondaryMode === "actual" || !canShowActualError}>
                     Actual
                   </button>
-                </div>
-                <div style={{ display: "flex", gap: 8, alignItems: "center", opacity: canShowActualError ? 1 : 0.25 }}>
-                  <button
-                    type="button"
-                    onClick={() => setSecondaryMode("error")}
-                    disabled={secondaryMode === "error" || !canShowActualError}
-                    style={mapTabButtonStyle(secondaryMode === "error")}
-                  >
+                  <span style={{ opacity: 0.5, padding: "0 4px" }} />
+                  <button onClick={() => setSecondaryMode("error")} disabled={secondaryMode === "error" || !canShowActualError}>
                     Error
                   </button>
                 </div>
@@ -1072,7 +1004,7 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
                   />
                   Community
                 </label>
-                <label style={{ opacity: (secondaryMode !== "actual") ? 0.25 : 1 }}>
+                <label style={{ opacity: (secondaryMode !== "actual") ? 0.5 : 1 }}>
                   <input
                     type="radio"
                     name="secondaryLayer"
@@ -1085,7 +1017,7 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
                   />
                   Beat
                 </label>
-                <label style={{ opacity: (secondaryMode !== "actual") ? 0.25 : 1 }}>
+                <label style={{ opacity: (secondaryMode !== "actual") ? 0.5 : 1 }}>
                   <input
                     type="radio"
                     name="secondaryLayer"
@@ -1099,14 +1031,15 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
                   District
                 </label>
               </div>
-              {/* Right map: total vs average preference (averaging applies when Actual map is active) */}
-              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              {/* Actual map: total vs average per day; disabled when not on Actual */}
+              <div style={{ display: "flex", gap: 8, alignItems: "center", opacity: secondaryMode === "actual" ? 1 : 0.5 }}>
                 <strong>Count:</strong>
                 <label>
                   <input
                     type="radio"
                     name="targetCountMode"
                     checked={targetCountMode === "average"}
+                    disabled={secondaryMode !== "actual"}
                     onChange={() => setTargetCountMode("average")}
                   />
                   Average per day
@@ -1116,6 +1049,7 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
                     type="radio"
                     name="targetCountMode"
                     checked={targetCountMode === "total"}
+                    disabled={secondaryMode !== "actual"}
                     onChange={() => setTargetCountMode("total")}
                   />
                   Total
@@ -1131,8 +1065,20 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
                 >
                   <MapBoxMap
                     geo={secondaryGeo}
-                    crimeCounts={rightCountsForMap}
-                    legendTitle={rightMapLegendTitle}
+                    crimeCounts={secondaryMode === "error" ? errorForMap : rightCountsForMap}
+                    legendTitle={
+                      secondaryMode === "error"
+                        ? "Difference (actual - target)"
+                        : secondaryMode === "target" && targetForecastEligible
+                          ? `Forecast total (${forecastModel}, full horizon)`
+                          : secondaryMode === "target" && activeMode === "relation"
+                            ? "Predicted Crime Count"
+                            : secondaryMode === "target"
+                              ? "Predicted Crime Count"
+                              : secondaryMode === "actual" && targetCountMode === "average"
+                                ? "Avg crimes per day"
+                                : "Crime Count"
+                    }
                     layer={secondaryLayer}
                     selectedId={secondarySelectedId}
                     onSelectId={setSecondarySelectedId}
