@@ -108,16 +108,17 @@ export function useHoverDailySeries({ hover, activeMode, secondaryMode, tensorSo
       //Model/Data Level: fetch daily relation values from 4D tensor
       } else if (isRelation && tensorSourceId) {
         api
-          .get4dData(pastDays, true, Number(hover.id) - 1, futureEnd - 1, false, tensorSourceId, model, dataMode, {
+          .get4dData(pastDays, true, Number(hover.id) - 1, 30, true, Number(tensorSourceId) - 1, model, dataMode, {
             signal: ac.signal,
+            d3Start: 0,
+            normalize: true,
           })
           .then((data) => {
-            //Format the data
-            const formatted = [];
-            for (let i = 0; i < data.length; i++) {
-              formatted.push({ date: addDaysISO(anchorDate, -i + 1), count: data[i] });
-            }
-            //Set the hover daily series to the formatted data
+            const nDays = data.length;
+            const formatted = data.map((count, i) => ({
+              date: addDaysISO(anchorDate, -(nDays -1 - i)),
+              count,
+            }));
             hoverCacheRef.current.set(key, formatted);
             setHoverDaily(formatted);
             setHoverDailyLoading(false);

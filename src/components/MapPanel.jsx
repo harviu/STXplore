@@ -182,7 +182,7 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
   const { counts: instanceRelationCounts, loading: instanceRelationLoading, error: instanceRelationError } = useInstanceRelationCounts(activeMode, targetSelectedId, relationModel, pastDays, futureStart, futureEnd, relationDataMode);
 
   // Instance-level SHAP: target = right map selection, left map shows source attributions
-  const { counts: shapCounts, loading: shapLoading, error: shapError } = useInstanceShapCounts(
+  const { counts: shapCounts, loading: shapLoading, error: shapError, matrix: shapMatrix } = useInstanceShapCounts(
     activeMode, targetSelectedId, relationModel, forecastAnchorDate, shapHorizon
   );
 
@@ -218,7 +218,8 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
     }
   }, [activeMode, layer, pastDays, anchorDate])
 
-  //get data for relational heatmaps
+  //get data for relational heatmaps — fetches full horizon
+  // and averages over the 30 horizon days to produce a (77 x pastDays) matrix
   useEffect(() => {
     if (activeMode === "source") return;
     if (!relationTargetCommunityReady || !targetSelectedId) {
@@ -227,11 +228,12 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
     }
       let cancelled = false;
       const ac = new AbortController();
-      api.get4dData(activeMode === "instance" ? pastDays : 90, true, null, futureEnd, false, Number(targetSelectedId) - 1, relationModel, relationDataMode, {
+            api.get4dData(pastDays, true, null, 30, true, Number(targetSelectedId) - 1, relationModel, relationDataMode, {
         signal: ac.signal,
-        d3Start: futureStart,
+        d3Start: 0,
+        normalize: true,
       })
-      .then((data) => { 
+      .then((data) => {
         if (cancelled) return;
         setRelationValues(data);
       })
@@ -244,8 +246,7 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
         cancelled = true;
         ac.abort();
       };
-    }, [activeMode, pastDays, futureStart, futureEnd, targetSelectedId, relationModel, relationDataMode]);
-
+  }, [activeMode, pastDays, targetSelectedId, relationModel, relationDataMode]);
   // Instance-level map on source side: 4D array → per-community time-averaged over slider date range.
   const {data: instanceSourceResp, loading: instanceSourceLoading, error: instanceSourceError} = useApi(({ signal }) => {
     if (activeMode !== "instance") return Promise.resolve(null);
@@ -512,7 +513,7 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
       actual: actualSelection,
       error: errorSelection,
       //data for heatmaps
-      heatData: activeMode === "source" ? crimeCounts : relationValues,
+      heatData: activeMode === "source" ? crimeCounts : activeMode === "instance" ? shapMatrix : relationValues,
       targetHeatData: secondaryMode === "actual" ? futureCounts : null,
     });
   }, [
@@ -529,6 +530,7 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
 
     crimeCounts,
     relationValues,
+    shapMatrix,
 
     futureCounts,
 

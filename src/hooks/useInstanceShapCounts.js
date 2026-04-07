@@ -9,6 +9,7 @@ import { api } from "../lib/api.js";
  */
 export function useInstanceShapCounts(activeMode, instanceSelectedId, model, forecastAnchorDate, horizon) {
   const [counts, setCounts] = useState(null);
+  const [matrix, setMatrix] = useState(null); // raw (77x90) for cluster heatmap
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
@@ -17,6 +18,7 @@ export function useInstanceShapCounts(activeMode, instanceSelectedId, model, for
       setCounts(null);
       setLoading(false);
       setError(null);
+      setMatrix(null);
       return;
     }
 
@@ -38,6 +40,13 @@ export function useInstanceShapCounts(activeMode, instanceSelectedId, model, for
         setLoading(false);
         return;
       }
+
+      // Build 77xdays matrix for cluster heatmap
+      const rawMatrix = [];
+      for (let c = 0; c < 77; c++) {
+        rawMatrix.push(data.shap_values.map(row => row.values[c] ?? 0));
+      }
+      setMatrix(rawMatrix);
       // Sum absolute SHAP values across all 90 history days per community
       // to get a single attribution weight per community for the map
       const perCommunity = new Array(77).fill(0);
@@ -66,5 +75,5 @@ export function useInstanceShapCounts(activeMode, instanceSelectedId, model, for
     };
   }, [activeMode, instanceSelectedId, model, forecastAnchorDate, horizon]);
 
-  return { counts, loading, error };
+  return { counts, loading, error, matrix};
 }

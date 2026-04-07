@@ -39,6 +39,7 @@ def get_data4d(
     b3: bool = Query(False),
     d4: Optional[int] = Query(None),
     d3_start: Optional[int] = Query(None, ge=0, le=29),
+    normalize: bool = Query(False, description="Normalize output against full tensor (MI: 0-100, SAGE: -100-100)"),
 ):
     try:
         loadedArray = _load_array(model, data_mode)
@@ -60,7 +61,7 @@ def get_data4d(
 
     if b1 and b3:
         lo = int(d3_start) if d3_start is not None else 0
-        sliced = loadedArray[:s1, s2, lo:s3, s4]
+        sliced = loadedArray[:, s2, lo:s3, s4]
     elif b1:
         sliced = loadedArray[:s1, s2, s3-1, s4]
     elif b3:
@@ -69,6 +70,24 @@ def get_data4d(
     else:
         sliced = loadedArray[s1, s2, s3, s4]
 
-    if b1:
-        return sliced.T.tolist()
-    return sliced.tolist()
+    result = sliced.T if b1 else sliced
+    if b1 and b3:
+        result = np.mean(result, axis=0)
+        if d1 is not None:
+            if result.ndim == 2:
+                result = result[:, -d1:]
+            else:
+                result = result[-d1:]
+    if normalize:
+        ref_matrix = loadedArray.mean(axis=(0,2))
+        if data_mode == "sage":
+            abs_max = float(np.abs(ref_matrix).max())
+            result = (result / abs_max * 100.0) if abs_max > 0 else result
+        else:
+            g_min = float(ref_matrix.min())
+            g_max = float(ref_matrix.max())
+            g_range = g_max - g_min
+            result = ((result - g_min) / g_range * 100.0) if g_range > 0 else result
+    if normalize:
+        result = np.clip(result, -100.0, 100.0) if data_mode == "sage" else np.clip(result, 0.0, 100.0)
+    return result.tolist() if isinstance(result, np.ndarray) else np.array(result).tolist()

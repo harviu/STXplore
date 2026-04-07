@@ -1,4 +1,5 @@
 from __future__ import annotations
+from typing import Optional
 import numpy as np
 from fastapi import APIRouter, HTTPException, Query
 from backend.prediction.config import PRED_MODELS_DIR
@@ -47,7 +48,8 @@ def _normalize_signed(row: np.ndarray, matrix: np.ndarray) -> np.ndarray:
 
 @router.get("/model_level_sage")
 def model_level_sage(  # type: ignore
-    source: int = Query(..., ge=0, le=76, description="Source community index (0...76)"),
+    source: Optional[int] = Query(None, ge=0, le=76, description="Source community index (0...76)"),
+    target: Optional[int] = Query(None, ge=0, le=76, description="Target community index (0...76)"),
     model: str = Query(..., description="Model folder name (e.g. Transformer)"),
     normalize: bool = Query(True, description="Normalize row to [-100, 100] using abs-max"),
 ):
@@ -57,16 +59,19 @@ def model_level_sage(  # type: ignore
     community's predicted future crime, according to this model's learned weights.
     Positive = amplifying effect, negative = suppressive effect.
     """
+    if source is None and target is None:
+        raise HTTPException(status_code=422, detail="Either source or target must be provided.")
+    
     try:
         arr = _load_array(model)
     except FileNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except RuntimeError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
-
+    
     # Average over history_lag (axis 0) and horizon (axis 2) -> (77, 77)
     matrix = arr.mean(axis=(0, 2)).astype(np.float32)
-    row = matrix[source, :]
+    row = matrix[source, :] if source is not None else matrix[:, target]
 
     if normalize:
         row = _normalize_signed(row, matrix)

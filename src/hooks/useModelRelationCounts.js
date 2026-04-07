@@ -35,8 +35,8 @@ export function useModelRelationCounts(activeMode, layer, relationSelectedId, mo
     }
 
     //Get the source index
-    const sourceIdx = Number(relationSelectedId) - 1;
-    if (!Number.isFinite(sourceIdx) || sourceIdx < 0 || sourceIdx > 76) {
+    const targetIdx = Number(relationSelectedId) - 1;
+    if (!Number.isFinite(targetIdx) || targetIdx < 0 || targetIdx > 76) {
       setError("Invalid community id for relation mapping.");
       setCounts(null);
       setLoading(false);
@@ -53,8 +53,8 @@ export function useModelRelationCounts(activeMode, layer, relationSelectedId, mo
     //Fetch the model relation counts
     //Fetch the model relation counts
     (dataMode === "sage"
-      ? api.sageLevelRelation(sourceIdx, model, { signal: ac.signal })
-      : api.relationalModel(sourceIdx, model, { signal: ac.signal })
+      ? api.sageLevelRelation(targetIdx, model, { signal: ac.signal })
+      : api.relationalModel(targetIdx, model, { signal: ac.signal })
     ).then((data) => {
       if (cancelled) return;
       const targets = data?.targets;

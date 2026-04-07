@@ -87,9 +87,9 @@ export const api = {
       opts
     ),
 
-  relationalModel: (source, model, opts) =>
-    request(`/api/model_level_relation?source=${encodeURIComponent(source)}&model=${encodeURIComponent(model)}`, opts),
-
+  relationalModel: (target, model, opts) =>
+    request(`/api/model_level_relation?target=${encodeURIComponent(target)}&model=${encodeURIComponent(model)}`, opts),
+  
   instanceLevelRelation: (sourceIdx, model,  pastDays, futureStart, futureEnd, opts) =>
     request(
       `/api/instance_level_relation?source=${encodeURIComponent(sourceIdx)}&model=${encodeURIComponent(model)}&past_days=${encodeURIComponent(pastDays)}&future_days=${encodeURIComponent(futureEnd)}&future_start=${encodeURIComponent(futureStart)}`,
@@ -99,10 +99,11 @@ export const api = {
   instanceLevelSource: (_pastDays, _futureStart, _futureEnd, _opts) => Promise.resolve({ data: [] }),
 
   get4dData: (d1, b1, d2, d3, b3, d4, model, dataMode = "mi", opts = {}) => {
-    const { signal, d3Start, ...rest } = opts;
+    const { signal, d3Start, normalize = false, ...rest } = opts;
     const params = new URLSearchParams();
     params.append("model", model);
     params.append("data_mode", dataMode);
+    params.append("normalize", normalize);
     if (d1 !== null && d1 !== undefined) params.append("d1", d1);
     if (b1 !== null && b1 !== undefined) params.append("b1", b1);
     if (d2 !== null && d2 !== undefined) params.append("d2", d2);
@@ -113,9 +114,9 @@ export const api = {
     return request(`/api/data4d?${params.toString()}`, { signal, ...rest });
   },
 
-  sageLevelRelation: (source, model, opts) =>
-    request(`/api/model_level_sage?source=${encodeURIComponent(source)}&model=${encodeURIComponent(model)}`, opts),
-
+  sageLevelRelation: (target, model, opts) =>
+    request(`/api/model_level_sage?target=${encodeURIComponent(target)}&model=${encodeURIComponent(model)}`, opts),
+  
   instanceLevelSage: (sourceIdx, model, pastDays, futureStart, futureEnd, opts) =>
     request(
       `/api/instance_level_sage?source=${encodeURIComponent(sourceIdx)}&model=${encodeURIComponent(model)}&past_days=${encodeURIComponent(pastDays)}&future_days=${encodeURIComponent(futureEnd)}&future_start=${encodeURIComponent(futureStart)}`,

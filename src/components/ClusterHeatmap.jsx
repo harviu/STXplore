@@ -181,7 +181,7 @@ export default function ClusterHeatmap({ data, selectedId, isRelationMap = false
 
             const tooltipHtml = (d) => 
                 `Community: ${isRelationMap ? d.id + 1 : d.id}<br>` +
-                `Date: ${isRelationMap ? d.date + 1 : d.date}<br>` +
+                `${isRelationMap ? "Days Ago: " : "Date: "}${isRelationMap ? d.date + 1 : d.date}<br>` +
                 `${isRelationMap ? "Relation" : "Count"}: ${d.count}`; 
 
             d3.select(svgRef.current).selectAll("*").remove();
