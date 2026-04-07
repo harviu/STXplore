@@ -496,6 +496,17 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
     if (dateRange?.max) setAnchorDate(dateRange.max.slice(0, 10));
   }, [dateRange?.max]);
 
+  const dailyForHeatMap = useMemo(()=>{
+    if (forecastDailyResp === null || forecastDailyResp.forecast_daily === null) return null;
+    return forecastDailyResp.forecast_daily.flatMap((day) => {
+      return day.values.map((val,index) => ({
+        id: (index+1).toString(),
+        date: day.date,
+        count: Math.round(val)
+      }))
+    });
+  },[forecastDailyResp]);
+
   //pass selection and data up
   useEffect(() => {
     onSelectionChange?.({
@@ -514,7 +525,7 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
       error: errorSelection,
       //data for heatmaps
       heatData: activeMode === "source" ? crimeCounts : activeMode === "instance" ? shapMatrix : relationValues,
-      targetHeatData: secondaryMode === "actual" ? futureCounts : null,
+      targetHeatData: secondaryMode === "actual" ? futureCounts : secondaryMode === "target" ? dailyForHeatMap : null,
     });
   }, [
     activeMode,
@@ -533,6 +544,7 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
     shapMatrix,
 
     futureCounts,
+    dailyForHeatMap,
 
     onSelectionChange,
   ]);

@@ -104,6 +104,13 @@ export default function DashboardPanel({ mode, selection, inactiveMode, inactive
   const handleSourceHighlight = useCallback((highlight) => { setSourceHighlight(highlight); onSourceHighlight?.(highlight); }, [onSourceHighlight]);
   const handleTargetHighlight = useCallback((highlight) => { setTargetHighlight(highlight); onTargetHighlight?.(highlight); }, [onTargetHighlight]);
 
+  const title = useMemo(()=>{
+    if (inactiveMode === "target") return "Predicted";
+    if (inactiveMode === "actual") return "Actual";
+    if (inactiveMode === "error") return "Actual - Predicted";
+    return null;
+  },[inactiveMode]);
+
   // For each highlighted community, extract its data from heatData
   const communitySeriesList = useMemo(() => {
   if (!heatData || !Array.isArray(heatData) || sourceHighlight.community.length === 0) return [];
@@ -168,8 +175,8 @@ export default function DashboardPanel({ mode, selection, inactiveMode, inactive
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", width: "100%", gap: 16 }}>
         {heatData && (selection?.id || mode === "source") && <p style={{ opacity: 1, margin: 0, fill: "white" }}> Past map cluster heatmap </p>}
         {heatData && (selection?.id || mode === "source" || (mode != "source" && right?.selection?.id)) && <ClusterHeatmap data={heatData} selectedId={selection?.id || null} isRelationMap={mode !== "source"} isSageMap={isSageMap && mode !== "source"} onHighlight={handleSourceHighlight} />}
-        {targetHeatData && inactiveMode === "actual" && <p style={{ opacity: 1, margin: 0, fill: "white" }}> Future map cluster heatmap </p>}
-        {targetHeatData && inactiveMode === "actual" && <ClusterHeatmap data={targetHeatData} selectedId={inactiveSelection?.id || null} isRelationMap={false} isFuture={true} offset={right?.offset} onHighlight={handleTargetHighlight} />}
+        {targetHeatData && (inactiveMode === "actual" || inactiveMode === "target") && <p style={{ opacity: 1, margin: 0, fill: "white" }}> Future map cluster heatmap ({title})</p>}
+        {targetHeatData && (inactiveMode === "actual" || inactiveMode === "target") && <ClusterHeatmap data={targetHeatData} selectedId={inactiveSelection?.id || null} isRelationMap={false} isFuture={true} offset={right?.offset} onHighlight={handleTargetHighlight} />}
       </div>
     {/* Bar Charts — crime type breakdowns for left and right map selections */}
       <div style={{ padding: "5%", boxSizing: "border-box" }}>
