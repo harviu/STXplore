@@ -176,7 +176,7 @@ export default function DashboardPanel({ mode, selection, inactiveMode, inactive
         {heatData && (selection?.id || mode === "source") && <p style={{ opacity: 1, margin: 0, fill: "white" }}> Past map cluster heatmap </p>}
         {heatData && (selection?.id || mode === "source" || (mode != "source" && right?.selection?.id)) && <ClusterHeatmap data={heatData} selectedId={selection?.id || null} isRelationMap={mode !== "source"} isSageMap={isSageMap && mode !== "source"} onHighlight={handleSourceHighlight} />}
         {targetHeatData && (inactiveMode === "actual" || inactiveMode === "target") && <p style={{ opacity: 1, margin: 0, fill: "white" }}> Future map cluster heatmap ({title})</p>}
-        {targetHeatData && (inactiveMode === "actual" || inactiveMode === "target") && <ClusterHeatmap data={targetHeatData} selectedId={inactiveSelection?.id || null} isRelationMap={false} isFuture={true} offset={right?.offset} onHighlight={handleTargetHighlight} />}
+        {targetHeatData && (inactiveMode === "actual" || inactiveMode === "target") && <ClusterHeatmap data={targetHeatData} selectedId={inactiveSelection?.id || null} isRelationMap={false} isFuture={true} offset={inactiveMode === "target"? (right?.offset + 1) : right?.offset} onHighlight={handleTargetHighlight} />}
       </div>
     {/* Bar Charts — crime type breakdowns for left and right map selections */}
       <div style={{ padding: "5%", boxSizing: "border-box" }}>
