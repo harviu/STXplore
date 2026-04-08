@@ -163,6 +163,7 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
     ({ signal }) => (wantPredBounds ? api.predictionAnchorBounds({ signal }) : Promise.resolve(null)),
     [wantPredBounds]
   );
+  useEffect(()=>{console.log(predBounds)},[predBounds]);
 
   const anchorDay = anchorDate?.slice(0, 10) ?? "";
 
@@ -481,20 +482,20 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
     { keepPreviousData: false }
   );
 
-  const { data: dateRange } = useApi(({ signal }) => api.dateRange({ signal }), []);
+  //const { data: dateRange } = useApi(({ signal }) => api.dateRange({ signal }), []);
 
   // Disable dates after the latest date in the DB. Use start of next day (local) so "after" disables that day and all later.
   const maxDataDate = useMemo(() => {
-    if (!dateRange?.max) return new Date(); // fallback: at least disable future if API not loaded
-    const dateOnly = dateRange.max.slice(0, 10); // in case API returns "YYYY-MM-DD HH:mm:ss"
+    if (!predBounds?.anchor_max) return new Date(); // fallback: at least disable future if API not loaded
+    const dateOnly = predBounds.anchor_max.slice(0, 10); // in case API returns "YYYY-MM-DD HH:mm:ss"
     const [y, m, d] = dateOnly.split("-").map(Number);
     return new Date(y, m - 1, d + 1); // 00:00:00 on the day after max
-  }, [dateRange?.max]);
+  }, [predBounds?.anchor_max]);
 
   // Default anchor date to latest date in dataset when date range loads (store date-only, no time)
   useEffect(() => {
-    if (dateRange?.max) setAnchorDate(dateRange.max.slice(0, 10));
-  }, [dateRange?.max]);
+    if (predBounds?.anchor_max) setAnchorDate(predBounds.anchor_max.slice(0, 10));
+  }, [predBounds?.anchor_max]);
 
   const dailyForHeatMap = useMemo(()=>{
     if (forecastDailyResp === null || forecastDailyResp.forecast_daily === null) return null;
@@ -506,6 +507,12 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
       }))
     });
   },[forecastDailyResp]);
+
+  useEffect(()=>{
+    //use for error clusterheatmap
+    //console.log(futureCounts);
+    //console.log(dailyForHeatMap);
+  },[futureCounts,dailyForHeatMap]);
 
   //pass selection and data up
   useEffect(() => {
@@ -604,7 +611,7 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
 
    //get crime data for actual heatmap. Has to be done after canShowActualError is calculated for the first time
   useEffect(() => {
-    if (secondaryMode === "actual") {
+    if (secondaryMode === "actual" || secondaryMode === "error") {
       let cancelled = false;
       const ac = new AbortController();
       if (canShowActualError) {
@@ -670,7 +677,7 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
                       }
                     }}
                     startMonth={new Date(2001, 0)}
-                    disabled={{ before: new Date(2001, 3, 2), after: new Date((dateRange?.max) + "T12:00:00") }}
+                    disabled={{ before: new Date(2001, 3, 2), after: new Date((predBounds?.anchor_max) + "T12:00:00") }}
                     navLayout="around"
                     showOutsideDays
                     animate
