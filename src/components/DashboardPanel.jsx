@@ -116,19 +116,23 @@ export default function DashboardPanel({ mode, selection, inactiveMode, inactive
   if (!heatData || !Array.isArray(heatData) || sourceHighlight.community.length === 0) return [];
   const rangeStart = left?.range?.start ?? null;
   const rangeEnd = left?.range?.end ?? null;
-  return sourceHighlight.community
-    .filter(id => id != null)
-    .map(id => {
-      const rows = heatData
-        .filter(d => String(d.id) === String(id))
-        .map(d => ({ date: d.date, count: d.count }));
-      // Fill to full date range so every community always shows all 90 bars
-      const series = (rangeStart && rangeEnd)
-        ? fillDaily(rangeStart, rangeEnd, rows)
-        : rows.sort((a, b) => a.date.localeCompare(b.date));
-      return { id, series };
-    })
-    .filter(c => c.series.length > 0);
+  if(mode === "source"){ //source has a different data structure
+    return sourceHighlight.community
+      .filter(id => id != null)
+      .map(id => {
+        const rows = heatData
+          .filter(d => String(d.id) === String(id))
+          .map(d => ({ date: d.date, count: d.count }));
+        // Fill to full date range so every community always shows all 90 bars
+        const series = (rangeStart && rangeEnd)
+          ? fillDaily(rangeStart, rangeEnd, rows)
+          : rows.sort((a, b) => a.date.localeCompare(b.date));
+        return { id, series };
+      })
+      .filter(c => c.series.length > 0);
+  }
+  return []; //TODO: swap for data processing
+
   }, [heatData, sourceHighlight.community, left?.range]);
   //aps the source data to the source map graph in source map stats below
   useEffect(() => { 
