@@ -193,7 +193,7 @@ export default function ClusterHeatmap({ data, selectedId, isRelationMap = false
                 .attr("height", height + margin.top + margin.bottom)
                 .append("g")
                 .attr("transform", `translate(${margin.left},${margin.top})`);
-            const xScale = d3.scaleBand().domain(dateCluster ? clusteredDates[0] : clusteredDates).range([isRelationMap ? 0 : 10, width]).padding(0.12);
+            const xScale = d3.scaleBand().domain(dateCluster ? clusteredDates[0] : clusteredDates).range([width, isRelationMap ? 0 : 10]).padding(0.12);
             svg.append("g").style("font-size", "11px").style("fill", "#b0b0b0").call(d3.axisBottom(xScale).tickSize(0).tickFormat(xTickFormat)).select(".domain").remove();
             const yScale = d3.scaleBand().domain(isSelected ? clusteredIds[0] : clusteredIds).range([10, height]).padding(0.12);
             svg.append("g").style("font-size", "11px").style("fill", "#b0b0b0").call(d3.axisLeft(yScale).tickSize(0).tickFormat(d => isRelationMap ? d+1 : d)).select(".domain").remove();
