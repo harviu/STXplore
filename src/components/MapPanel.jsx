@@ -163,7 +163,6 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
     ({ signal }) => (wantPredBounds ? api.predictionAnchorBounds({ signal }) : Promise.resolve(null)),
     [wantPredBounds]
   );
-  useEffect(()=>{console.log(predBounds)},[predBounds]);
 
   const anchorDay = anchorDate?.slice(0, 10) ?? "";
 

@@ -1,5 +1,6 @@
 import Panel from "./Panel.jsx";
 import TooltipMap from "./tooltipMap.jsx";
+import LineChart from "./lineChartTooltip.jsx";
 import { fillDaily } from "../lib/crimeAggregates.js"
 
 // convert mode to a title
@@ -164,10 +165,9 @@ function SelectionBlock({ heading, payload, showApi = true, isLeft }) {
                 )}
               </div>
               <div style={{ marginTop: 6 }}>
-                <TooltipMap
+                <LineChart
                   days={fillDaily(range.start, range.end, daily)}
-                  isRelationMap={false}
-                  height={14}
+                  height={74}
                 />
               </div>
             </div>
@@ -181,10 +181,10 @@ function SelectionBlock({ heading, payload, showApi = true, isLeft }) {
                 </div>
               )}
               <div style={{ marginTop: 6 }}>
-                <TooltipMap
+                <LineChart
                   days={payload.forecastDaily}
                   isRelationMap={false}
-                  height={14}
+                  height={74}
                 />
               </div>
             </div>
