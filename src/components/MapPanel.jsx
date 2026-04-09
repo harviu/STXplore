@@ -109,7 +109,8 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
   const errorSelectedId = mapFaces.error.selectedId;
 
   //date sliders
-  const [pastDays, setPastDays] = useState(90);
+  const [pastDays, setPastDays] = useState([0,90]);
+  const [pastStart, pastEnd] = pastDays;
   /** Inclusive start / exclusive end as day offsets after anchor (matches targetRange / tensor slice). */
   const [futureRange, setFutureRange] = useState([0, 30]);
   const [futureStart, futureEnd] = futureRange;
@@ -173,13 +174,13 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
   
   //Hover daily series
   const tensorSourceId = targetSelectedId ?? null;
-  const { hoverDaily, hoverDailyLoading, canShowHoverData } = useHoverDailySeries({hover, activeMode, secondaryMode, tensorSourceId, model: relationModel, pastDays, futureStart, futureEnd, anchorDate, dataMode: relationDataMode, forecastAnchorDate, shapHorizon, });
+  const { hoverDaily, hoverDailyLoading, canShowHoverData } = useHoverDailySeries({hover, activeMode, secondaryMode, tensorSourceId, model: relationModel, pastEnd, futureStart, futureEnd, anchorDate, dataMode: relationDataMode, forecastAnchorDate, shapHorizon, });
 
   //Model relation counts
   const { counts: relationCounts, loading: relationLoading, error: relationError } = useModelRelationCounts(activeMode, layer, targetSelectedId, relationModel, relationDataMode);
 
   //Instance relation counts
-  const { counts: instanceRelationCounts, loading: instanceRelationLoading, error: instanceRelationError } = useInstanceRelationCounts(activeMode, targetSelectedId, relationModel, pastDays, futureStart, futureEnd, relationDataMode);
+  const { counts: instanceRelationCounts, loading: instanceRelationLoading, error: instanceRelationError } = useInstanceRelationCounts(activeMode, targetSelectedId, relationModel, pastEnd, futureStart, futureEnd, relationDataMode);
 
   // Instance-level SHAP: target = right map selection, left map shows source attributions
   const { counts: shapCounts, loading: shapLoading, error: shapError, matrix: shapMatrix } = useInstanceShapCounts(
@@ -201,7 +202,7 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
     if (activeMode === "source") {
       let cancelled = false;
       const ac = new AbortController();
-      api.selectionAllDaily(layer, sourceRange(pastDays, anchorDate).start, sourceRange(pastDays, anchorDate).end, { signal: ac.signal })
+      api.selectionAllDaily(layer, sourceRange(pastEnd, anchorDate).start, sourceRange(pastEnd, anchorDate).end, { signal: ac.signal })
       .then((data) => {
         if (cancelled) return;
         setCrimeCounts(data.daily);
@@ -216,10 +217,10 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
         ac.abort();
       };
     }
-  }, [activeMode, layer, pastDays, anchorDate])
+  }, [activeMode, layer, pastEnd, anchorDate])
 
   //get data for relational heatmaps — fetches full horizon
-  // and averages over the 30 horizon days to produce a (77 x pastDays) matrix
+  // and averages over the 30 horizon days to produce a (77 x pastEnd (To be transitioned to past window)) matrix
   useEffect(() => {
     if (activeMode === "source") return;
     if (!relationTargetCommunityReady || !targetSelectedId) {
@@ -228,7 +229,7 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
     }
       let cancelled = false;
       const ac = new AbortController();
-            api.get4dData(pastDays, true, null, 30, true, Number(targetSelectedId) - 1, relationModel, relationDataMode, {
+            api.get4dData(pastEnd, true, null, 30, true, Number(targetSelectedId) - 1, relationModel, relationDataMode, {
         signal: ac.signal,
         d3Start: 0,
         normalize: true,
@@ -246,19 +247,19 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
         cancelled = true;
         ac.abort();
       };
-  }, [activeMode, pastDays, targetSelectedId, relationModel, relationDataMode]);
+  }, [activeMode, pastEnd, targetSelectedId, relationModel, relationDataMode]);
   // Instance-level map on source side: 4D array → per-community time-averaged over slider date range.
   const {data: instanceSourceResp, loading: instanceSourceLoading, error: instanceSourceError} = useApi(({ signal }) => {
     if (activeMode !== "instance") return Promise.resolve(null);
-    return api.instanceLevelSource(pastDays, futureStart, futureEnd, { signal });
-  }, [activeMode, pastDays, futureStart, futureEnd]);
+    return api.instanceLevelSource(pastEnd, futureStart, futureEnd, { signal });
+  }, [activeMode, pastEnd, futureStart, futureEnd]);
 
   //Get Data for Source HeatMap (used when activeMode is "source"; instance mode uses instanceSourceResp)
   const {data: leftTotalsResp, loading: leftTotalsLoading, error: leftTotalsError} = useApi(({ signal }) => {
-    const { start, end } = sourceRange(pastDays, anchorDate);
+    const { start, end } = sourceRange(pastEnd, anchorDate);
     const apiLayer = UI_TO_API_LAYER[layer];
     return api.mapTotals(apiLayer, start, end, { signal });
-  }, [layer, pastDays, anchorDate]);
+  }, [layer, pastEnd, anchorDate]);
 
   const leftCrimeCounts = useMemo(
     () =>
@@ -280,14 +281,14 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
     if (
       activeMode === "source" &&
       sourceCountMode === "average" &&
-      pastDays > 0
+      pastEnd > 0
     ) {
       const out = {};
-      for (const [id, val] of Object.entries(raw)) out[id] = val / pastDays;
+      for (const [id, val] of Object.entries(raw)) out[id] = val / pastEnd;
       return out;
     }
     return raw;
-  }, [activeMode, relationCounts, relationTargetCommunityReady, shapCounts, leftCrimeCounts, sourceCountMode, pastDays]);
+  }, [activeMode, relationCounts, relationTargetCommunityReady, shapCounts, leftCrimeCounts, sourceCountMode, pastEnd]);
 
 
   //Get Data for Actual Heatmap
@@ -422,7 +423,7 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
 
   // Load dummy crime counts for source mode
   // NOT NEEDED ANYMORE, MAKING SINGLE LINE AND COMMENTING OUT
-  //useEffect(() => { if (activeMode !== "relation") { setCrimeCounts(null); return; } let mounted = true; loadDummyCrimeCounts(pastDays, layer).then(counts => { if (mounted) { setCrimeCounts(counts); } }).catch(error => { console.error('Error loading dummy crime data:', error); if (mounted) { setCrimeCounts(null); } }); return () => { mounted = false; }; }, [activeMode, layer, pastDays]);
+  //useEffect(() => { if (activeMode !== "relation") { setCrimeCounts(null); return; } let mounted = true; loadDummyCrimeCounts(pastEnd, layer).then(counts => { if (mounted) { setCrimeCounts(counts); } }).catch(error => { console.error('Error loading dummy crime data:', error); if (mounted) { setCrimeCounts(null); } }); return () => { mounted = false; }; }, [activeMode, layer, pastEnd]);
 
 
   function makeSelection(mode, layerX, idX, daysX, anchorISO, dateOffsetDays) {
@@ -442,9 +443,9 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
     return {mode, layer: layerX, id: idX, name: getBoundaryLabel(layerX, feature), days: daysX, dateISO, feature};
   }
 
-  const sourceSelection = useMemo(() => makeSelection("source", sourceLayer, sourceSelectedId, pastDays, anchorDate, -pastDays), [sourceLayer, sourceSelectedId, pastDays, anchorDate]);
-  const relationSelection = useMemo(() => makeSelection("relation", relationLayer, relationSelectedId, pastDays, anchorDate, -pastDays), [relationLayer, relationSelectedId, pastDays, anchorDate]);
-  const instanceSelection = useMemo(() => makeSelection("instance", instanceLayer, instanceSelectedId, pastDays, anchorDate, -pastDays), [instanceLayer, instanceSelectedId, pastDays, anchorDate]);
+  const sourceSelection = useMemo(() => makeSelection("source", sourceLayer, sourceSelectedId, pastEnd, anchorDate, -pastEnd), [sourceLayer, sourceSelectedId, pastEnd, anchorDate]);
+  const relationSelection = useMemo(() => makeSelection("relation", relationLayer, relationSelectedId, pastEnd, anchorDate, -pastEnd), [relationLayer, relationSelectedId, pastEnd, anchorDate]);
+  const instanceSelection = useMemo(() => makeSelection("instance", instanceLayer, instanceSelectedId, pastEnd, anchorDate, -pastEnd), [instanceLayer, instanceSelectedId, pastEnd, anchorDate]);
   const targetSelection = useMemo(() => makeSelection("target", targetLayer, targetSelectedId, futureSpanDays, anchorDate, futureEnd),[targetLayer, targetSelectedId, futureSpanDays, futureEnd, anchorDate]);
   const actualSelection = useMemo(() => makeSelection("actual", actualLayer, actualSelectedId, futureSpanDays, anchorDate, futureEnd),[actualLayer, actualSelectedId, futureSpanDays, futureEnd, anchorDate]);
   const errorSelection = useMemo(() => makeSelection("error", errorLayer, errorSelectedId, futureSpanDays, anchorDate, futureEnd),[errorLayer, errorSelectedId, futureSpanDays, futureEnd, anchorDate]);
@@ -458,18 +459,18 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
   const {data: leftSummary, loading: leftSummaryLoading, error: leftSummaryError} = useApi(({ signal }) => {
       if (!leftSelection) return Promise.resolve(null);
 
-      const { start, end } = sourceRange(pastDays, anchorDate);
+      const { start, end } = sourceRange(pastEnd, anchorDate);
       return api.selectionSummary(leftSelection.layer, leftSelection.id, start, end, { signal });
     },
-    [leftSelection?.mode, leftSelection?.layer, leftSelection?.id, pastDays, anchorDate],
+    [leftSelection?.mode, leftSelection?.layer, leftSelection?.id, pastEnd, anchorDate],
     { keepPreviousData: false }
   );
 
   const {data: leftDailyResp} = useApi(({ signal }) => {
     if (!leftSelection) return Promise.resolve(null);
-    const { start, end } = sourceRange(pastDays, anchorDate);
+    const { start, end } = sourceRange(pastEnd, anchorDate);
     return api.selectionDaily(leftSelection.layer, leftSelection.id, start, end, { signal });
-  }, [leftSelection?.mode, leftSelection?.layer, leftSelection?.id, pastDays, anchorDate], { keepPreviousData: false });
+  }, [leftSelection?.mode, leftSelection?.layer, leftSelection?.id, pastEnd, anchorDate], { keepPreviousData: false });
 
   const {data: rightSummary, loading: rightSummaryLoading, error: rightSummaryError} = useApi(({ signal }) => {
       if (!rightSelection) return Promise.resolve(null);
@@ -507,11 +508,12 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
     });
   },[forecastDailyResp]);
 
+  /*
   useEffect(()=>{
     //use for error clusterheatmap
     //console.log(futureCounts);
     //console.log(dailyForHeatMap);
-  },[futureCounts,dailyForHeatMap]);
+  },[futureCounts,dailyForHeatMap]);*/
 
   //pass selection and data up
   useEffect(() => {
@@ -559,7 +561,7 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
   useEffect(() => {
     onSummaryChange?.({
       //summaries (split)
-      left: {selection: leftSelection, summary: leftSummary, loading: leftSummaryLoading, error: leftSummaryError, range: sourceRange(pastDays, anchorDate), days: pastDays, daily: leftDailyResp?.daily ?? null},
+      left: {selection: leftSelection, summary: leftSummary, loading: leftSummaryLoading, error: leftSummaryError, range: sourceRange(pastEnd, anchorDate), days: pastEnd, daily: leftDailyResp?.daily ?? null},
       right: {selection: rightSelection, summary: rightSummary, loading: rightSummaryLoading, error: rightSummaryError, range: targetRange(futureStart, futureEnd, anchorDate), days: futureSpanDays, offset: futureStart, forecastDaily: forecastDailySeries, forecastTotal,},
     });
   }, [
@@ -568,7 +570,7 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
     leftSummaryLoading,
     leftSummaryError,
     leftDailyResp,
-    pastDays,
+    pastEnd,
 
     rightSelection,
     rightSummary,
@@ -912,9 +914,9 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
             {/*slider row (source, relation, and instance use date range for left/right map data)*/}
             <div style={{ display: "flex", flex: "1 1 auto", flexDirection: "column", width: "100%", height: "10%" }}>
               <div style={{ display: "flex", flex: "1 1 auto", flexDirection: "row", width: "100%", height: "100%", justifyContent: "left" }}>
-                <label htmlFor="pastDays" style={{ flex: 1 }}>
+                <label htmlFor="pastEnd" style={{ flex: 1 }}>
                   <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, width: "100%", height: "100%" }}>
-                    Source date: {pastDays} days before start <br/>({anchorDate})
+                    Source date: {pastEnd} days before start <br/>({anchorDate})
                   </div>
                 </label>
                 <span aria-hidden />
