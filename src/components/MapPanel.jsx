@@ -111,6 +111,7 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
   //date sliders
   const [pastDays, setPastDays] = useState([0,90]);
   const [pastStart, pastEnd] = pastDays;
+  const pastSpanDays = pastEnd - pastStart;
   /** Inclusive start / exclusive end as day offsets after anchor (matches targetRange / tensor slice). */
   const [futureRange, setFutureRange] = useState([0, 30]);
   const [futureStart, futureEnd] = futureRange;
@@ -202,7 +203,7 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
     if (activeMode === "source") {
       let cancelled = false;
       const ac = new AbortController();
-      api.selectionAllDaily(layer, sourceRange(pastEnd, anchorDate).start, sourceRange(pastEnd, anchorDate).end, { signal: ac.signal })
+      api.selectionAllDaily(layer, sourceRange(pastStart, pastEnd, anchorDate).start, sourceRange(pastStart, pastEnd, anchorDate).end, { signal: ac.signal })
       .then((data) => {
         if (cancelled) return;
         setCrimeCounts(data.daily);
@@ -217,7 +218,7 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
         ac.abort();
       };
     }
-  }, [activeMode, layer, pastEnd, anchorDate])
+  }, [activeMode, layer, pastStart, pastEnd, anchorDate])
 
   //get data for relational heatmaps — fetches full horizon
   // and averages over the 30 horizon days to produce a (77 x pastEnd (To be transitioned to past window)) matrix
@@ -256,10 +257,10 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
 
   //Get Data for Source HeatMap (used when activeMode is "source"; instance mode uses instanceSourceResp)
   const {data: leftTotalsResp, loading: leftTotalsLoading, error: leftTotalsError} = useApi(({ signal }) => {
-    const { start, end } = sourceRange(pastEnd, anchorDate);
+    const { start, end } = sourceRange(pastStart, pastEnd, anchorDate);
     const apiLayer = UI_TO_API_LAYER[layer];
     return api.mapTotals(apiLayer, start, end, { signal });
-  }, [layer, pastEnd, anchorDate]);
+  }, [layer, pastStart, pastEnd, anchorDate]);
 
   const leftCrimeCounts = useMemo(
     () =>
@@ -281,14 +282,14 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
     if (
       activeMode === "source" &&
       sourceCountMode === "average" &&
-      pastEnd > 0
+      pastSpanDays > 0
     ) {
       const out = {};
-      for (const [id, val] of Object.entries(raw)) out[id] = val / pastEnd;
+      for (const [id, val] of Object.entries(raw)) out[id] = val / pastSpanDays;
       return out;
     }
     return raw;
-  }, [activeMode, relationCounts, relationTargetCommunityReady, shapCounts, leftCrimeCounts, sourceCountMode, pastEnd]);
+  }, [activeMode, relationCounts, relationTargetCommunityReady, shapCounts, leftCrimeCounts, sourceCountMode, pastSpanDays]);
 
 
   //Get Data for Actual Heatmap
@@ -443,9 +444,9 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
     return {mode, layer: layerX, id: idX, name: getBoundaryLabel(layerX, feature), days: daysX, dateISO, feature};
   }
 
-  const sourceSelection = useMemo(() => makeSelection("source", sourceLayer, sourceSelectedId, pastEnd, anchorDate, -pastEnd), [sourceLayer, sourceSelectedId, pastEnd, anchorDate]);
-  const relationSelection = useMemo(() => makeSelection("relation", relationLayer, relationSelectedId, pastEnd, anchorDate, -pastEnd), [relationLayer, relationSelectedId, pastEnd, anchorDate]);
-  const instanceSelection = useMemo(() => makeSelection("instance", instanceLayer, instanceSelectedId, pastEnd, anchorDate, -pastEnd), [instanceLayer, instanceSelectedId, pastEnd, anchorDate]);
+  const sourceSelection = useMemo(() => makeSelection("source", sourceLayer, sourceSelectedId, pastSpanDays, anchorDate, -pastEnd), [sourceLayer, sourceSelectedId, pastSpanDays, pastEnd, anchorDate]);
+  const relationSelection = useMemo(() => makeSelection("relation", relationLayer, relationSelectedId, pastSpanDays, anchorDate, -pastEnd), [relationLayer, relationSelectedId, pastEnd, anchorDate]);
+  const instanceSelection = useMemo(() => makeSelection("instance", instanceLayer, instanceSelectedId, pastSpanDays, anchorDate, -pastEnd), [instanceLayer, instanceSelectedId, pastEnd, anchorDate]);
   const targetSelection = useMemo(() => makeSelection("target", targetLayer, targetSelectedId, futureSpanDays, anchorDate, futureEnd),[targetLayer, targetSelectedId, futureSpanDays, futureEnd, anchorDate]);
   const actualSelection = useMemo(() => makeSelection("actual", actualLayer, actualSelectedId, futureSpanDays, anchorDate, futureEnd),[actualLayer, actualSelectedId, futureSpanDays, futureEnd, anchorDate]);
   const errorSelection = useMemo(() => makeSelection("error", errorLayer, errorSelectedId, futureSpanDays, anchorDate, futureEnd),[errorLayer, errorSelectedId, futureSpanDays, futureEnd, anchorDate]);
@@ -459,18 +460,18 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
   const {data: leftSummary, loading: leftSummaryLoading, error: leftSummaryError} = useApi(({ signal }) => {
       if (!leftSelection) return Promise.resolve(null);
 
-      const { start, end } = sourceRange(pastEnd, anchorDate);
+      const { start, end } = sourceRange(pastStart, pastEnd, anchorDate);
       return api.selectionSummary(leftSelection.layer, leftSelection.id, start, end, { signal });
     },
-    [leftSelection?.mode, leftSelection?.layer, leftSelection?.id, pastEnd, anchorDate],
+    [leftSelection?.mode, leftSelection?.layer, leftSelection?.id, pastStart, pastEnd, anchorDate],
     { keepPreviousData: false }
   );
 
   const {data: leftDailyResp} = useApi(({ signal }) => {
     if (!leftSelection) return Promise.resolve(null);
-    const { start, end } = sourceRange(pastEnd, anchorDate);
+    const { start, end } = sourceRange(pastStart, pastEnd, anchorDate);
     return api.selectionDaily(leftSelection.layer, leftSelection.id, start, end, { signal });
-  }, [leftSelection?.mode, leftSelection?.layer, leftSelection?.id, pastEnd, anchorDate], { keepPreviousData: false });
+  }, [leftSelection?.mode, leftSelection?.layer, leftSelection?.id, pastStart, pastEnd, anchorDate], { keepPreviousData: false });
 
   const {data: rightSummary, loading: rightSummaryLoading, error: rightSummaryError} = useApi(({ signal }) => {
       if (!rightSelection) return Promise.resolve(null);
@@ -561,7 +562,7 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
   useEffect(() => {
     onSummaryChange?.({
       //summaries (split)
-      left: {selection: leftSelection, summary: leftSummary, loading: leftSummaryLoading, error: leftSummaryError, range: sourceRange(pastEnd, anchorDate), days: pastEnd, daily: leftDailyResp?.daily ?? null},
+      left: {selection: leftSelection, summary: leftSummary, loading: leftSummaryLoading, error: leftSummaryError, range: sourceRange(pastStart, pastEnd, anchorDate), days: pastSpanDays, offset: pastStart, daily: leftDailyResp?.daily ?? null},
       right: {selection: rightSelection, summary: rightSummary, loading: rightSummaryLoading, error: rightSummaryError, range: targetRange(futureStart, futureEnd, anchorDate), days: futureSpanDays, offset: futureStart, forecastDaily: forecastDailySeries, forecastTotal,},
     });
   }, [
