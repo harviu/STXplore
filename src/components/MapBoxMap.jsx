@@ -38,6 +38,51 @@ function getLegendSteps(minCount, maxCount, stops = CHOROPLETH_STOPS, isRelation
   });
 }
 
+function getLegendStepsDiverging(minCount, maxCount, stops, midValue = 0, deadband = 0) {
+  const midIdx = Math.max(0, stops.indexOf("#ffffff"));
+  const negColors = stops.slice(0, Math.max(0, midIdx)); // exclude white
+  const posColors = stops.slice(midIdx + 1); // exclude white
+
+  const loMid = midValue - deadband;
+  const hiMid = midValue + deadband;
+
+  const boundaries = [];
+  const colors = [];
+
+  // Negative side: min -> loMid split into `negColors.length` bins.
+  if (minCount < loMid && negColors.length > 0) {
+    for (let i = 0; i <= negColors.length; i++) {
+      const t = i / negColors.length;
+      boundaries.push(minCount + t * (loMid - minCount));
+    }
+    colors.push(...negColors);
+  } else {
+    boundaries.push(loMid);
+  }
+
+  // Deadband: exactly one white bin [loMid, hiMid]
+  if (boundaries[boundaries.length - 1] !== hiMid) boundaries.push(hiMid);
+  colors.push("#ffffff");
+
+  // Positive side: hiMid -> max split into `posColors.length` bins.
+  if (maxCount > hiMid && posColors.length > 0) {
+    for (let i = 1; i <= posColors.length; i++) {
+      const t = i / posColors.length;
+      boundaries.push(hiMid + t * (maxCount - hiMid));
+    }
+    colors.push(...posColors);
+  }
+
+  const steps = [];
+  for (let i = 0; i < colors.length; i++) {
+    const low = boundaries[i];
+    const high = boundaries[i + 1];
+    if (low == null || high == null || !(high > low)) continue;
+    steps.push({ color: colors[i], low, high });
+  }
+  return steps;
+}
+
 //Boolean function to check if there are any crime counts
 function hasAnyCounts(crimeCounts){
   if (!crimeCounts) return false;
@@ -81,9 +126,60 @@ function buildMergedGeo(geo, crimeCounts, layer, isRelationMap = false, isErrorM
 }
 
 //gives the coloring to the maps sections
-function getFillColorPaint(crimeCounts, minCount, maxCount, stops = CHOROPLETH_STOPS) {
+function getFillColorPaint(
+  crimeCounts,
+  minCount,
+  maxCount,
+  stops = CHOROPLETH_STOPS,
+  { divergingMidValue, divergingDeadband = 0 } = {}
+) {
   const any = hasAnyCounts(crimeCounts);
   if (!any) return "#e07c3c";
+
+  if (divergingMidValue != null && Number.isFinite(divergingMidValue)) {
+    const mid = divergingMidValue;
+    const deadband = Math.max(0, Number(divergingDeadband) || 0);
+    const loMid = mid - deadband;
+    const hiMid = mid + deadband;
+    const midIdx = Math.max(0, stops.indexOf("#ffffff"));
+    const negStops = stops.slice(0, midIdx + 1);
+    const posStops = stops.slice(midIdx);
+    const stopsArray = [];
+
+    if (minCount < loMid) {
+      const n = Math.max(2, negStops.length);
+      for (let i = 0; i < n; i++) {
+        const t = n === 1 ? 1 : i / (n - 1);
+        const value = minCount + t * (loMid - minCount);
+        stopsArray.push([value, negStops[i] ?? negStops[negStops.length - 1]]);
+      }
+    } else {
+      stopsArray.push([loMid, "#ffffff"]);
+    }
+
+    // deadband anchors (force white from loMid..hiMid)
+    stopsArray.push([loMid, "#ffffff"]);
+    stopsArray.push([mid, "#ffffff"]);
+    stopsArray.push([hiMid, "#ffffff"]);
+
+    if (maxCount > hiMid) {
+      const n = Math.max(2, posStops.length);
+      for (let i = 1; i < n; i++) {
+        const t = i / (n - 1);
+        const value = hiMid + t * (maxCount - hiMid);
+        stopsArray.push([value, posStops[i] ?? posStops[posStops.length - 1]]);
+      }
+    }
+
+    // Mapbox requires strictly increasing stop values.
+    stopsArray.sort((a, b) => a[0] - b[0]);
+    const deduped = [];
+    for (const [v, c] of stopsArray) {
+      if (!deduped.length || v > deduped[deduped.length - 1][0]) deduped.push([v, c]);
+    }
+    return ["interpolate", ["linear"], ["get", "count"], ...deduped.flat()];
+  }
+
   const range = maxCount - minCount || 0.001;
   const stopsArray = stops.map((color, i) => {
     const t = i / (stops.length - 1);
@@ -223,12 +319,19 @@ export default function MapBoxMap({
   );
 
   const fillColorPaint = useMemo(
-    () => getFillColorPaint(crimeCounts, minCount, maxCount, stops),
-    [crimeCounts, minCount, maxCount, stops]
+    () =>
+      getFillColorPaint(crimeCounts, minCount, maxCount, stops, {
+        divergingMidValue: isSageMap ? 0 : undefined,
+        divergingDeadband: isSageMap ? 1 : 0,
+      }),
+    [crimeCounts, minCount, maxCount, stops, isSageMap]
   );
 
   const legendSteps = useMemo(
-    () => getLegendSteps(minCount, maxCount, stops, isRelationMap || isSageMap),
+    () =>
+      isSageMap
+        ? getLegendStepsDiverging(minCount, maxCount, stops, 0, 1)
+        : getLegendSteps(minCount, maxCount, stops, isRelationMap),
     [minCount, maxCount, stops, isRelationMap, isSageMap]
   );
 
@@ -593,7 +696,7 @@ export default function MapBoxMap({
               }}
             />
             <span style={{ color: "#333" }}>
-              {isRelationMap ? Math.round(low) : low} - {isRelationMap ? Math.round(high) : high}
+              {isRelationMap ? Math.round(low) : low} – {isRelationMap ? Math.round(high) : high}
             </span>
           </div>
         ))}

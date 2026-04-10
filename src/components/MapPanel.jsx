@@ -233,7 +233,7 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
             api.get4dData(pastEnd, true, null, 30, true, Number(targetSelectedId) - 1, relationModel, relationDataMode, {
         signal: ac.signal,
         d3Start: 0,
-        normalize: true,
+        normalize: false,
       })
       .then((data) => {
         if (cancelled) return;
