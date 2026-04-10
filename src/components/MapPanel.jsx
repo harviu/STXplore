@@ -237,7 +237,7 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
       })
       .then((data) => {
         if (cancelled) return;
-        setRelationValues(data);
+        setRelationValues(data.map(row => row.slice(pastStart)));
       })
       .catch((err) => {
         if (err?.name === "AbortError") return;
@@ -248,7 +248,7 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
         cancelled = true;
         ac.abort();
       };
-  }, [activeMode, pastEnd, targetSelectedId, relationModel, relationDataMode]);
+  }, [activeMode, pastStart, pastEnd, targetSelectedId, relationModel, relationDataMode]);
   // Instance-level map on source side: 4D array → per-community time-averaged over slider date range.
   const {data: instanceSourceResp, loading: instanceSourceLoading, error: instanceSourceError} = useApi(({ signal }) => {
     if (activeMode !== "instance") return Promise.resolve(null);
@@ -938,7 +938,15 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
                       id="pastDays"
                       aria-label="Days before start"
                       value={pastDays}
-                      onChange={(_e, value) => setPastDays(value)}
+                      onChange={(_e, value) => {
+                          // Ensure the two thumbs are not the same
+                          if (value[0] === value[1]) {
+                            if (value[1] === 30) value[0] = 29;
+                            else value[1] = value[0] + 1;
+                          }
+                          setPastDays(value)
+                        }
+                      }
                       valueLabelDisplay="auto"
                       getAriaValueText={(v) => `${v} days ago`}
                       min={1}
