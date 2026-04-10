@@ -29,7 +29,13 @@ function useDebounced(value, delay = 150) {
   return debounced;
 }
 
-const RTL_THEME = createTheme({ direction: "rtl" });
+const RTL_THEME = createTheme({
+  direction: "rtl",
+  typography: {
+    fontFamily:
+      'Inter, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
+  },
+});
 
 /** Visual emphasis for the active map tab (disabled when selected matches browser defaults poorly). */
 function mapTabButtonStyle(selected, extra = {}) {

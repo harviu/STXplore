@@ -1,7 +1,7 @@
 import Panel from "./Panel.jsx";
-import TooltipMap from "./tooltipMap.jsx";
 import LineChart from "./lineChartTooltip.jsx";
-import { fillDaily } from "../lib/crimeAggregates.js"
+import { fillDaily } from "../lib/crimeAggregates.js";
+import "./SidePanel.css";
 
 // convert mode to a title
 function titleForMode(mode) {
@@ -23,21 +23,29 @@ function titleForMode(mode) {
   }
 }
 
+function KvRow({ label, children }) {
+  return (
+    <div className="sidePanel__kv">
+      <dt className="sidePanel__label">{label}</dt>
+      <dd className="sidePanel__value">{children}</dd>
+    </div>
+  );
+}
+
 /**
- * The SelectionBlock component is a subcomponent used within the SidePanel to display details about a specific selection on either the left or right map. 
- * It takes in a heading, a payload containing the selection and summary data, and flags for whether to show API status and whether it's for the left map. 
+ * The SelectionBlock component is a subcomponent used within the SidePanel to display details about a specific selection on either the left or right map.
+ * It takes in a heading, a payload containing the selection and summary data, and flags for whether to show API status and whether it's for the left map.
  * The component conditionally renders the selection details, API status, and summary information based on the provided data.
- * 
- * @param {Object} props 
+ *
+ * @param {Object} props
  * @param {string} props.heading The title to display for this selection block (e.g., "Left Map" or "Right Map")
  * @param {Object} props.payload The data for this selection block
  * @param {boolean} [props.showApi=true] Whether to show API status
- * @param {boolean} props.isLeft Whether this block is for the left map 
+ * @param {boolean} props.isLeft Whether this block is for the left map
  * @returns {JSX.Element}
  */
-// subcomponent for showing details of a selection, including API status and summary if available
 function SelectionBlock({ heading, payload, showApi = true, isLeft }) {
-  // payload shape: { selection, summary, loading, error, range }
+  const headingId = `sidepanel-heading-${heading.replace(/\s+/g, "-").toLowerCase()}`;
   const selection = payload?.selection ?? null;
   const summary = payload?.summary ?? null;
   const loading = !!payload?.loading;
@@ -46,187 +54,131 @@ function SelectionBlock({ heading, payload, showApi = true, isLeft }) {
   const daily = payload?.daily ?? null;
   const days = payload?.days ?? null;
 
+  const topTypes = summary?.top_types?.filter(Boolean) ?? [];
+
   return (
-    <div>
-      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between" }}>
-        <strong>{heading}</strong>
-      </div>
+    <section className="sidePanel__block" aria-labelledby={headingId}>
+      <h4 className="sidePanel__blockTitle" id={headingId}>
+        {heading}
+      </h4>
 
       {!selection ? (
-        <p style={{ opacity: 0.8, marginTop: 8 }}>Click a boundary to see details.</p>
+        <p className="sidePanel__helper">Click a boundary to see details.</p>
       ) : (
         <>
-          <div style={{ marginTop: 8 }}>
-            <div>
-              <strong>Map Type:</strong> {titleForMode(selection.mode)}
-            </div>
-            <div>
-              <strong>Layer:</strong> {selection.layer}
-            </div>
-            <div>
-              <strong>ID:</strong> {selection.id}
-            </div>
-            <div>
-              <strong>Name:</strong> {selection.name}
-            </div>
-              {summary && (
-                <div>
-                  <strong>
-                    # Days {isLeft ? 'before ' + summary.end : 'after ' + summary.start}: 
-                  </strong>
-                  {" " + selection.days}
-                </div>
-              )}
-          </div>
+          <dl className="sidePanel__kvList">
+            <KvRow label="Map type">{titleForMode(selection.mode)}</KvRow>
+            <KvRow label="Layer">{selection.layer}</KvRow>
+            <KvRow label="ID">{selection.id}</KvRow>
+            <KvRow label="Name">{selection.name}</KvRow>
+            {summary ? (
+              <KvRow label={isLeft ? `Days before ${summary.end}` : `Days after ${summary.start}`}>
+                {selection.days}
+              </KvRow>
+            ) : null}
+          </dl>
 
           {showApi && selection.mode !== "target" ? (
-            <>
-              <hr style={{ margin: "12px 0", opacity: 0.1 }} />
-
-              <div>
-                {error ? (
-                  <span style={{ color: "red" }}>API Error: {String(error)}</span>
-                ) : loading ? (
-                  <span></span>
-                ) : null}
-              </div>
+            <div className="sidePanel__section">
+              {error ? (
+                <p className="sidePanel__error" role="alert">
+                  API error: {String(error)}
+                </p>
+              ) : null}
 
               {loading ? (
-                <p style={{ opacity: 0.6, marginTop: 8, fontSize: 13 }}>Loading Data...</p>
+                <p className="sidePanel__loading">Loading data…</p>
               ) : summary ? (
-                <pre
-                  style={{
-                    whiteSpace: "pre-wrap",
-                    fontSize: 12,
-                    marginTop: 8,
-                  }}
-                >
-                  <div>
-                    <strong>Starting Date:</strong> {summary.start}
-                  </div>
-                  <div>
-                    <strong>Ending Date:</strong> {summary.end}
-                  </div>
-                  <div>
-                    <strong>Total Crimes:</strong> {summary.total_crimes}
-                  </div>
-                  {days > 0 && summary.total_crimes != null && (
-                    <div>
-                      <strong>Avg per day:</strong> {(summary.total_crimes / days).toFixed(2)}
-                    </div>
-                  )}
-                  {summary.top_types?.[0] ? (<div>
-                    <br />
-                    <strong>Top Crimes:</strong>
-                    <br />
-                    <strong>{summary.top_types?.[0]?.primary_type}:</strong> {summary.top_types?.[0]?.count}
-                  </div>) : null}
-                  {summary.top_types?.[1] ? (<div>
-                    <strong>{summary.top_types?.[1]?.primary_type}:</strong> {summary.top_types?.[1]?.count}
-                  </div>) : null}
-                  {summary.top_types?.[2] ? (<div>
-                    <strong>{summary.top_types?.[2]?.primary_type}:</strong> {summary.top_types?.[2]?.count}
-                  </div>) : null}
-                  {summary.top_types?.[3] ? (<div>
-                    <strong>{summary.top_types?.[3]?.primary_type}:</strong> {summary.top_types?.[3]?.count}
-                  </div>) : null}
-                  {summary.top_types?.[4] ? (<div>
-                    <strong>{summary.top_types?.[4]?.primary_type}:</strong> {summary.top_types?.[4]?.count}
-                  </div>) : null}
-                  {summary.top_types?.[5] ? (<div>
-                    <strong>{summary.top_types?.[5]?.primary_type}:</strong> {summary.top_types?.[5]?.count}
-                  </div>) : null}
-                  {summary.top_types?.[6] ? (<div>
-                    <strong>{summary.top_types?.[6]?.primary_type}:</strong> {summary.top_types?.[6]?.count}
-                  </div>) : null}
-                  {summary.top_types?.[7] ? (<div>
-                    <strong>{summary.top_types?.[7]?.primary_type}:</strong> {summary.top_types?.[7]?.count}
-                  </div>) : null}
-                  {summary.top_types?.[8] ? (<div>
-                    <strong>{summary.top_types?.[8]?.primary_type}:</strong> {summary.top_types?.[8]?.count}
-                  </div>) : null}
-                  {summary.top_types?.[9] ? (<div>
-                    <strong>{summary.top_types?.[9]?.primary_type}:</strong> {summary.top_types?.[9]?.count}
-                  </div>) : null}
-                </pre>
+                <>
+                  <p className="sidePanel__subhead">Crime summary</p>
+                  <dl className="sidePanel__kvList">
+                    <KvRow label="Starting date">{summary.start}</KvRow>
+                    <KvRow label="Ending date">{summary.end}</KvRow>
+                    <KvRow label="Total crimes">{summary.total_crimes}</KvRow>
+                    {days > 0 && summary.total_crimes != null ? (
+                      <KvRow label="Avg per day">{(summary.total_crimes / days).toFixed(2)}</KvRow>
+                    ) : null}
+                  </dl>
+
+                  {topTypes.length > 0 ? (
+                    <>
+                      <p className="sidePanel__subhead sidePanel__subhead--spaced">Top crime types</p>
+                      <ul className="sidePanel__topList">
+                        {topTypes.slice(0, 10).map((t, i) => (
+                          <li key={`${t.primary_type}-${i}`} className="sidePanel__topItem">
+                            <span className="sidePanel__topType">{t.primary_type}</span>
+                            <span className="sidePanel__topCount">{t.count}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </>
+                  ) : null}
+                </>
               ) : null}
-            </>
+            </div>
           ) : null}
-          {isLeft && daily && range?.start && range?.end && (
-            <div style={{ marginTop: 12 }}>
-              <strong style={{ fontSize: 13 }}>Daily crime counts:</strong>
-              <div style={{ fontSize: 12, opacity: 0.8, marginTop: 2 }}>
-                {payload?.summary?.total_crimes != null && (
-                  <span>{selection.days} days total: {payload.summary.total_crimes}</span>
-                )}
-                <br/>
-                {selection.days > 0 && payload?.summary?.total_crimes != null && (
-                  <span>{selection.days} days average: {(payload.summary.total_crimes / selection.days).toFixed(2)}</span>
-                )}
+
+          {isLeft && daily && range?.start && range?.end ? (
+            <div className="sidePanel__chartBlock">
+              <p className="sidePanel__chartCaption">Daily crime counts</p>
+              <div className="sidePanel__chartMeta">
+                {payload?.summary?.total_crimes != null ? (
+                  <>
+                    <div>
+                      {selection.days} days total: {payload.summary.total_crimes}
+                    </div>
+                    {selection.days > 0 ? (
+                      <div>
+                        {selection.days} days average:{" "}
+                        {(payload.summary.total_crimes / selection.days).toFixed(2)}
+                      </div>
+                    ) : null}
+                  </>
+                ) : null}
               </div>
-              <div style={{ marginTop: 6 }}>
-                <LineChart
-                  days={fillDaily(range.start, range.end, daily)}
-                  height={74}
-                />
-              </div>
-            </div>
-          )}
-          {!isLeft && payload?.forecastDaily && (
-            <div style={{ marginTop: 12 }}>
-              <strong style={{ fontSize: 13 }}>Predicted daily counts:</strong>
-              {payload.forecastTotal != null && (
-                <div style={{ fontSize: 12, opacity: 0.8, marginTop: 2 }}>
-                  30-day total: {Math.round(payload.forecastTotal)}
-                </div>
-              )}
-              <div style={{ marginTop: 6 }}>
-                <LineChart
-                  days={payload.forecastDaily}
-                  isRelationMap={false}
-                  height={74}
-                />
+              <div className="sidePanel__chartPlot">
+                <LineChart days={fillDaily(range.start, range.end, daily)} height={74} />
               </div>
             </div>
-          )}
+          ) : null}
+
+          {!isLeft && payload?.forecastDaily ? (
+            <div className="sidePanel__chartBlock">
+              <p className="sidePanel__chartCaption">Predicted daily counts</p>
+              {payload.forecastTotal != null ? (
+                <div className="sidePanel__chartMeta">30-day total: {Math.round(payload.forecastTotal)}</div>
+              ) : null}
+              <div className="sidePanel__chartPlot">
+                <LineChart days={payload.forecastDaily} isRelationMap={false} height={74} />
+              </div>
+            </div>
+          ) : null}
         </>
       )}
-    </div>
+    </section>
   );
 }
 
 /**
- * The SidePanel component displays details about the current selections on the left and right maps, including API loading status and summary information if available. It receives the selection and summary data for both maps as props and conditionally renders the information. If no selection is made, it prompts the user to click a boundary on either map to see details.
- * It uses the SelectionBlock subcomponent to display the details for each map's selection, including the map type, layer, ID, name, and summary statistics. The API status is also shown if the showApi prop is true. The component is designed to be flexible and can handle cases where there is no selection or when data is still loading.
- * 
+ * The SidePanel component displays details about the current selections on the left and right maps, including API loading status and summary information if available.
+ *
  * @param {Object} props
  * @param {Object} props.left The data for the left map selection and summary, with shape: {selection, summary, loading, error, range}
  * @param {Object} props.right The data for the right map selection and summary, with shape: {selection, summary, loading, error, range}
  * @returns {JSX.Element}
  */
-//The main side panel holds the potential for two summaries, one for the source maps on the left and one for the target maps on the right.
 export default function SidePanel({ left, right }) {
   const hasAnySelection = !!left?.selection || !!right?.selection;
 
   return (
-    <Panel title="Current Selection" fill style={{ minHeight: 0}}>
-      <div
-        style={{
-          padding: 12,
-          boxSizing: "border-box",
-          overflow: "auto",
-          flex: 1,
-          minHeight: 0,
-        }}
-      >
+    <Panel title="Current Selection" fill style={{ minHeight: 0 }}>
+      <div className="sidePanel__scroll">
         {!hasAnySelection ? (
-          <p style={{ opacity: 0.8, marginTop: 0 }}>
-            Click a boundary on either map to see details.
-          </p>
+          <p className="sidePanel__helper">Click a boundary on either map to see details.</p>
         ) : (
           <>
             <SelectionBlock heading="Left Map" payload={left} showApi={true} isLeft={true} />
-            <hr style={{ margin: "12px 0", opacity: 0.7 }} />
+            <hr className="sidePanel__divider" />
             <SelectionBlock heading="Right Map" payload={right} showApi={true} isLeft={false} />
           </>
         )}

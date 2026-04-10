@@ -1,0 +1,217 @@
+/* Side panel: selection details + summary — clear hierarchy on dark glass */
+
+.sidePanel__scroll {
+  box-sizing: border-box;
+  padding: 4px 0 0 0;
+  overflow: auto;
+  flex: 1;
+  min-height: 0;
+}
+
+.sidePanel__helper {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.72);
+  font-size: var(--text-sm);
+  line-height: var(--leading-normal);
+}
+
+.sidePanel__divider {
+  border: none;
+  height: 1px;
+  margin: 16px 0;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.sidePanel__blockTitle {
+  margin: 0 0 12px 0;
+  font-size: var(--text-sm);
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.sidePanel__kvList {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sidePanel__kv {
+  display: grid;
+  grid-template-columns: minmax(0, 7.5rem) minmax(0, 1fr);
+  gap: 8px 12px;
+  align-items: baseline;
+  font-size: var(--text-sm);
+}
+
+.sidePanel__label {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.5);
+  font-weight: 500;
+}
+
+.sidePanel__value {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.92);
+  font-weight: 500;
+  word-break: break-word;
+}
+
+.sidePanel__section {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.sidePanel__section:first-of-type {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: none;
+}
+
+.sidePanel__subhead {
+  margin: 0 0 10px 0;
+  font-size: var(--text-xs);
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.sidePanel__subhead--spaced {
+  margin-top: 14px;
+}
+
+.sidePanel__error {
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: 8px;
+  font-size: var(--text-sm);
+  color: #ffb4b4;
+  background: rgba(220, 60, 60, 0.18);
+  border: 1px solid rgba(255, 120, 120, 0.25);
+}
+
+.sidePanel__loading {
+  margin: 8px 0 0 0;
+  font-size: var(--text-sm);
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.sidePanel__topList {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.sidePanel__topItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  font-size: var(--text-sm);
+  padding: 6px 8px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.sidePanel__topType {
+  color: rgba(255, 255, 255, 0.88);
+  font-weight: 500;
+  min-width: 0;
+}
+
+.sidePanel__topCount {
+  color: rgba(255, 255, 255, 0.65);
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+}
+
+.sidePanel__chartBlock {
+  margin-top: 12px;
+}
+
+.sidePanel__chartCaption {
+  margin: 0 0 6px 0;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.88);
+}
+
+.sidePanel__chartMeta {
+  margin: 0 0 8px 0;
+  font-size: var(--text-xs);
+  color: rgba(255, 255, 255, 0.55);
+  line-height: 1.45;
+}
+
+.sidePanel__chartPlot {
+  margin-top: 6px;
+}
+
+@media (prefers-color-scheme: light) {
+  .sidePanel__helper {
+    color: rgba(0, 0, 0, 0.58);
+  }
+
+  .sidePanel__blockTitle {
+    color: rgba(0, 0, 0, 0.5);
+  }
+
+  .sidePanel__label {
+    color: rgba(0, 0, 0, 0.5);
+  }
+
+  .sidePanel__value {
+    color: rgba(0, 0, 0, 0.88);
+  }
+
+  .sidePanel__divider {
+    background: rgba(0, 0, 0, 0.1);
+  }
+
+  .sidePanel__section {
+    border-top-color: rgba(0, 0, 0, 0.08);
+  }
+
+  .sidePanel__subhead {
+    color: rgba(0, 0, 0, 0.45);
+  }
+
+  .sidePanel__error {
+    color: #9b1c1c;
+    background: rgba(220, 60, 60, 0.1);
+    border-color: rgba(200, 60, 60, 0.22);
+  }
+
+  .sidePanel__loading {
+    color: rgba(0, 0, 0, 0.5);
+  }
+
+  .sidePanel__topItem {
+    background: rgba(0, 0, 0, 0.03);
+    border-color: rgba(0, 0, 0, 0.06);
+  }
+
+  .sidePanel__topType {
+    color: rgba(0, 0, 0, 0.85);
+  }
+
+  .sidePanel__topCount {
+    color: rgba(0, 0, 0, 0.55);
+  }
+
+  .sidePanel__chartCaption {
+    color: rgba(0, 0, 0, 0.88);
+  }
+
+  .sidePanel__chartMeta {
+    color: rgba(0, 0, 0, 0.52);
+  }
+}
