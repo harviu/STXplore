@@ -92,7 +92,7 @@ export default function App() {
   return (
     <div className="app">
       <header className="appHeader">
-        <h1>The Zhuang Project</h1>
+        <h1>CrimeSight AI</h1>
         <AppHeaderHelp />
       </header>
 
