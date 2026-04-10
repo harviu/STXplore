@@ -87,12 +87,12 @@ export const api = {
       opts
     ),
 
-  relationalModel: (target, model, opts) =>
-    request(`/api/model_level_relation?target=${encodeURIComponent(target)}&model=${encodeURIComponent(model)}`, opts),
+  relationalModel: (target, model, pastStart, pastDays, futureStart, futureEnd, opts) =>
+    request(`/api/model_level_relation?target=${encodeURIComponent(target)}&model=${encodeURIComponent(model)}&past_start=${encodeURIComponent(pastStart)}&past_days=${encodeURIComponent(pastDays)}&future_start=${encodeURIComponent(futureStart)}&future_days=${encodeURIComponent(futureEnd)}`, opts),
   
-  instanceLevelRelation: (sourceIdx, model,  pastDays, futureStart, futureEnd, opts) =>
+  instanceLevelRelation: (sourceIdx, model, pastStart, pastDays, futureStart, futureEnd, opts) =>
     request(
-      `/api/instance_level_relation?source=${encodeURIComponent(sourceIdx)}&model=${encodeURIComponent(model)}&past_days=${encodeURIComponent(pastDays)}&future_days=${encodeURIComponent(futureEnd)}&future_start=${encodeURIComponent(futureStart)}`,
+      `/api/instance_level_relation?source=${encodeURIComponent(sourceIdx)}&model=${encodeURIComponent(model)}&past_start=${encodeURIComponent(pastStart)}&past_days=${encodeURIComponent(pastDays)}&future_days=${encodeURIComponent(futureEnd)}&future_start=${encodeURIComponent(futureStart)}`,
       opts
     ),
 
@@ -114,13 +114,12 @@ export const api = {
     return request(`/api/data4d?${params.toString()}`, { signal, ...rest });
   },
 
-  sageLevelRelation: (target, model, opts) =>
-    request(`/api/model_level_sage?target=${encodeURIComponent(target)}&model=${encodeURIComponent(model)}`, opts),
+  sageLevelRelation: (target, model, pastStart, pastDays, futureStart, futureEnd, opts) =>
+    request(`/api/model_level_sage?target=${encodeURIComponent(target)}&model=${encodeURIComponent(model)}&past_start=${encodeURIComponent(pastStart)}&past_days=${encodeURIComponent(pastDays)}&future_start=${encodeURIComponent(futureStart)}&future_days=${encodeURIComponent(futureEnd)}`, opts),
   
-  instanceLevelSage: (sourceIdx, model, pastDays, futureStart, futureEnd, opts) =>
+  instanceLevelSage: (sourceIdx, model, pastStart, pastDays, futureStart, futureEnd, opts) =>
     request(
-      `/api/instance_level_sage?source=${encodeURIComponent(sourceIdx)}&model=${encodeURIComponent(model)}&past_days=${encodeURIComponent(pastDays)}&future_days=${encodeURIComponent(futureEnd)}&future_start=${encodeURIComponent(futureStart)}`,
+      `/api/instance_level_sage?source=${encodeURIComponent(sourceIdx)}&model=${encodeURIComponent(model)}&past_start=${encodeURIComponent(pastStart)}&past_days=${encodeURIComponent(pastDays)}&future_days=${encodeURIComponent(futureEnd)}&future_start=${encodeURIComponent(futureStart)}`,
       opts
     ),
-    
 };

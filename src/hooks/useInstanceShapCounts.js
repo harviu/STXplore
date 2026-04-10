@@ -7,7 +7,7 @@ import { api } from "../lib/api.js";
  * shap_values shape: (90 history days, 77 communities)
  * We sum abs SHAP across history days per community to get a single attribution weight per community.
  */
-export function useInstanceShapCounts(activeMode, instanceSelectedId, model, forecastAnchorDate, horizon) {
+export function useInstanceShapCounts(activeMode, instanceSelectedId, model, forecastAnchorDate, horizon, pastStart = 0, pastEnd = 90) {
   const [counts, setCounts] = useState(null);
   const [matrix, setMatrix] = useState(null); // raw (77x90) for cluster heatmap
   const [loading, setLoading] = useState(false);
@@ -41,16 +41,17 @@ export function useInstanceShapCounts(activeMode, instanceSelectedId, model, for
         return;
       }
 
+      // Slice to the past window the slider controls
+      const windowedShap = data.shap_values.slice(pastStart, pastEnd);
       // Build 77xdays matrix for cluster heatmap
       const rawMatrix = [];
       for (let c = 0; c < 77; c++) {
-        rawMatrix.push(data.shap_values.map(row => row.values[c] ?? 0));
+        rawMatrix.push(windowedShap.map(row => row.values[c] ?? 0));
       }
       setMatrix(rawMatrix);
-      // Sum absolute SHAP values across all 90 history days per community
-      // to get a single attribution weight per community for the map
+      // Sum absolute SHAP values across the windowed history days per community
       const perCommunity = new Array(77).fill(0);
-      for (const row of data.shap_values) {
+      for (const row of windowedShap) {
         row.values.forEach((v, i) => {
           perCommunity[i] += Math.abs(v);
         });
@@ -73,7 +74,7 @@ export function useInstanceShapCounts(activeMode, instanceSelectedId, model, for
       cancelled = true;
       ac.abort();
     };
-  }, [activeMode, instanceSelectedId, model, forecastAnchorDate, horizon]);
+  }, [activeMode, instanceSelectedId, model, forecastAnchorDate, horizon, pastStart, pastEnd]);
 
   return { counts, loading, error, matrix};
 }

@@ -19,6 +19,16 @@ import { initialMapFaces, mapFacesReducer } from "../lib/mapFacesReducer.js";
 import { useInstanceShapCounts } from "../hooks/useInstanceShapCounts.js";
 import { active } from "d3";
 
+// Function to prevent so many api calls, this will only call the api after the user has stopped changing the slider for 150ms
+function useDebounced(value, delay = 150) {
+  const [debounced, setDebounced] = useState(value);
+  useEffect(() => {
+    const t = setTimeout(() => setDebounced(value), delay);
+    return () => clearTimeout(t);
+  }, [value, delay]);
+  return debounced;
+}
+
 const RTL_THEME = createTheme({ direction: "rtl" });
 
 /** Visual emphasis for the active map tab (disabled when selected matches browser defaults poorly). */
@@ -116,6 +126,10 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
   const [futureRange, setFutureRange] = useState([0, 30]);
   const [futureStart, futureEnd] = futureRange;
   const futureSpanDays = futureEnd - futureStart;
+  const dPastStart = useDebounced(pastStart);
+  const dPastEnd = useDebounced(pastEnd);
+  const dFutureStart = useDebounced(futureStart);
+  const dFutureEnd = useDebounced(futureEnd);
 
   // Source map: show total crime count vs average per day
   const [sourceCountMode, setSourceCountMode] = useState("average"); // "total" | "average"
@@ -178,14 +192,14 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
   const { hoverDaily, hoverDailyLoading, canShowHoverData } = useHoverDailySeries({hover, activeMode, secondaryMode, tensorSourceId, model: relationModel, pastEnd, futureStart, futureEnd, anchorDate, dataMode: relationDataMode, forecastAnchorDate, shapHorizon, });
 
   //Model relation counts
-  const { counts: relationCounts, loading: relationLoading, error: relationError } = useModelRelationCounts(activeMode, layer, targetSelectedId, relationModel, relationDataMode);
+  const { counts: relationCounts, loading: relationLoading, error: relationError } = useModelRelationCounts(activeMode, layer, targetSelectedId, relationModel, relationDataMode, dPastStart, dPastEnd, dFutureStart, dFutureEnd);
 
   //Instance relation counts
-  const { counts: instanceRelationCounts, loading: instanceRelationLoading, error: instanceRelationError } = useInstanceRelationCounts(activeMode, targetSelectedId, relationModel, pastEnd, futureStart, futureEnd, relationDataMode);
+  const { counts: instanceRelationCounts, loading: instanceRelationLoading, error: instanceRelationError } = useInstanceRelationCounts(activeMode, targetSelectedId, relationModel, dPastStart, dPastEnd, dFutureStart, dFutureEnd, relationDataMode);
 
   // Instance-level SHAP: target = right map selection, left map shows source attributions
   const { counts: shapCounts, loading: shapLoading, error: shapError, matrix: shapMatrix } = useInstanceShapCounts(
-    activeMode, targetSelectedId, relationModel, forecastAnchorDate, shapHorizon
+  activeMode, instanceSelectedId, relationModel, forecastAnchorDate, shapHorizon, dPastStart, dPastEnd
   );
 
 

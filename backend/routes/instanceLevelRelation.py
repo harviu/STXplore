@@ -23,6 +23,7 @@ def _load_array(model: str) -> np.ndarray:
 def instance_relation(  # type: ignore
     source: int = Query(..., ge=0, le=76, description="Source community index (0...76)"),
     model: str = Query(..., description="Model folder name (e.g. Transformer)"),
+    past_start: int = Query(0, ge=0, le=89, description="Inclusive start index on past axis (0...89)"),
     past_days: int = Query(..., ge=1, le=90, description="Past-day window driven by slider (1...90)"),
     future_days: int = Query(..., ge=1, le=30, description="Exclusive end index on future axis (1...30)"),
     future_start: int = Query(0, ge=0, le=29, description="Inclusive start index on future axis (0...29)"),
@@ -36,7 +37,7 @@ def instance_relation(  # type: ignore
     except RuntimeError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
-    sliced = arr[:past_days, :, future_start:future_days, :]
+    sliced = arr[past_start:past_days, :, future_start:future_days, :]
     instance_matrix = sliced.mean(axis=(0, 2)).astype(np.float32)
     row = instance_matrix[source, :]
     g_min = float(instance_matrix.min())
