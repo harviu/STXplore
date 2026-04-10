@@ -16,6 +16,17 @@ const getMapboxToken = () => import.meta.env.VITE_MAPBOX_ACCESS_TOKEN ?? "";
 
 const LEGEND_TITLE = "Crime count";
 
+/** Max fractional digits for legend bounds when not using the fixed 0–100 MI scale (SHAP, SAGE, error, etc.). */
+const LEGEND_FLOAT_DECIMALS = 3;
+
+function formatLegendEndpoint(value, relationFixedScale) {
+  if (relationFixedScale) return String(Math.round(value));
+  const n = Number(value);
+  if (!Number.isFinite(n)) return String(value);
+  if (Number.isInteger(n) || Math.abs(n - Math.round(n)) < 1e-9) return String(Math.round(n));
+  return String(Number(n.toFixed(LEGEND_FLOAT_DECIMALS)));
+}
+
 // Mapbox style URLs for different base map styles. More styles can be added here as needed.
 const mapStyles = {
   streets: 'mapbox://styles/mapbox/streets-v12',
@@ -99,7 +110,8 @@ function getCount(crimeCounts, id) {
 }
 
 //Adds crime count data to map data
-function buildMergedGeo(geo, crimeCounts, layer, isRelationMap = false, isErrorMap = false) {
+/** @param useFixedRelationScale When true (model-level MI relation), map 0–100. When false, stretch colors from data min/max (crime counts, SAGE, SHAP / instance). */
+function buildMergedGeo(geo, crimeCounts, layer, useFixedRelationScale = false, isErrorMap = false) {
   if (!geo?.features?.length) return { mergedGeo: geo, minCount: 0, maxCount: 1 };
   const hasCounts = hasAnyCounts(crimeCounts);
   const features = geo.features.map((f) => {
@@ -111,8 +123,8 @@ function buildMergedGeo(geo, crimeCounts, layer, isRelationMap = false, isErrorM
     };
   });
   const counts = features.map((f) => f.properties.count);
-  let minCount = isRelationMap ? 0 : (counts.length ? Math.min(...counts) : 0);
-  let maxCount = isRelationMap ? 100 : (counts.length ? Math.max(...counts, 1) : 1);
+  let minCount = useFixedRelationScale ? 0 : (counts.length ? Math.min(...counts) : 0);
+  let maxCount = useFixedRelationScale ? 100 : (counts.length ? Math.max(...counts, 1) : 1);
   if (isErrorMap) { // Set the range to the max abs to scale correctly around zero
     const absMax = Math.max(...counts.map(c => Math.abs(c)), 1);
     minCount = -absMax;
@@ -203,6 +215,8 @@ export default function MapBoxMap({
   onHover = null,
   recenterTrigger = null,
   isRelationMap = false,
+  /** When true with isRelationMap, use data min/max for fill (SHAP); keep relation color stops. */
+  isInstanceShapMap = false,
   isSageMap = false,
   isErrorMap = false,
   loading = false,
@@ -223,6 +237,8 @@ export default function MapBoxMap({
   const onHoverRef = useRef(onHover);
   const selectedIdRef = useRef(selectedId);
   const isRelationMapRef = useRef(isRelationMap);
+  const relationFixedScale = isRelationMap && !isSageMap && !isInstanceShapMap;
+  const relationFixedScaleRef = useRef(relationFixedScale);
   const [mapStyle, setMapStyle] = useState('streets');
   const lastHoverStateRef = useRef(null); 
   
@@ -251,6 +267,9 @@ export default function MapBoxMap({
   useEffect(() => {
     isRelationMapRef.current = isRelationMap;
   }, [isRelationMap]);
+  useEffect(() => {
+    relationFixedScaleRef.current = relationFixedScale;
+  }, [relationFixedScale]);
   useEffect(() => {
   const map = mapRef.current;
   if (!map) return;
@@ -314,8 +333,8 @@ export default function MapBoxMap({
 
 
   const { mergedGeo, minCount, maxCount } = useMemo(
-    () => buildMergedGeo(geo, crimeCounts, layer, isRelationMap && !isSageMap, isErrorMap),
-    [geo, crimeCounts, layer, isRelationMap, isSageMap, isErrorMap]
+    () => buildMergedGeo(geo, crimeCounts, layer, relationFixedScale, isErrorMap),
+    [geo, crimeCounts, layer, relationFixedScale, isErrorMap]
   );
 
   const fillColorPaint = useMemo(
@@ -356,7 +375,13 @@ export default function MapBoxMap({
     map.on("load", () => {
       if (!map.getSource(BOUNDARIES_SOURCE_ID)) {
         const { mergedGeo: initial, minCount: minC, maxCount: maxC } =
-          buildMergedGeo(geoRef.current, crimeCountsRef.current, layerRef.current, isRelationMapRef.current);
+          buildMergedGeo(
+            geoRef.current,
+            crimeCountsRef.current,
+            layerRef.current,
+            relationFixedScaleRef.current,
+            false
+          );
         const paint = getFillColorPaint(
           crimeCountsRef.current,
           minC,
@@ -696,7 +721,8 @@ export default function MapBoxMap({
               }}
             />
             <span style={{ color: "#333" }}>
-              {isRelationMap ? Math.round(low) : low} – {isRelationMap ? Math.round(high) : high}
+              {formatLegendEndpoint(low, relationFixedScale)} –{" "}
+              {formatLegendEndpoint(high, relationFixedScale)}
             </span>
           </div>
         ))}

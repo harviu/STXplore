@@ -641,7 +641,6 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
     : activeMode === "relation" 
         ? relationLoading 
         : (shapLoading || instanceSourceLoading);
-
   return (
     <Panel title="Crime Map" fill style={{ minHeight: 0 }}>
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", flex: "1 1 auto", minHeight: 0 }}>
@@ -901,6 +900,7 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
                     onHover={(h) => setHover(h ? { ...h, which: "left" } : null)}
                     recenterTrigger={recenterTrigger}
                     isRelationMap={activeMode === "relation" || activeMode === "instance"}
+                    isInstanceShapMap={activeMode === "instance"}
                     isSageMap={relationDataMode === "sage" && (activeMode === "relation" || activeMode === "instance")}
                     loading={
                       activeMode === "source"
