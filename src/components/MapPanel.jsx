@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState, useEffect, useReducer } from "react";
+import { createPortal } from "react-dom";
 import Panel from "./Panel.jsx";
 import MapBoxMap, { CHICAGO_ZOOM } from "./MapBoxMap.jsx";
 import { BOUNDARY_GEO, getBoundaryId, getBoundaryLabel } from "../lib/boundaries.js";
@@ -661,6 +662,12 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
     : activeMode === "relation" 
         ? relationLoading 
         : (shapLoading || instanceSourceLoading);
+
+  const showMapHoverTooltip =
+    !!hover &&
+    (hover.which === "right" ? !rightMapLoading : true) &&
+    (hover.which === "left" ? !isLoadingLeft : true);
+
   return (
     <Panel title="Crime Map" fill style={{ minHeight: 0 }}>
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", flex: "1 1 auto", minHeight: 0 }}>
@@ -1206,41 +1213,62 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
                     loading={rightMapLoading}
                   />
                 </div>
-              {/* Tooltip */}
-              {hover && (hover.which === "right" ? !rightMapLoading : true) && (hover.which ==="left" ? !isLoadingLeft : true) && (
-                <div
-                  style={{position: "fixed", left: hover.x + 12, top: hover.y + 12, background: "rgba(0,0,0,0.85)", color: "white", padding: "8px 10px", borderRadius: 6, fontSize: 12, pointerEvents: "none", zIndex: 9999, width: "420px", maxWidth: "calc(100vw - 24px)"}}
-                >
-                  <div
-                    style={{
-                      fontWeight: 600,
-                      whiteSpace: "nowrap",
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                  }}
-                  >
-                    {hover.text}
-                  </div>
-                  {canShowHoverData && (
-                    <>
-                      {hoverDailyLoading && (
-                        <div style={{ marginTop: 6, opacity: 0.75 }}>Loading...</div>
-                      )}
-                      {!hoverDailyLoading && hoverDaily && hoverDaily.length > 0 && (
-                        <TooltipMap
-                          days={hoverDaily}
-                          isRelationMap={(activeMode === "relation" || activeMode === "instance")&&hover.which === "left"}
-                          isSageMap={relationDataMode === "sage" && (activeMode === "relation" || activeMode === "instance") && hover.which === "left"}
-                          />
-                      )}
-                    </>
-                  )}
-                </div>
-              )}
             </div>
           </div>
         </div>
       </div>
+      {showMapHoverTooltip &&
+        createPortal(
+          <div
+            style={{
+              position: "fixed",
+              left: hover.x + 12,
+              top: hover.y + 12,
+              background: "rgba(0,0,0,0.85)",
+              color: "white",
+              padding: "8px 10px",
+              borderRadius: 6,
+              fontSize: 12,
+              pointerEvents: "none",
+              /* Above side column + header; below AppHeaderHelp modal (z-index 2000) */
+              zIndex: 1500,
+              width: "420px",
+              maxWidth: "calc(100vw - 24px)",
+            }}
+          >
+            <div
+              style={{
+                fontWeight: 600,
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+              }}
+            >
+              {hover.text}
+            </div>
+            {canShowHoverData && (
+              <>
+                {hoverDailyLoading && (
+                  <div style={{ marginTop: 6, opacity: 0.75 }}>Loading...</div>
+                )}
+                {!hoverDailyLoading && hoverDaily && hoverDaily.length > 0 && (
+                  <TooltipMap
+                    days={hoverDaily}
+                    isRelationMap={
+                      (activeMode === "relation" || activeMode === "instance") && hover.which === "left"
+                    }
+                    isSageMap={
+                      relationDataMode === "sage" &&
+                      (activeMode === "relation" || activeMode === "instance") &&
+                      hover.which === "left"
+                    }
+                  />
+                )}
+              </>
+            )}
+          </div>,
+          document.body
+        )}
     </Panel>
   );
 }
