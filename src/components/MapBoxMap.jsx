@@ -114,8 +114,6 @@ function getLegendStepsDiverging(minCount, maxCount, stops, midValue = 0, deadba
     steps[0] = { ...steps[0], low: 0, excludeLow: true };
     steps.unshift({ color: "#ffffff", low: 0, high: 0, isZero: true });
   }
-  console.log('colors:', colors, 'boundaries:', boundaries);
-  console.log('steps:', JSON.stringify(steps.map(s => ({ color: s.color, low: s.low, high: s.high }))));
   return steps;
 }
 
