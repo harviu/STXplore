@@ -32,26 +32,11 @@ def _load_array(model: str) -> np.ndarray:
     return arr
 
 
-def _normalize_signed(row: np.ndarray, matrix: np.ndarray) -> np.ndarray:
-    """Normalize a row to [-100, 100] using the global abs-max of the full matrix.
-    
-    This preserves the sign and relative magnitude of SAGE values:
-    - Positive values (source increases target crime) map to (0, 100]
-    - Negative values (source suppresses target crime) map to [-100, 0)
-    - Zero means no influence
-    """
-    abs_max = float(np.abs(matrix).max())
-    if abs_max <= 0:
-        return np.zeros_like(row, dtype=np.float32)
-    return ((row / abs_max) * 100.0).astype(np.float32)
-
-
 @router.get("/model_level_sage")
 def model_level_sage(  # type: ignore
     source: Optional[int] = Query(None, ge=0, le=76, description="Source community index (0...76)"),
     target: Optional[int] = Query(None, ge=0, le=76, description="Target community index (0...76)"),
     model: str = Query(..., description="Model folder name (e.g. Transformer)"),
-    normalize: bool = Query(True, description="Normalize row to [-100, 100] using abs-max"),
     past_start: int = Query(0, ge=0, le=89),
     past_days: int = Query(90, ge=1, le=90),
     future_start: int = Query(0, ge=0, le=29),
@@ -80,10 +65,7 @@ def model_level_sage(  # type: ignore
     matrix = sliced.mean(axis=(0, 2)).astype(np.float32)
     row = matrix[source, :] if source is not None else matrix[:, target]
 
-    if normalize:
-        row = _normalize_signed(row, matrix)
-
-    return {"source": source, "targets": row.tolist(), "normalized": normalize, "model": model}
+    return {"source": source, "targets": row.tolist(), "model": model}
 
 
 @router.get("/instance_level_sage")
@@ -115,12 +97,10 @@ def instance_level_sage(  # type: ignore
     # Average over time axes -> (77, 77) instance-specific matrix
     instance_matrix = sliced.mean(axis=(0, 2)).astype(np.float32)
     row = instance_matrix[source, :]
-    row = _normalize_signed(row, instance_matrix)
 
     return {
         "source": source,
         "targets": row.tolist(),
-        "normalized": True,
         "past_days": past_days,
         "future_days": future_days,
         "future_start": future_start,

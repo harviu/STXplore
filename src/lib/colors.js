@@ -29,13 +29,12 @@ export const RELATION_STOPS = [
  * Positive = source community amplifies target crime prediction.
  */
 export const SAGE_STOPS = [
-  "#1a9850", // strong green - highly suppressive
+  "#1a9850",
   "#66bd63",
   "#a6d96a",
-  "#ffffff", // white - no influence (zero)
-  "#fdae61",
+  "#fee08b",
   "#f46d43",
-  "#d73027", // strong red - highly amplifying
+  "#d73027",
 ];
 
 export const ERROR_STOPS = [

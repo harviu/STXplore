@@ -19,6 +19,7 @@ import { responseToCounts } from "../lib/crimeAggregates.js";
 import { initialMapFaces, mapFacesReducer } from "../lib/mapFacesReducer.js";
 import { useInstanceShapCounts } from "../hooks/useInstanceShapCounts.js";
 import { active } from "d3";
+import { useValueBounds } from "../hooks/useValueBounds.js";
 
 // Function to prevent so many api calls, this will only call the api after the user has stopped changing the slider for 150ms
 function useDebounced(value, delay = 150) {
@@ -147,6 +148,8 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
   const [forecastModel, setForecastModel] = useState(FORECAST_MODEL_OPTIONS[0]);
 
   const [relationModel, setRelationModel] = useState(FORECAST_MODEL_OPTIONS[0]);
+
+  const { sageBounds, miBounds } = useValueBounds(relationModel);
 
   // "mi" = mutual information (ground truth from data)
   // "sage" = model attribution (what the model learned to pay attention to)
@@ -917,7 +920,7 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
                               ? `SHAP Attribution (horizon ${shapHorizon})`
                               : "Select a community on the Predicted map"
                           : relationDataMode === "sage"
-                            ? "SAGE (red=suppressive, green=amplifying)"
+                            ? "SAGE (green=suppressive, red=amplifying)"
                             : "Model Relation Weight"
                     }
                     layer={layer}
@@ -928,7 +931,12 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
                     recenterTrigger={recenterTrigger}
                     isRelationMap={activeMode === "relation" || activeMode === "instance"}
                     isInstanceShapMap={activeMode === "instance"}
-                    isSageMap={relationDataMode === "sage" && (activeMode === "relation" || activeMode === "instance")}
+                    isSageMap={
+                      (relationDataMode === "sage" && (activeMode === "relation" || activeMode === "instance"))
+                      || activeMode === "instance" // SHAP is also signed/diverging with 0=white
+                    }
+                    sageBounds={sageBounds}
+                    miBounds={miBounds}
                     loading={
                       activeMode === "source"
                         ? leftTotalsLoading
@@ -1258,9 +1266,9 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
                       (activeMode === "relation" || activeMode === "instance") && hover.which === "left"
                     }
                     isSageMap={
-                      relationDataMode === "sage" &&
-                      (activeMode === "relation" || activeMode === "instance") &&
-                      hover.which === "left"
+                      ((relationDataMode === "sage" && (activeMode === "relation" || activeMode === "instance"))
+                      || activeMode === "instance")
+                      && hover.which === "left"
                     }
                   />
                 )}

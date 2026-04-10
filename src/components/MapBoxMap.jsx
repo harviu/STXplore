@@ -19,12 +19,11 @@ const LEGEND_TITLE = "Crime count";
 /** Max fractional digits for legend bounds when not using the fixed 0–100 MI scale (SHAP, SAGE, error, etc.). */
 const LEGEND_FLOAT_DECIMALS = 3;
 
-function formatLegendEndpoint(value, relationFixedScale) {
-  if (relationFixedScale) return String(Math.round(value));
+function formatLegendEndpoint(value) {
   const n = Number(value);
   if (!Number.isFinite(n)) return String(value);
   if (Number.isInteger(n) || Math.abs(n - Math.round(n)) < 1e-9) return String(Math.round(n));
-  return String(Number(n.toFixed(LEGEND_FLOAT_DECIMALS)));
+  return String(Number(n.toFixed(3)));
 }
 
 // Mapbox style URLs for different base map styles. More styles can be added here as needed.
@@ -42,17 +41,17 @@ function getLegendSteps(minCount, maxCount, stops = CHOROPLETH_STOPS, isRelation
     const low = minCount + i * step;
     const high = minCount + (i + 1) * step;
     return {
-      color,
-      low: !isRelationMap ? Math.round(low) : low,
-      high: !isRelationMap ? Math.round(high) : high,
+    color,
+    low: Math.round(low) === low ? low : Number(low.toFixed(3)),
+    high: Math.round(high) === high ? high : Number(high.toFixed(3)),
     };
   });
 }
 
 function getLegendStepsDiverging(minCount, maxCount, stops, midValue = 0, deadband = 0) {
-  const midIdx = Math.max(0, stops.indexOf("#ffffff"));
-  const negColors = stops.slice(0, Math.max(0, midIdx)); // exclude white
-  const posColors = stops.slice(midIdx + 1); // exclude white
+  const half = Math.floor(stops.length / 2);
+  const negColors = stops.slice(0, half);
+  const posColors = stops.slice(half);
 
   const loMid = midValue - deadband;
   const hiMid = midValue + deadband;
@@ -77,7 +76,7 @@ function getLegendStepsDiverging(minCount, maxCount, stops, midValue = 0, deadba
 
   // Positive side: hiMid -> max split into `posColors.length` bins.
   if (maxCount > hiMid && posColors.length > 0) {
-    for (let i = 1; i <= posColors.length; i++) {
+    for (let i = 0; i <= posColors.length; i++) {
       const t = i / posColors.length;
       boundaries.push(hiMid + t * (maxCount - hiMid));
     }
@@ -89,8 +88,34 @@ function getLegendStepsDiverging(minCount, maxCount, stops, midValue = 0, deadba
     const low = boundaries[i];
     const high = boundaries[i + 1];
     if (low == null || high == null || !(high > low)) continue;
-    steps.push({ color: colors[i], low, high });
+    // When deadband=0, white gets paired with first positive bin — use the next color instead
+    const effectiveColor = (colors[i] === "#ffffff" && low >= 0 && high > 0)
+      ? (colors[i + 1] ?? posColors[0])
+      : colors[i];
+    steps.push({ color: effectiveColor, low, high });
   }
+
+  // Insert zero entry only between negative and positive, 
+  // and trim adjacent steps to not overlap with 0
+  const firstPosIdx = steps.findIndex(s => s.low >= 0);
+  const lastNegIdx = firstPosIdx > 0 ? firstPosIdx - 1 : steps.findLastIndex(s => s.high <= 0);
+
+  if (firstPosIdx > 0 && lastNegIdx >= 0) {
+    // Both sides exist — insert 0 between them
+    steps[lastNegIdx] = { ...steps[lastNegIdx], high: 0, excludeHigh: true };
+    steps[firstPosIdx] = { ...steps[firstPosIdx], excludeLow: true };
+    steps.splice(firstPosIdx, 0, { color: "#ffffff", low: 0, high: 0, isZero: true });
+  } else if (firstPosIdx === -1 && lastNegIdx >= 0) {
+    // Only negative values — append 0 at the end
+    steps[lastNegIdx] = { ...steps[lastNegIdx], high: 0, excludeHigh: true };
+    steps.push({ color: "#ffffff", low: 0, high: 0, isZero: true });
+  } else if (firstPosIdx === 0) {
+    // Only positive values — prepend 0 at the start
+    steps[0] = { ...steps[0], low: 0, excludeLow: true };
+    steps.unshift({ color: "#ffffff", low: 0, high: 0, isZero: true });
+  }
+  console.log('colors:', colors, 'boundaries:', boundaries);
+  console.log('steps:', JSON.stringify(steps.map(s => ({ color: s.color, low: s.low, high: s.high }))));
   return steps;
 }
 
@@ -123,8 +148,8 @@ function buildMergedGeo(geo, crimeCounts, layer, useFixedRelationScale = false, 
     };
   });
   const counts = features.map((f) => f.properties.count);
-  let minCount = useFixedRelationScale ? 0 : (counts.length ? Math.min(...counts) : 0);
-  let maxCount = useFixedRelationScale ? 100 : (counts.length ? Math.max(...counts, 1) : 1);
+  let minCount = counts.length ? Math.min(...counts) : 0;
+  let maxCount = counts.length ? Math.max(...counts) : 1;
   if (isErrorMap) { // Set the range to the max abs to scale correctly around zero
     const absMax = Math.max(...counts.map(c => Math.abs(c)), 1);
     minCount = -absMax;
@@ -153,9 +178,9 @@ function getFillColorPaint(
     const deadband = Math.max(0, Number(divergingDeadband) || 0);
     const loMid = mid - deadband;
     const hiMid = mid + deadband;
-    const midIdx = Math.max(0, stops.indexOf("#ffffff"));
-    const negStops = stops.slice(0, midIdx + 1);
-    const posStops = stops.slice(midIdx);
+    const half = Math.floor(stops.length / 2);
+    const negStops = [...stops.slice(0, half), "#ffffff"];
+    const posStops = ["#ffffff", ...stops.slice(half)];
     const stopsArray = [];
 
     if (minCount < loMid) {
@@ -219,6 +244,8 @@ export default function MapBoxMap({
   isInstanceShapMap = false,
   isSageMap = false,
   isErrorMap = false,
+  sageBounds = null,
+  miBounds = null,
   loading = false,
 }) {
   // SAGE uses a signed diverging scale (red=suppressive, white=zero, green=amplifying).
@@ -331,17 +358,19 @@ export default function MapBoxMap({
     return () => { if (loadingHideTimerRef.current) clearTimeout(loadingHideTimerRef.current); };
   }, [loading])
 
+const { mergedGeo, minCount: dataMin, maxCount: dataMax } = useMemo(
+  () => buildMergedGeo(geo, crimeCounts, layer, isRelationMap && !isSageMap, isErrorMap),
+  [geo, crimeCounts, layer, isRelationMap, isSageMap, isErrorMap]
+);
 
-  const { mergedGeo, minCount, maxCount } = useMemo(
-    () => buildMergedGeo(geo, crimeCounts, layer, relationFixedScale, isErrorMap),
-    [geo, crimeCounts, layer, relationFixedScale, isErrorMap]
-  );
+const maxCount = dataMax;
+const minCount = dataMin;
 
   const fillColorPaint = useMemo(
     () =>
       getFillColorPaint(crimeCounts, minCount, maxCount, stops, {
         divergingMidValue: isSageMap ? 0 : undefined,
-        divergingDeadband: isSageMap ? 1 : 0,
+        divergingDeadband: 0,
       }),
     [crimeCounts, minCount, maxCount, stops, isSageMap]
   );
@@ -349,7 +378,7 @@ export default function MapBoxMap({
   const legendSteps = useMemo(
     () =>
       isSageMap
-        ? getLegendStepsDiverging(minCount, maxCount, stops, 0, 1)
+        ? getLegendStepsDiverging(minCount, maxCount, stops, 0, 0)
         : getLegendSteps(minCount, maxCount, stops, isRelationMap),
     [minCount, maxCount, stops, isRelationMap, isSageMap]
   );
@@ -701,7 +730,7 @@ export default function MapBoxMap({
         >
           {legendTitle}
         </div>
-        {legendSteps.map(({ color, low, high }, i) => (
+        {legendSteps.map(({ color, low, high, isZero, excludeHigh, excludeLow }, i) => (
           <div
             key={i}
             style={{
@@ -721,8 +750,7 @@ export default function MapBoxMap({
               }}
             />
             <span style={{ color: "#333" }}>
-              {formatLegendEndpoint(low, relationFixedScale)} –{" "}
-              {formatLegendEndpoint(high, relationFixedScale)}
+              {isZero ? "0" : `${formatLegendEndpoint(low)} – ${formatLegendEndpoint(high)}`}
             </span>
           </div>
         ))}

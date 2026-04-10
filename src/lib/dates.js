@@ -54,6 +54,9 @@ export function isoRangeDays(startISO, endISO) {
  * @returns {Object} - an object with start and end dates
  */
 export function sourceRange(pastStartOffset, pastEndOffset, anchorISO) {
+  if (!Number.isFinite(pastStartOffset) || !Number.isFinite(pastEndOffset) || !anchorISO) {
+    return { start: null, end: null };
+  }
   const start = addDaysISO(anchorISO, -pastEndOffset);
   const end = addDaysISO(anchorISO, -pastStartOffset);
   return { start, end };

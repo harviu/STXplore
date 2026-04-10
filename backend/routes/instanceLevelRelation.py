@@ -40,14 +40,9 @@ def instance_relation(  # type: ignore
     sliced = arr[past_start:past_days, :, future_start:future_days, :]
     instance_matrix = sliced.mean(axis=(0, 2)).astype(np.float32)
     row = instance_matrix[source, :]
-    g_min = float(instance_matrix.min())
-    g_max = float(instance_matrix.max())
-    g_range = g_max - g_min
-    normalized = np.zeros(77, dtype=np.float32) if g_range <= 0 else ((row - g_min) / g_range) * 100.0
     return {
         "source": source,
-        "targets": normalized.tolist(),
-        "normalized": True,
+        "targets": row.tolist(),
         "past_days": past_days,
         "future_days": future_days,
         "future_start": future_start,

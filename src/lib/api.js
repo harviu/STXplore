@@ -122,4 +122,6 @@ export const api = {
       `/api/instance_level_sage?source=${encodeURIComponent(sourceIdx)}&model=${encodeURIComponent(model)}&past_start=${encodeURIComponent(pastStart)}&past_days=${encodeURIComponent(pastDays)}&future_days=${encodeURIComponent(futureEnd)}&future_start=${encodeURIComponent(futureStart)}`,
       opts
     ),
+
+  valueBounds: (model, opts) => request(`/api/value-bounds?model=${encodeURIComponent(model)}`, opts),
 };

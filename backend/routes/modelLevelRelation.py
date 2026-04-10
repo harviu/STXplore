@@ -24,7 +24,6 @@ def model_relation(
     source: Optional[int] = Query(None, ge=0, le=76),
     target: Optional[int] = Query(None, ge=0, le=76),
     model: str = Query(...),
-    normalize: bool = Query(True),
     past_start: int = Query(0, ge=0, le=89),
     past_days: int = Query(90, ge=1, le=90),
     future_start: int = Query(0, ge=0, le=29),
@@ -44,9 +43,4 @@ def model_relation(
     sliced = arr[past_start:past_days, :, future_start:future_days, :]
     matrix = sliced.mean(axis=(0, 2)).astype(np.float32)
     row = matrix[source, :] if source is not None else matrix[:, target]
-    if normalize:
-        g_min = float(matrix.min())
-        g_max = float(matrix.max())
-        g_range = g_max - g_min
-        row = np.zeros(77, dtype=np.float32) if g_range <= 0 else ((row - g_min) / g_range) * 100.0
-    return {"source": source, "target": target, "targets": row.tolist(), "normalized": normalize, "model": model}
+    return {"source": source, "target": target, "targets": row.tolist(), "model": model}

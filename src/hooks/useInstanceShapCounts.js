@@ -53,7 +53,7 @@ export function useInstanceShapCounts(activeMode, instanceSelectedId, model, for
       const perCommunity = new Array(77).fill(0);
       for (const row of windowedShap) {
         row.values.forEach((v, i) => {
-          perCommunity[i] += Math.abs(v);
+          perCommunity[i] += v;
         });
       }
       // Convert to { "1": val, "2": val, ... } keyed by 1-based community id
