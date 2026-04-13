@@ -1,7 +1,5 @@
 # Python API and local env (frontend is Vite-only on Vercel)
 backend/
-requirements.txt
-.python-version
 .venv/
 venv/
 
