@@ -1,6 +1,7 @@
-import { useEffect, useRef, useMemo, useState } from "react";
+import { useEffect, useId, useRef, useMemo, useState } from "react";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
+import "./MapBoxMap.css";
 import { getBoundaryId, getBoundaryLabel } from "../lib/boundaries.js";
 import { CHOROPLETH_STOPS, RELATION_STOPS, SAGE_STOPS, ERROR_STOPS } from "../lib/colors.js"
 
@@ -262,8 +263,9 @@ export default function MapBoxMap({
   const isRelationMapRef = useRef(isRelationMap);
   const relationFixedScale = isRelationMap && !isSageMap && !isInstanceShapMap;
   const relationFixedScaleRef = useRef(relationFixedScale);
-  const [mapStyle, setMapStyle] = useState('streets');
-  const lastHoverStateRef = useRef(null); 
+  const [mapStyle, setMapStyle] = useState("streets");
+  const lastHoverStateRef = useRef(null);
+  const basemapSelectId = useId();
   
   useEffect(() => {
     onSelectIdRef.current = onSelectId;
@@ -395,7 +397,7 @@ const minCount = dataMin;
       zoom: CHICAGO_ZOOM,
     });
 
-    map.addControl(new mapboxgl.NavigationControl(), "bottom-left");
+    map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), "bottom-left");
 
     map.on("load", () => {
       if (!map.getSource(BOUNDARIES_SOURCE_ID)) {
@@ -703,49 +705,12 @@ const minCount = dataMin;
           pointerEvents: "auto",
         }}
       />
-      <div
-        style={{
-          position: "absolute",
-          top: 10,
-          right: 10,
-          background: "white",
-          borderRadius: 4,
-          boxShadow: "0 1px 4px rgba(0,0,0,0.15)",
-          padding: "10px 12px",
-          fontFamily: "sans-serif",
-          fontSize: 12,
-          pointerEvents: "none",
-        }}
-      >
-        <div
-          style={{
-            fontWeight: 600,
-            marginBottom: 8,
-            color: "#333",
-          }}
-        >
-          {legendTitle}
-        </div>
-        {legendSteps.map(({ color, low, high, isZero, excludeHigh, excludeLow }, i) => (
-          <div
-            key={i}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 8,
-              marginBottom: i < legendSteps.length - 1 ? 4 : 0,
-            }}
-          >
-            <div
-              style={{
-                width: 16,
-                height: 16,
-                backgroundColor: color,
-                borderRadius: 2,
-                flexShrink: 0,
-              }}
-            />
-            <span style={{ color: "#333" }}>
+      <div className="mapboxChrome__legend mapboxChrome__panel">
+        <div className="mapboxChrome__legendTitle">{legendTitle}</div>
+        {legendSteps.map(({ color, low, high, isZero }, i) => (
+          <div key={i} className="mapboxChrome__legendRow">
+            <div className="mapboxChrome__swatch" style={{ backgroundColor: color }} />
+            <span className="mapboxChrome__legendLabel">
               {isZero ? "0" : `${formatLegendEndpoint(low)} – ${formatLegendEndpoint(high)}`}
             </span>
           </div>
@@ -754,57 +719,34 @@ const minCount = dataMin;
       {/* Loading Overlay */}
       {showLoadingOverlay && (
         <div
+          className="mapboxChrome__loading"
           style={{
             position: "absolute",
             inset: 0,
-            background: "rgba(36, 36, 36, 0.75)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            zIndex: 10,
             pointerEvents: "none",
           }}
         >
-          <span style={{ color: "#fff", fontSize: 15, fontWeight: 600, letterSpacing: "0.03em", opacity: 0.9 }}>
-            Loading...
-          </span>
+          <span className="mapboxChrome__loadingText">Loading…</span>
         </div>
       )}
-      {/* Style Selector Dropdown */}
-<div
-  style={{
-    position: "absolute",
-    top: 10,
-    left: 10,
-    background: "white",
-    borderRadius: 4,
-    boxShadow: "0 1px 4px rgba(0,0,0,0.15)",
-    padding: "8px",
-    pointerEvents: "auto",
-    zIndex: 1,
-  }}
->
-  <select
-    id="map-style-select"
-    value={mapStyle}
-    onChange={(e) => setMapStyle(e.target.value)}
-    style={{
-      padding: "4px 8px",
-      borderRadius: "4px",
-      border: "1px solid #ccc",
-      fontSize: "13px",
-      cursor: "pointer",
-      outline: "none",
-      width: "120px"
-    }}
-  >
-    {Object.keys(mapStyles).map((styleKey) => (
-      <option key={styleKey} value={styleKey}>
-        {styleKey.charAt(0).toUpperCase() + styleKey.slice(1)}
-      </option>
-    ))}
-  </select>
-</div>
+      <div className="mapboxChrome__styleWrap mapboxChrome__panel">
+        <select
+          id={basemapSelectId}
+          className="mapboxChrome__select"
+          value={mapStyle}
+          onChange={(e) => setMapStyle(e.target.value)}
+          aria-label="Basemap style"
+        >
+          {Object.keys(mapStyles).map((styleKey) => (
+            <option key={styleKey} value={styleKey}>
+              {styleKey.charAt(0).toUpperCase() + styleKey.slice(1)}
+            </option>
+          ))}
+        </select>
+      </div>
     </div>
   );
 }

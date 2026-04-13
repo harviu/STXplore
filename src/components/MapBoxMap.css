@@ -1,0 +1,121 @@
+/* In-map overlays: match app glass tokens; compact footprint */
+
+.mapboxChrome__panel {
+  position: absolute;
+  z-index: 1;
+  background: var(--color-surface-popover);
+  border: 1px solid var(--color-panel-border);
+  border-radius: 10px;
+  box-shadow: var(--shadow-panel);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+}
+
+.mapboxChrome__legend {
+  top: var(--space-2);
+  right: var(--space-2);
+  max-width: min(200px, 42vw);
+  padding: var(--space-2) var(--space-3);
+  pointer-events: none;
+}
+
+.mapboxChrome__legendTitle {
+  font-weight: 650;
+  margin: 0 0 var(--space-2) 0;
+  color: var(--color-text);
+  font-size: var(--text-xs);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  line-height: var(--leading-tight);
+}
+
+.mapboxChrome__legendRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: 2px;
+}
+
+.mapboxChrome__legendRow:last-child {
+  margin-bottom: 0;
+}
+
+.mapboxChrome__swatch {
+  width: 11px;
+  height: 11px;
+  border-radius: 2px;
+  flex-shrink: 0;
+  border: 1px solid var(--color-border-faint);
+}
+
+.mapboxChrome__legendLabel {
+  color: var(--color-text-muted);
+  line-height: 1.25;
+}
+
+.mapboxChrome__styleWrap {
+  top: var(--space-2);
+  left: var(--space-2);
+  padding: var(--space-1) var(--space-2);
+  pointer-events: auto;
+}
+
+.mapboxChrome__select {
+  display: block;
+  width: 100%;
+  min-width: 6.75rem;
+  max-width: 7.5rem;
+  padding: var(--space-1) var(--space-2);
+  border-radius: 8px;
+  border: 1px solid var(--color-border-strong);
+  background: var(--color-surface-input);
+  color: var(--color-text);
+  font-size: var(--text-xs);
+  font-family: inherit;
+  font-weight: 500;
+  cursor: pointer;
+  outline: none;
+}
+
+.mapboxChrome__select:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 1px;
+}
+
+.mapboxChrome__loading {
+  z-index: 10;
+  background: var(--color-scrim);
+}
+
+.mapboxChrome__loadingText {
+  color: var(--color-text);
+  font-size: var(--text-sm);
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  opacity: 0.95;
+}
+
+/* Align default Mapbox controls with in-map chrome */
+.mapboxgl-ctrl-bottom-left {
+  margin: 0 0 var(--space-2) var(--space-2) !important;
+}
+
+/* Light control surface so Mapbox’s default icon glyphs stay readable */
+.mapboxgl-ctrl-group {
+  border-radius: 10px !important;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12) !important;
+  border: 1px solid rgba(0, 0, 0, 0.1) !important;
+  background: rgba(252, 252, 254, 0.97) !important;
+}
+
+.mapboxgl-ctrl-group button {
+  width: 28px !important;
+  height: 28px !important;
+}
+
+.mapboxgl-ctrl-group button + button {
+  border-top: 1px solid rgba(0, 0, 0, 0.08) !important;
+}

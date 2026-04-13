@@ -1,22 +1,16 @@
-/* Dark glass panels with elevation — tokens scoped for reuse */
+/* Glass panels — colors from global tokens in index.css */
 .panel {
   --panel-radius: 12px;
-  --panel-pad: 12px;
-  --panel-bg: rgba(255, 255, 255, 0.045);
-  --panel-border: rgba(255, 255, 255, 0.2);
-  --panel-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.07) inset,
-    0 2px 4px rgba(0, 0, 0, 0.22),
-    0 12px 32px rgba(0, 0, 0, 0.38);
+  --panel-pad: var(--space-4);
 
   box-sizing: border-box;
-  border: 1px solid var(--panel-border);
+  border: 1px solid var(--color-panel-border);
   border-radius: var(--panel-radius);
-  background: var(--panel-bg);
+  background: var(--color-panel-bg);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   padding: var(--panel-pad);
-  box-shadow: var(--panel-shadow);
+  box-shadow: var(--shadow-panel);
 }
 
 .panel--fill {
@@ -27,16 +21,5 @@
 }
 
 .panel__title {
-  margin: 0 0 10px 0;
-}
-
-@media (prefers-color-scheme: light) {
-  .panel {
-    --panel-bg: rgba(255, 255, 255, 0.72);
-    --panel-border: rgba(0, 0, 0, 0.1);
-    --panel-shadow:
-      0 1px 0 rgba(255, 255, 255, 0.85) inset,
-      0 2px 6px rgba(0, 0, 0, 0.06),
-      0 10px 28px rgba(0, 0, 0, 0.1);
-  }
+  margin: 0 0 var(--space-3) 0;
 }

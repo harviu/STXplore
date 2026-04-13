@@ -1,4 +1,4 @@
-import { use, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import "./App.css";
 
 import MapPanel from "./components/MapPanel.jsx";
@@ -92,8 +92,16 @@ export default function App() {
   return (
     <div className="app">
       <header className="appHeader">
-        <h1>CrimeSight AI</h1>
-        <AppHeaderHelp />
+        <div className="appHeader__brand">
+          <span className="appHeader__mark" aria-hidden="true" />
+          <div className="appHeader__titles">
+            <h1 className="appHeader__title">CrimeSight AI</h1>
+            <p className="appHeader__tagline">Chicago crime maps and model exploration</p>
+          </div>
+        </div>
+        <div className="appHeader__actions">
+          <AppHeaderHelp />
+        </div>
       </header>
 
       <main className="appMain">

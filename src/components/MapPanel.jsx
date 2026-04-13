@@ -40,7 +40,7 @@ const RTL_THEME = createTheme({
 /** Visual emphasis for the active map tab (disabled when selected matches browser defaults poorly). */
 function mapTabButtonStyle(selected, extra = {}) {
   const base = {
-    padding: "6px 12px",
+    padding: "var(--space-2) var(--space-3)",
     borderRadius: 8,
     cursor: "pointer",
     fontFamily: "inherit",
@@ -53,15 +53,15 @@ function mapTabButtonStyle(selected, extra = {}) {
   if (selected) {
     return {
       ...base,
-      background: "rgba(100, 115, 255, 0.42)",
-      border: "2px solid rgb(155, 165, 255)",
-      boxShadow: "0 0 14px rgba(120, 130, 255, 0.4)",
+      background: "var(--color-accent-soft)",
+      border: "2px solid var(--color-accent-border)",
+      boxShadow: "0 0 14px var(--color-accent-glow)",
     };
   }
   return {
     ...base,
-    background: "rgba(255, 255, 255, 0.07)",
-    border: "1px solid rgba(255, 255, 255, 0.22)",
+    background: "var(--color-surface-ghost)",
+    border: "1px solid var(--color-border)",
   };
 }
 
@@ -198,7 +198,7 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
   const { hoverDaily, hoverDailyLoading, canShowHoverData } = useHoverDailySeries({hover, activeMode, secondaryMode, tensorSourceId, model: relationModel, pastStart, pastEnd, futureStart, futureEnd, anchorDate, dataMode: relationDataMode, forecastAnchorDate, shapHorizon, });
 
   //Model relation counts
-  const { counts: relationCounts, loading: relationLoading, error: relationError } = useModelRelationCounts(activeMode, layer, targetSelectedId, relationModel, relationDataMode, dPastStart, dPastEnd, dFutureStart, dFutureEnd);
+  const { counts: relationCounts, loading: relationLoading } = useModelRelationCounts(activeMode, layer, targetSelectedId, relationModel, relationDataMode, dPastStart, dPastEnd, dFutureStart, dFutureEnd);
 
   //Instance relation counts
   const { counts: instanceRelationCounts, loading: instanceRelationLoading, error: instanceRelationError } = useInstanceRelationCounts(activeMode, targetSelectedId, relationModel, dPastStart, dPastEnd, dFutureStart, dFutureEnd, relationDataMode);
@@ -674,22 +674,22 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", flex: "1 1 auto", minHeight: 0 }}>
         {/* Top toolbar: Anchor date + Recenter */}
         <div
-          style={{display: "flex", flexWrap: "wrap", alignItems: "center", gap: 16, rowGap: 10, width: "100%", padding: "10px 0 6px", justifyContent: "center"}}
+          style={{display: "flex", flexWrap: "wrap", alignItems: "center", gap: "var(--space-4)", rowGap: "var(--space-2)", width: "100%", padding: "var(--space-3) 0 var(--space-2)", justifyContent: "center"}}
         >
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3)" }}>
             <strong style={{ fontWeight: 600, opacity: 0.95 }}>Anchor date</strong>
             <div ref={calendarRef} style={{ position: "relative" }}>
               <button
                 type="button"
                 onClick={() => setCalendarOpen((open) => !open)}
                 title="Pick start date (anchor for source/target days)"
-                style={{padding: "6px 14px", cursor: "pointer", border: "1px solid rgba(255,255,255,0.25)", borderRadius: 8, background: "rgba(255,255,255,0.1)", color: "inherit", fontSize: "inherit", fontWeight: 500, minWidth: 120}}
+                style={{padding: "6px 14px", cursor: "pointer", border: "1px solid var(--color-border-strong)", borderRadius: 8, background: "var(--color-surface-raised)", color: "inherit", fontSize: "inherit", fontWeight: 500, minWidth: 120}}
               >
                 {anchorDate?.slice(0, 10) ?? anchorDate}
               </button>
               {calendarOpen && (
                 <div
-                  style={{position: "absolute", top: "100%", left: 0, marginTop: 6, zIndex: 1000, background: "var(--panel-bg, #1e1e1e)", borderRadius: 8, boxShadow: "0 4px 20px rgba(0,0,0,0.4)", padding: 8}}
+                  style={{position: "absolute", top: "100%", left: 0, marginTop: 6, zIndex: 1000, background: "var(--color-surface-popover)", border: "1px solid var(--color-panel-border)", borderRadius: 8, boxShadow: "0 4px 20px var(--color-shadow-drop)", padding: 8}}
                 >
                   <DayPicker
                     mode="single"
@@ -718,34 +718,31 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
           </div>
 
           <span
-            style={{width: 1, height: 22, background: "rgba(255,255,255,0.2)", borderRadius: 1, flexShrink: 0}}
+            style={{width: 1, height: 22, background: "var(--color-separator)", borderRadius: 1, flexShrink: 0}}
             aria-hidden
           />
 
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3)" }}>
             <strong style={{ fontWeight: 600, opacity: 0.95 }}>Recenter</strong>
             <button
               type="button"
               onClick={() => setRecenterTrigger((t) => t + 1)}
               title={`Recenter both maps to Chicago (zoom ${CHICAGO_ZOOM})`}
-              style={{padding: "6px 14px", cursor: "pointer", border: "1px solid rgba(255,255,255,0.25)", borderRadius: 8, background: "rgba(255,255,255,0.1)", color: "inherit", fontSize: "inherit", fontWeight: 500}}
+              style={{padding: "6px 14px", cursor: "pointer", border: "1px solid var(--color-border-strong)", borderRadius: 8, background: "var(--color-surface-raised)", color: "inherit", fontSize: "inherit", fontWeight: 500}}
             >
               Recenter maps
             </button>
           </div>
         </div>
 
-        <hr style={{ width: "100%", margin: "12px 0", opacity: 0.8 }} />
+        <hr style={{ width: "100%", margin: "var(--space-3) 0", border: "none", height: 1, background: "var(--color-border-muted)" }} />
 
         <div style={{ display: "flex", flex: "1 1 auto", flexDirection: "row", width: "100%", height: "100%", flexWrap: "wrap"}}>
           {/* Source/Relation Map */}
-          <div style={{ flex: "1", flexDirection: "column", padding: "1em", display: "flex", alignItems: "center" }}>
+          <div style={{ flex: "1", flexDirection: "column", padding: "var(--space-4)", display: "flex", alignItems: "center" }}>
             {/* Controls */}
-            <div
-              style={{width: "100%", marginTop: 6, marginBottom: 6, minHeight: 25}}
-            />
-            <div style={{ display: "flex", flexDirection: "column", gap: 8, alignItems: "flex-start", width: "100%" }}>
-              <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-2)", alignItems: "flex-start", width: "100%" }}>
+              <div style={{ display: "flex", gap: "var(--space-3)", alignItems: "center", flexWrap: "wrap" }}>
                 <strong>Map:</strong>
                 <button
                   type="button"
@@ -796,7 +793,7 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
                   </button>
               </div>
               {(activeMode === "relation" || activeMode === "instance" || secondaryMode === "target") && (
-                <div style={{ display: "flex", gap: 10, alignItems: "center", fontSize: 15 }}>
+                <div style={{ display: "flex", gap: "var(--space-3)", alignItems: "center", fontSize: 15 }}>
                   <strong>Relation model:</strong>
                   <select
                     value={relationModel}
@@ -805,8 +802,8 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
                     style={{
                       padding: "4px 8px",
                       borderRadius: 6,
-                      border: "1px solid rgba(255,255,255,0.25)",
-                      background: "rgb(68, 68, 68)",
+                      border: "1px solid var(--color-border-strong)",
+                      background: "var(--color-surface-input)",
                       color: "inherit",
                       fontSize: "inherit",
                     }}
@@ -818,12 +815,12 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
                 </div>
               )}
               {activeMode === "instance" && relationTargetCommunityReady && (
-                <div style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 13, opacity: 0.8 }}>
+                <div style={{ display: "flex", gap: "var(--space-3)", alignItems: "center", fontSize: 13, opacity: 0.8 }}>
                   <strong>SHAP horizon:</strong>
                   <span>day {shapHorizon} (slider midpoint)</span>
                 </div>
               )}
-              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              <div style={{ display: "flex", gap: "var(--space-3)", alignItems: "center" }}>
                 <strong>Layer:</strong>
                 <label>
                   <input
@@ -868,7 +865,7 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
               <div
                 style={{
                   display: "flex",
-                  gap: 8,
+                  gap: "var(--space-3)",
                   alignItems: "center",
                   opacity: activeMode === "source" ? 1 : 0.25,
                 }}
@@ -897,7 +894,7 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
               </div>
             </div>
             <div
-              style={{flex: "1 1 auto", minHeight: 0, overflow: "hidden", position: "relative", padding: 12, boxSizing: "border-box", width: "100%", display: "flex", flexDirection: "column", gap: 10}}
+              style={{flex: "1 1 auto", minHeight: 0, overflow: "hidden", position: "relative", padding: "var(--space-2)", boxSizing: "border-box", width: "100%", display: "flex", flexDirection: "column", gap: "var(--space-2)"}}
             >
                 {/* Map area 1*/}
                 <div
@@ -947,13 +944,13 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
             <div style={{ display: "flex", flex: "1 1 auto", flexDirection: "column", width: "100%", height: "10%" }}>
               <div style={{ display: "flex", flex: "1 1 auto", flexDirection: "row", width: "100%", height: "100%", justifyContent: "left" }}>
                 <label htmlFor="pastEnd" style={{ flex: 1 }}>
-                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, width: "100%", height: "100%" }}>
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "var(--space-3)", width: "100%", height: "100%" }}>
                     Source date: {pastEnd} days before start <br/>({anchorDate})
                   </div>
                 </label>
                 <span aria-hidden />
                 <label htmlFor="futureRange" style={{ flex: 1 }}>
-                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, width: "100%", height: "100%" }}>
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "var(--space-3)", width: "100%", height: "100%" }}>
                     <span style={{ alignSelf: "center" }}>
                       Target window: {addDaysISO(anchorDate, futureStart)} – {addDaysISO(anchorDate, futureEnd - 1)}
                       <br />
@@ -984,14 +981,14 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
                       max={90}
                       sx={{
                         width: "100%",
-                        "& .MuiSlider-rail": { height: 10, borderRadius: 0, backgroundColor: "rgb(255, 255, 255)", strokeWidth: 2 },
-                        "& .MuiSlider-track": { height: 10, borderRadius: 0, backgroundColor: "rgb(100, 100, 255)", strokeWidth: 2 },
+                        "& .MuiSlider-rail": { height: 10, borderRadius: 0, backgroundColor: "var(--color-slider-rail)", strokeWidth: 2 },
+                        "& .MuiSlider-track": { height: 10, borderRadius: 0, backgroundColor: "var(--color-slider-track)", strokeWidth: 2 },
                         "& .MuiSlider-thumb": {
                           width: 14,
                           height: 26,
                           borderRadius: 9999,
                           backgroundColor: "white",
-                          border: "3px solid rgb(92, 92, 92)",
+                          border: "3px solid var(--color-slider-thumb-border)",
                           marginRight: -1.7,
                         },
                       }}
@@ -1003,8 +1000,8 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
                   title={`Anchor date: ${anchorDate}`}
                   aria-hidden
                 >
-                  <div style={{ width: 4, minHeight: 32, backgroundColor: "rgb(92, 92, 92)", borderRadius: 2 }} />
-                  <span style={{ fontSize: 10, color: "rgb(92, 92, 92)", marginTop: 2 }} />
+                  <div style={{ width: 4, minHeight: 32, backgroundColor: "var(--color-slider-thumb-border)", borderRadius: 2 }} />
+                  <span style={{ fontSize: 10, color: "var(--color-slider-thumb-border)", marginTop: 2 }} />
                 </div>
                 <Slider
                   id="futureRange"
@@ -1027,14 +1024,14 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
                   max={30}
                   sx={{
                     width: "100%",
-                    "& .MuiSlider-rail": { height: 10, borderRadius: 0, backgroundColor: "rgb(255, 255, 255)" },
-                    "& .MuiSlider-track": { height: 10, borderRadius: 0, backgroundColor: "rgb(100, 100, 255)" },
+                    "& .MuiSlider-rail": { height: 10, borderRadius: 0, backgroundColor: "var(--color-slider-rail)" },
+                    "& .MuiSlider-track": { height: 10, borderRadius: 0, backgroundColor: "var(--color-slider-track)" },
                     "& .MuiSlider-thumb": {
                       width: 14,
                       height: 26,
                       borderRadius: 9999,
                       backgroundColor: "white",
-                      border: "3px solid rgb(92, 92, 92)",
+                      border: "3px solid var(--color-slider-thumb-border)",
                     },
                   }}
                 />
@@ -1043,15 +1040,10 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
           </div>
 
           {/* Target Map */}
-          <div style={{ flex: "1", flexDirection: "column", padding: "1em", display: "flex", alignItems: "center" }}>
+          <div style={{ flex: "1", flexDirection: "column", padding: "var(--space-4)", display: "flex", alignItems: "center" }}>
             {/* Controls */}
-            <div style={{ display: "flex", flexDirection: "column", gap: 8, alignItems: "flex-start", width: "100%" }}>
-              {/* Model Level Relation Messages */}
-                <div
-                  style={{width: "100%", marginTop: 6, marginBottom: 6, minHeight: 18, fontSize: 13, fontWeight: 500, color: relationError ? "#ff6b6b" : "#ccc"}}
-                >
-                </div>
-              <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-2)", alignItems: "flex-start", width: "100%" }}>
+              <div style={{ display: "flex", gap: "var(--space-3)", alignItems: "center", flexWrap: "wrap" }}>
                 <strong>Map:</strong>
                 <button
                   type="button"
@@ -1061,7 +1053,7 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
                 >
                   Predicted
                 </button>
-                <div style={{ display: "flex", gap: 8, alignItems: "center", opacity: canShowActualError ? 1 : 0.25 }}>
+                <div style={{ display: "flex", gap: "var(--space-3)", alignItems: "center", opacity: canShowActualError ? 1 : 0.25 }}>
                   <button
                     type="button"
                     onClick={() => setSecondaryMode("actual")}
@@ -1071,7 +1063,7 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
                     Actual
                   </button>
                 </div>
-                <div style={{ display: "flex", gap: 8, alignItems: "center", opacity: canShowActualError ? 1 : 0.25 }}>
+                <div style={{ display: "flex", gap: "var(--space-3)", alignItems: "center", opacity: canShowActualError ? 1 : 0.25 }}>
                   <button
                     type="button"
                     onClick={() => setSecondaryMode("error")}
@@ -1087,7 +1079,7 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
                   style={{
                     display: "flex",
                     flexWrap: "wrap",
-                    gap: 10,
+                    gap: "var(--space-3)",
                     alignItems: "center",
                     width: "100%",
                     fontSize: 15,
@@ -1101,8 +1093,8 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
                     style={{
                       padding: "4px 8px",
                       borderRadius: 6,
-                      border: "1px solid rgba(255,255,255,0.25)",
-                      background: "rgb(68, 68, 68)",
+                      border: "1px solid var(--color-border-strong)",
+                      background: "var(--color-surface-input)",
                       color: "inherit",
                       fontSize: "inherit",
                     }}
@@ -1115,25 +1107,25 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
                   </select>
                   {forecastErrorText && targetForecastEligible ? (
                     <span
-                      style={{ color: "#ff6b6b", fontSize: 11, maxWidth: "100%", wordBreak: "break-word" }}
+                      style={{ color: "var(--color-danger-strong)", fontSize: 11, maxWidth: "100%", wordBreak: "break-word" }}
                       title={forecastErrorText}
                     >
                       {forecastErrorText.length > 160 ? `${forecastErrorText.slice(0, 160)}…` : forecastErrorText}
                     </span>
                   ) : null}
                   {anchorIsClamped && (
-                    <span style={{ fontSize: 15.5, color: "#f0a500" }}>
+                    <span style={{ fontSize: 15.5, color: "var(--color-warning)" }}>
                       Predicted Anchor Date: {forecastAnchorDate} (model max)
                     </span>
                   )}
                 </div>
               )}
               {activeMode === "instance" && relationTargetCommunityReady && (
-                <div style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 12, opacity: 0.0, cursor: 'default', userSelect: 'none' }}>
+                <div style={{ display: "flex", gap: "var(--space-3)", alignItems: "center", fontSize: 12, opacity: 0.0, cursor: 'default', userSelect: 'none' }}>
                   <strong>SHAP horizon</strong>
                 </div>
               )}
-              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              <div style={{ display: "flex", gap: "var(--space-3)", alignItems: "center" }}>
                 <strong>Layer:</strong>
                 <label>
                   <input
@@ -1175,7 +1167,7 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
                 </label>
               </div>
               {/* Right map: total vs average preference (averaging applies when Actual map is active) */}
-              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              <div style={{ display: "flex", gap: "var(--space-3)", alignItems: "center" }}>
                 <strong>Count:</strong>
                 <label>
                   <input
@@ -1198,7 +1190,7 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
               </div>
             </div>
             <div
-              style={{flex: "1 1 auto", minHeight: 0, overflow: "hidden", position: "relative", padding: 12, boxSizing: "border-box", width: "100%", display: "flex", flexDirection: "column", gap: 10}}
+              style={{flex: "1 1 auto", minHeight: 0, overflow: "hidden", position: "relative", padding: "var(--space-2)", boxSizing: "border-box", width: "100%", display: "flex", flexDirection: "column", gap: "var(--space-2)"}}
             >
                 {/* Map area 2*/}
                 <div
@@ -1228,7 +1220,7 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
               position: "fixed",
               left: hover.x + 12,
               top: hover.y + 12,
-              background: "rgba(0,0,0,0.85)",
+              background: "var(--color-tooltip-bg)",
               color: "white",
               padding: "8px 10px",
               borderRadius: 6,

@@ -37,7 +37,7 @@ export default function AppHeaderHelp() {
               position: "fixed",
               inset: 0,
               zIndex: 2000,
-              background: "rgba(0,0,0,0.55)",
+              background: "var(--color-scrim)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
@@ -54,10 +54,10 @@ export default function AppHeaderHelp() {
                 width: "100%",
                 maxHeight: "min(85vh, 680px)",
                 overflow: "auto",
-                background: "var(--panel-bg, #1e1e1e)",
+                background: "var(--color-surface-popover)",
                 borderRadius: 12,
-                boxShadow: "0 8px 40px rgba(0,0,0,0.5)",
-                border: "1px solid rgba(255,255,255,0.15)",
+                boxShadow: "var(--shadow-modal)",
+                border: "1px solid var(--color-panel-border)",
                 padding: "18px 20px 20px",
               }}
               onClick={(e) => e.stopPropagation()}
@@ -71,9 +71,9 @@ export default function AppHeaderHelp() {
                   marginBottom: 14,
                   position: "sticky",
                   top: 0,
-                  background: "var(--panel-bg, #1e1e1e)",
+                  background: "var(--color-surface-popover)",
                   paddingBottom: 8,
-                  borderBottom: "1px solid rgba(255,255,255,0.1)",
+                  borderBottom: "1px solid var(--color-border-subtle)",
                 }}
               >
                 <h2 id="map-help-title" style={{ margin: 0, fontSize: "1.05rem", fontWeight: 600 }}>
@@ -85,9 +85,9 @@ export default function AppHeaderHelp() {
                   style={{
                     padding: "6px 12px",
                     cursor: "pointer",
-                    border: "1px solid rgba(255,255,255,0.25)",
+                    border: "1px solid var(--color-border-strong)",
                     borderRadius: 8,
-                    background: "rgba(255,255,255,0.1)",
+                    background: "var(--color-surface-raised)",
                     color: "inherit",
                     fontSize: "0.9rem",
                     fontWeight: 500,

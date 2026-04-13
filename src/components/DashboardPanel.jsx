@@ -161,7 +161,7 @@ export default function DashboardPanel({ mode, selection, inactiveMode, inactive
             Select a dendrogram branch on the community axis to see temporal crime series.
           </p>
         ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: 10, paddingBottom: 12 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-3)", paddingBottom: "var(--space-4)" }}>
             {communitySeriesList.map(({ id, series }) => {
               if (id.length < 3){
                 return (
@@ -176,7 +176,7 @@ export default function DashboardPanel({ mode, selection, inactiveMode, inactive
         )}
       </div>
       {/* Cluster Heatmaps */}
-      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", width: "100%", gap: 16 }}>
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", width: "100%", gap: "var(--space-5)" }}>
         {heatData && (selection?.id || mode === "source") && <p style={{ opacity: 1, margin: 0, fill: "white" }}> Past map cluster heatmap </p>}
         {heatData && (selection?.id || mode === "source" || (mode != "source" && right?.selection?.id)) && <ClusterHeatmap data={heatData} selectedId={selection?.id || null} isRelationMap={mode !== "source"} isSageMap={isSageMap && mode !== "source"} onHighlight={handleSourceHighlight} />}
         {targetHeatData && (inactiveMode === "actual" || inactiveMode === "target") && <p style={{ opacity: 1, margin: 0, fill: "white" }}> Future map cluster heatmap ({title})</p>}
