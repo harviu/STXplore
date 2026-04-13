@@ -5,6 +5,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from backend.routes import routers
 load_dotenv()
 
+#Added this to reduce noise in command line due to small sample size warning from SHAP
+import warnings
+from sklearn.exceptions import ConvergenceWarning
+warnings.filterwarnings("ignore", category=ConvergenceWarning)
+
+
 app = FastAPI(title="Crime Data Api", version="0.1.0")
 
 cors = os.getenv("CORS_ORIGINS", "http://localhost:5173, http://localhost:3000, http://localhost:8000")
