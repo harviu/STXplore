@@ -160,9 +160,11 @@ export default function ClusterHeatmap({ data, selectedId, isRelationMap = false
     }, [selectedDateBranch, clusteredDates]);
 
     useEffect(() => {
-        onHighlight?.({community: selectedCommunities, date: selectedDates});
-    }, [selectedCommunities, selectedDates, onHighlight]);
-
+        const mapCommunities = isRelationMap
+            ? selectedCommunities.map(id => (typeof id === 'number' || !String(id).includes('-')) ? String(Number(id) + 1) : id)
+            : selectedCommunities;
+        onHighlight?.({community: mapCommunities, date: selectedDates});
+    }, [selectedCommunities, selectedDates, onHighlight, isRelationMap]);
     useEffect(() => {
         if (heatmapData.length > 0 && svgRef.current) { //isRelation
             const matchesSelected = (d) => 
