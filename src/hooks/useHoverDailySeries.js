@@ -7,7 +7,7 @@ import { fillDaily } from "../lib/crimeAggregates.js";
  * Debounced fetch of daily series for the map hover tooltip (standard selectionDaily or 4D relation path).
  */
 /** @param {string|null|undefined} tensorSourceId Community id used as tensor source for relation/instance visualization (Predicted map selection). */
-export function useHoverDailySeries({ hover, activeMode, secondaryMode, tensorSourceId, model, dataMode = "mi", pastDays, futureStart, futureEnd, anchorDate, forecastAnchorDate, shapHorizon }) {
+export function useHoverDailySeries({ hover, activeMode, secondaryMode, tensorSourceId, model, dataMode = "mi", pastStart = 0, pastEnd, futureStart, futureEnd, anchorDate, forecastAnchorDate, shapHorizon }) {
 
   //Check if the hover data can be shown
   const canShowHoverData = useMemo(
@@ -52,7 +52,7 @@ export function useHoverDailySeries({ hover, activeMode, secondaryMode, tensorSo
     let start;
     let end;
     if (isLeft) {
-      ({ start, end } = sourceRange(pastDays, anchorDate));
+      ({ start, end } = sourceRange(pastStart, pastEnd, anchorDate));
     } else {
       ({ start, end } = targetRange(futureStart, futureEnd, anchorDate));
     }
@@ -108,10 +108,9 @@ export function useHoverDailySeries({ hover, activeMode, secondaryMode, tensorSo
       //Model/Data Level: fetch daily relation values from 4D tensor
       } else if (isRelation && tensorSourceId) {
         api
-          .get4dData(pastDays, true, Number(hover.id) - 1, 30, true, Number(tensorSourceId) - 1, model, dataMode, {
+          .get4dData(pastEnd, true, Number(hover.id) - 1, 30, true, Number(tensorSourceId) - 1, model, dataMode, {
             signal: ac.signal,
             d3Start: 0,
-            normalize: true,
           })
           .then((data) => {
             const nDays = data.length;
@@ -130,6 +129,11 @@ export function useHoverDailySeries({ hover, activeMode, secondaryMode, tensorSo
             setHoverDailyLoading(false);
           });
       } else {
+        if (!start || !end) {
+          setHoverDaily(null);
+          setHoverDailyLoading(false);
+          return;
+        }
         //Source mode or right map: fetch actual daily crime counts
         api
           .selectionDaily(hover.layer, hover.id, start, end, { signal: ac.signal })
@@ -155,7 +159,7 @@ export function useHoverDailySeries({ hover, activeMode, secondaryMode, tensorSo
       if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
       if (hoverAbortRef.current) hoverAbortRef.current.abort();
     };
-  }, [hover?.which, hover?.id, hover?.layer, activeMode, secondaryMode, tensorSourceId, pastDays, futureStart, futureEnd, anchorDate, canShowHoverData, model, dataMode, forecastAnchorDate, shapHorizon]);
+  }, [hover?.which, hover?.id, hover?.layer, activeMode, secondaryMode, tensorSourceId, pastEnd, futureStart, futureEnd, anchorDate, canShowHoverData, model, dataMode, forecastAnchorDate, shapHorizon]);
   //Return the hover daily series, loading state, and whether the hover data can be shown
   return { hoverDaily, hoverDailyLoading, canShowHoverData };
 }

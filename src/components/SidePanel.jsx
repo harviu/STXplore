@@ -72,7 +72,7 @@ function SelectionBlock({ heading, payload, showApi = true, isLeft }) {
             <KvRow label="ID">{selection.id}</KvRow>
             <KvRow label="Name">{selection.name}</KvRow>
             {summary ? (
-              <KvRow label={isLeft ? `Days before ${summary.end}` : `Days after ${summary.start}`}>
+              <KvRow label={isLeft ? `Range of Days:` : `Range of Days:`}>
                 {selection.days}
               </KvRow>
             ) : null}

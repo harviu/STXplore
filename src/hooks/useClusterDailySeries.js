@@ -30,7 +30,6 @@ export function useClusterDailySeries({
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    console.log("useClusterDailySeries", { mode, targetCommunityId, relationModel, anchorDate, selectedCommunities });
     if (!selectedCommunities || selectedCommunities.length === 0) {
       setCommunitySeriesList([]);
       return;

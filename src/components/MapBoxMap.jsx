@@ -242,8 +242,6 @@ export default function MapBoxMap({
   isInstanceShapMap = false,
   isSageMap = false,
   isErrorMap = false,
-  sageBounds = null,
-  miBounds = null,
   loading = false,
 }) {
   // SAGE uses a signed diverging scale (red=suppressive, white=zero, green=amplifying).

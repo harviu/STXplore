@@ -18,8 +18,6 @@ import { addDaysISO, clampDateIso, sourceRange, targetRange, todayISO } from "..
 import { responseToCounts } from "../lib/crimeAggregates.js";
 import { initialMapFaces, mapFacesReducer } from "../lib/mapFacesReducer.js";
 import { useInstanceShapCounts } from "../hooks/useInstanceShapCounts.js";
-import { active } from "d3";
-import { useValueBounds } from "../hooks/useValueBounds.js";
 
 // Function to prevent so many api calls, this will only call the api after the user has stopped changing the slider for 150ms
 function useDebounced(value, delay = 150) {
@@ -149,8 +147,6 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
 
   const [relationModel, setRelationModel] = useState(FORECAST_MODEL_OPTIONS[0]);
 
-  const { sageBounds, miBounds } = useValueBounds(relationModel);
-
   // "mi" = mutual information (ground truth from data)
   // "sage" = model attribution (what the model learned to pay attention to)
   const [relationDataMode, setRelationDataMode] = useState("mi");
@@ -199,7 +195,7 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
   
   //Hover daily series
   const tensorSourceId = targetSelectedId ?? null;
-  const { hoverDaily, hoverDailyLoading, canShowHoverData } = useHoverDailySeries({hover, activeMode, secondaryMode, tensorSourceId, model: relationModel, pastEnd, futureStart, futureEnd, anchorDate, dataMode: relationDataMode, forecastAnchorDate, shapHorizon, });
+  const { hoverDaily, hoverDailyLoading, canShowHoverData } = useHoverDailySeries({hover, activeMode, secondaryMode, tensorSourceId, model: relationModel, pastStart, pastEnd, futureStart, futureEnd, anchorDate, dataMode: relationDataMode, forecastAnchorDate, shapHorizon, });
 
   //Model relation counts
   const { counts: relationCounts, loading: relationLoading, error: relationError } = useModelRelationCounts(activeMode, layer, targetSelectedId, relationModel, relationDataMode, dPastStart, dPastEnd, dFutureStart, dFutureEnd);
@@ -460,11 +456,11 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
     const feature = idx.get(idX);
     if (!feature) return null;
 
-    const anchor = new Date(anchorISO);
+    const anchor = new Date(anchorISO + "T00:00:00");
+    if (isNaN(anchor.getTime())) return null;
     const date = new Date(anchor);
     date.setDate(date.getDate() + dateOffsetDays);
     const dateISO = date.toISOString().slice(0, 10);
-
     return {mode, layer: layerX, id: idX, name: getBoundaryLabel(layerX, feature), days: daysX, dateISO, feature};
   }
 
@@ -483,8 +479,8 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
 
   const {data: leftSummary, loading: leftSummaryLoading, error: leftSummaryError} = useApi(({ signal }) => {
       if (!leftSelection) return Promise.resolve(null);
-
       const { start, end } = sourceRange(pastStart, pastEnd, anchorDate);
+      if (!start || !end) return Promise.resolve(null);
       return api.selectionSummary(leftSelection.layer, leftSelection.id, start, end, { signal });
     },
     [leftSelection?.mode, leftSelection?.layer, leftSelection?.id, pastStart, pastEnd, anchorDate],
@@ -494,6 +490,7 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
   const {data: leftDailyResp} = useApi(({ signal }) => {
     if (!leftSelection) return Promise.resolve(null);
     const { start, end } = sourceRange(pastStart, pastEnd, anchorDate);
+    if (!start || !end) return Promise.resolve(null);
     return api.selectionDaily(leftSelection.layer, leftSelection.id, start, end, { signal });
   }, [leftSelection?.mode, leftSelection?.layer, leftSelection?.id, pastStart, pastEnd, anchorDate], { keepPreviousData: false });
 
@@ -501,6 +498,7 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
       if (!rightSelection) return Promise.resolve(null);
 
       const { start, end } = targetRange(futureStart, futureEnd, anchorDate);
+      if (!start || !end) return Promise.resolve(null);
       return api.selectionSummary(rightSelection.layer, rightSelection.id, start, end, { signal });
     },
     [rightSelection?.mode, rightSelection?.layer, rightSelection?.id, futureStart, futureEnd, anchorDate],
@@ -935,8 +933,6 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
                       (relationDataMode === "sage" && (activeMode === "relation" || activeMode === "instance"))
                       || activeMode === "instance" // SHAP is also signed/diverging with 0=white
                     }
-                    sageBounds={sageBounds}
-                    miBounds={miBounds}
                     loading={
                       activeMode === "source"
                         ? leftTotalsLoading

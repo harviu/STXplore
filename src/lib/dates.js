@@ -70,11 +70,13 @@ export function sourceRange(pastStartOffset, pastEndOffset, anchorISO) {
  * @returns {{ start: string, end: string }}
  */
 export function targetRange(futureStartOffset, futureEndOffset, anchorISO) {
+  if (!Number.isFinite(futureStartOffset) || !Number.isFinite(futureEndOffset) || !anchorISO) {
+    return { start: null, end: null };
+  }
   const start = addDaysISO(anchorISO, futureStartOffset);
   const end = addDaysISO(anchorISO, futureEndOffset);
   return { start, end };
 }
-
 /**
  * Clamp a calendar day (YYYY-MM-DD) to [minIso, maxIso] inclusive.
  * @param {string} iso
