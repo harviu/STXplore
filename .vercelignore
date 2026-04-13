@@ -6,8 +6,9 @@ venv/
 # ML checkpoints and training artifacts (served by backend, not the static app)
 models/
 
-# Source datasets at repo root (app ships curated copies under public/ when needed)
-data/
+# Heavy raw datasets — not bundled by Vite (boundary GeoJSON under Boundries/ is required for build)
+data/Chicago-Data/Crime/
+data/**/*.npy
 
 # Backend-oriented docs
 docs/prediction-backend-context.md
