@@ -915,7 +915,7 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
                               ? `SHAP Attribution (horizon ${shapHorizon})`
                               : "Select a community on the Predicted map"
                           : relationDataMode === "sage"
-                            ? "SAGE (green=suppressive, red=amplifying)"
+                            ? "SAGE (model attribution)"
                             : "Model Relation Weight"
                     }
                     layer={layer}
