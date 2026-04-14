@@ -257,7 +257,7 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
       })
       .then((data) => {
         if (cancelled) return;
-        setRelationValues(data.map(row => row.slice(pastStart)));
+        setRelationValues(data.map(row => row.reverse().slice(pastStart)));
       })
       .catch((err) => {
         if (err?.name === "AbortError") return;
