@@ -144,13 +144,24 @@ function SelectionBlock({ heading, payload, showApi = true, isLeft }) {
 
           {!isLeft && payload?.forecastDaily ? (
             <div className="sidePanel__chartBlock">
-              <p className="sidePanel__chartCaption">Predicted daily counts</p>
+              <p className="sidePanel__chartCaption">{selection?.mode === "target" ? "Predicted daily counts" : "Actual daily counts"}</p>
               {payload.forecastTotal != null ? (
                 <div className="sidePanel__chartMeta">30-day total: {Math.round(payload.forecastTotal)}</div>
               ) : null}
-              <div className="sidePanel__chartPlot">
-                <LineChart days={payload.forecastDaily} isRelationMap={false} height={74} />
-              </div>
+              {selection?.mode === "error" ? (
+                <div>
+                  <div className="sidePanel__chartPlot">
+                    <LineChart days={payload.forecastDaily[1]} isRelationMap={false} height={74} />
+                  </div>
+                  <p className="sidePanel__chartCaption">Predicted daily counts</p>
+                  <div className="sidePanel__chartPlot">
+                    <LineChart days={payload.forecastDaily[0]} isRelationMap={false} height={74} />
+                  </div>
+                </div>) : (
+                <div className="sidePanel__chartPlot">
+                  <LineChart days={payload.forecastDaily} isRelationMap={false} height={74} />
+                </div>
+              )}
             </div>
           ) : null}
         </>

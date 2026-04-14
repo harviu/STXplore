@@ -585,7 +585,7 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
     onSummaryChange?.({
       //summaries (split)
       left: {selection: leftSelection, summary: leftSummary, loading: leftSummaryLoading, error: leftSummaryError, range: sourceRange(pastStart, pastEnd, anchorDate), days: pastSpanDays, offset: pastStart, daily: leftDailyResp?.daily ?? null},
-      right: {selection: rightSelection, summary: rightSummary, loading: rightSummaryLoading, error: rightSummaryError, range: targetRange(futureStart, futureEnd, anchorDate), days: futureSpanDays, offset: futureStart, forecastDaily: forecastDailySeries, forecastTotal,},
+      right: {selection: rightSelection, summary: rightSummary, loading: rightSummaryLoading, error: rightSummaryError, range: targetRange(futureStart, futureEnd, anchorDate), days: futureSpanDays, offset: futureStart, forecastDaily: secondaryMode === "error" ? [forecastDailySeries, futureCounts?.filter((day)=>{return day?.id === secondarySelectedId})] : secondaryMode === "actual" ? futureCounts?.filter((day)=>{return day?.id === secondarySelectedId}) : forecastDailySeries, forecastTotal,},
     });
   }, [
     leftSelection,
@@ -604,6 +604,8 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
     futureSpanDays,
     onSummaryChange,
   ]);
+
+  useEffect(()=>{console.log(forecastDailySeries);console.log(futureCounts?.filter((day)=>{return day?.id === secondarySelectedId}));},[forecastDailySeries, futureCounts]);
 
 
   // Close calendar when clicking outside
