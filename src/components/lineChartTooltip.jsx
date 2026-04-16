@@ -47,7 +47,7 @@ function choroplethColor(t, isRelationMap = false, isSageMap = false) {
  * @param {Array} [props.highlightDates=null] - An array of dates to highlight.
  * @returns {JSX.Element}
  */
-export default function LineChart({ days, height = 30, isRelationMap = false, isSageMap = false }) {
+export function LineChart({ days, height = 30, isRelationMap = false, isSageMap = false }) {
   const data = days ?? [];
   if (data.length === 0) return null;
 
@@ -165,15 +165,15 @@ export default function LineChart({ days, height = 30, isRelationMap = false, is
  * @param {Array} [props.highlightDates=null] - An array of dates to highlight.
  * @returns {JSX.Element}
  */
-export default function MultiLineChart({ days, height = 30, isRelationMap = false, isSageMap = false }) {
-  const data = days ?? [];
+export function MultiLineChart({ days, height = 30, isRelationMap = false, isSageMap = false }) {
+  const data = days ?? [[]];
   if (data.length === 0) return null;
 
   const labelGutter = 35;
 
-  const flatData = data.flatMap(row=>row.map(d=>d.count || 0))
-  const max = Math.max(flatData);
-  const min = Math.min(flatData);
+  const flatData = data.flatMap(row=>row?.map(d=>d.count || 0))
+  const max = Math.max(...flatData);
+  const min = Math.min(...flatData);
   
   // Chart dimensions
   const width = 100; // Use viewBox for scaling
@@ -209,18 +209,17 @@ export default function MultiLineChart({ days, height = 30, isRelationMap = fals
         >
           {/* Loop to create unique gradients for each dataset if desired */}
           <defs>
-            {data.map((_, i) => (
-              <linearGradient key={`grad-${i}`} id={`gradient-${i}`} x1="0%" y1="0%" x2="100%" y2="0%">
-                {data[i].map((d, idx) => {
-                  const offset = (idx / (datasets[i].length - 1)) * 100;
-                  const color = choroplethColor(
-                    (max === min ? 1 : (d.count - min) / (Math.max(1, max - min))), 
-                    isRelationMap, 
-                    isSageMap
-                  );
-                  return <stop key={idx} offset={`${offset}%`} stopColor={color} />;
-                })}
-              </linearGradient>
+            {data.map((_, j) => (
+              <linearGradient key={`line-${j}`} id={`gradient-${j}`} x1="0%" y1="0%" x2="100%" y2="0%">
+              {data[j].map((d, i) => {
+                const offset = (i / (data[j].length - 1)) * 100;
+                const val = d.count || 0;
+                const color = isSageMap
+                  ? choroplethColor((max === min ? 0.5 : (val - min) / (Math.max(1, max - min))), false, true)
+                  : choroplethColor((max === min ? 1 : (val - min) / (Math.max(1, max - min))), isRelationMap);
+                return <stop key={i} offset={`${offset}%`} stopColor={color} />;
+              })}
+            </linearGradient>
             ))}
           </defs>
 
