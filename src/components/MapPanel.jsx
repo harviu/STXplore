@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState, useEffect, useReducer } from "react";
+import { useMemo, useRef, useState, useEffect, useReducer, act } from "react";
 import { createPortal } from "react-dom";
 import Panel from "./Panel.jsx";
 import MapBoxMap, { CHICAGO_ZOOM } from "./MapBoxMap.jsx";
@@ -531,6 +531,24 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
     });
   },[forecastDailyResp]);
 
+  const errorSideValues = useMemo(()=>{
+    if (!forecastDailySeries || ! futureCounts) return;
+    const actual = futureCounts?.filter((day)=>{return day?.id === secondarySelectedId});
+    const totals = actual.reduce((acc, item) => {
+      acc[item.date] = item.count;
+      return acc;
+    }, {});
+    forecastDailySeries.forEach(item => {
+      if (totals[item.date] !== undefined) {
+        totals[item.date] -= item.count;
+      }
+    });
+    return Object.keys(totals).map(date => ({
+      date: date,
+      count: totals[date]
+    }));
+  },[forecastDailySeries, futureCounts]);
+
   /*
   useEffect(()=>{
     //use for error clusterheatmap
@@ -605,7 +623,7 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
     onSummaryChange,
   ]);
 
-  useEffect(()=>{console.log(forecastDailySeries);console.log(futureCounts?.filter((day)=>{return day?.id === secondarySelectedId}));},[forecastDailySeries, futureCounts]);
+  useEffect(()=>{console.log(forecastDailySeries);console.log(futureCounts?.filter((day)=>{return day?.id === secondarySelectedId}));console.log(errorSideValues);},[forecastDailySeries, futureCounts, errorSideValues]);
 
 
   // Close calendar when clicking outside
@@ -636,12 +654,13 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
   }, [canShowActualError]);
 
    //get crime data for actual heatmap. Has to be done after canShowActualError is calculated for the first time
+   //The +1s in the range is to sync with the predicted which predicts one day ahead
   useEffect(() => {
     if (secondaryMode === "actual" || secondaryMode === "error") {
       let cancelled = false;
       const ac = new AbortController();
       if (canShowActualError) {
-        api.selectionAllDaily(secondaryLayer, targetRange(futureStart, futureEnd, anchorDate).start, targetRange(futureStart, futureEnd, anchorDate).end, { signal: ac.signal })
+        api.selectionAllDaily(secondaryLayer, targetRange(futureStart+1, futureEnd+1, anchorDate).start, targetRange(futureStart+1, futureEnd+1, anchorDate).end, { signal: ac.signal })
         .then((data) => {
           if (cancelled) return;
           setFutureCounts(data.daily);
