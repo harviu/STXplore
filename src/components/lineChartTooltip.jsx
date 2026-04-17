@@ -191,7 +191,7 @@ export function MultiLineChart({ days, height = 30, isRelationMap = false, isSag
       return `${x},${y}`;
     }).join(" ");
   };
-
+  if (data[0] === null || data[1] === null) return;
  return (
     <div style={{ position: "relative", marginTop: 12, width: "100%", paddingLeft: labelGutter, boxSizing: "border-box" }}>
       

@@ -176,8 +176,7 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
   const geo = BOUNDARY_GEO[layer];
   const secondaryGeo = BOUNDARY_GEO[secondaryLayer];
 
-  const targetForecastEligible =
-    secondaryMode === "target" || secondaryMode === "error" && secondaryLayer === "community";
+  const targetForecastEligible = secondaryLayer === "community";
 
   const wantPredBounds = targetForecastEligible;
 
@@ -603,7 +602,7 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
     onSummaryChange?.({
       //summaries (split)
       left: {selection: leftSelection, summary: leftSummary, loading: leftSummaryLoading, error: leftSummaryError, range: sourceRange(pastStart, pastEnd, anchorDate), days: pastSpanDays, offset: pastStart, daily: leftDailyResp?.daily ?? null},
-      right: {selection: rightSelection, summary: rightSummary, loading: rightSummaryLoading, error: rightSummaryError, range: targetRange(futureStart, futureEnd, anchorDate), days: futureSpanDays, offset: futureStart, forecastDaily: secondaryMode === "error" ? [forecastDailySeries, futureCounts?.filter((day)=>{return day?.id === secondarySelectedId})] : secondaryMode === "actual" ? futureCounts?.filter((day)=>{return day?.id === secondarySelectedId}) : forecastDailySeries, forecastTotal,},
+      right: {selection: rightSelection, summary: rightSummary, loading: rightSummaryLoading, error: rightSummaryError, range: targetRange(futureStart, futureEnd, anchorDate), days: futureSpanDays, offset: futureStart, forecastDaily: secondaryMode === "error" ? [forecastDailySeries, futureCounts?.filter((day)=>{return day?.id === secondarySelectedId}), errorSideValues] : secondaryMode === "actual" ? futureCounts?.filter((day)=>{return day?.id === secondarySelectedId}) : forecastDailySeries, forecastTotal,},
     });
   }, [
     leftSelection,
@@ -622,8 +621,6 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
     futureSpanDays,
     onSummaryChange,
   ]);
-
-  useEffect(()=>{console.log(forecastDailySeries);console.log(futureCounts?.filter((day)=>{return day?.id === secondarySelectedId}));console.log(errorSideValues);},[forecastDailySeries, futureCounts, errorSideValues]);
 
 
   // Close calendar when clicking outside
@@ -644,7 +641,7 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
   if (maxDataDate) thirtyDaysAgo.setTime(maxDataDate.getTime());
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-  const canShowActualError = maxDataDate && new Date(addDaysISO(anchorDate, futureEnd) + "T00:00:00") <= maxDataDate;
+  const canShowActualError = useMemo(()=>{return maxDataDate && new Date(addDaysISO(anchorDate, futureEnd) + "T00:00:00") <= maxDataDate},[maxDataDate, anchorDate, futureEnd]);
 
 //Reset to target if invalid actual/error
   useEffect(() => {
