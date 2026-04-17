@@ -171,7 +171,7 @@ class PredictionService:
         target_horizon: int,
         target_community_id: int,
         background_size: int = 1,
-        nsamples: int = 1,
+        nsamples: int | str = "auto",
         top_k: int = 20,
         db: Session | None = None,
     ) -> tuple[InstanceShapResult, str]:
@@ -254,7 +254,17 @@ class PredictionService:
 
         prediction = float(predict_fn(x_query_flat)[0])
         explainer = shap.KernelExplainer(predict_fn, bg_features_flat)
-        raw_values = explainer.shap_values(x_query_flat, nsamples=max(1, int(nsamples)))
+        # SHAP>=0.47 defaults KernelExplainer to l1_reg="num_features(10)", which explains
+        # only ~10 of the flattened inputs (e.g. 10 of 90×77). The UI sums by community,
+        # so almost every polygon stays at 0. Use l1_reg=0 and enough coalition samples.
+        n_features = int(x_query_flat.shape[1])
+        if isinstance(nsamples, str) and nsamples.strip().lower() == "auto":
+            # With l1_reg=0, SHAP needs enough coalitions for a stable fit; cap for latency (~10s typical).
+            coalitions = min(max(2 * n_features + 2048, 384), 512)
+        else:
+            coalitions = max(64, int(nsamples))
+            coalitions = min(coalitions, 8192)
+        raw_values = explainer.shap_values(x_query_flat, nsamples=coalitions, l1_reg=0)
         if isinstance(raw_values, list):
             raw_values = raw_values[0]
 
