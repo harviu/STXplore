@@ -2,19 +2,19 @@ import { useEffect, useState, useMemo } from "react";
 import { api } from "../lib/api.js";
 
 /**
- * Fetches SHAP values for a target community and aggregates them per source community
- * for use as instance-level map counts.
+ * Fetches SHAP values for a target community (the predicted-map selection) and aggregates
+ * them per source community for instance-level map counts.
  * shap_values shape: (90 history days, 77 communities)
- * We sum abs SHAP across history days per community to get a single attribution weight per community.
+ * Sums SHAP across history days per community for the selected past window.
  */
-export function useInstanceShapCounts(activeMode, instanceSelectedId, model, forecastAnchorDate, horizon, pastStart = 0, pastEnd = 90) {
+export function useInstanceShapCounts(activeMode, targetCommunityId, model, forecastAnchorDate, horizon, pastStart = 0, pastEnd = 90) {
   const [counts, setCounts] = useState(null);
   const [matrix, setMatrix] = useState(null); // raw (77x90) for cluster heatmap
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    if (activeMode !== "instance" || !instanceSelectedId || !forecastAnchorDate || !horizon) {
+    if (activeMode !== "instance" || !targetCommunityId || !forecastAnchorDate || !horizon) {
       setCounts(null);
       setLoading(false);
       setError(null);
@@ -31,7 +31,7 @@ export function useInstanceShapCounts(activeMode, instanceSelectedId, model, for
       forecastAnchorDate,
       model,
       horizon,
-      Number(instanceSelectedId),
+      Number(targetCommunityId),
       { signal: ac.signal }
     ).then((data) => {
       if (cancelled) return;
@@ -74,7 +74,7 @@ export function useInstanceShapCounts(activeMode, instanceSelectedId, model, for
       cancelled = true;
       ac.abort();
     };
-  }, [activeMode, instanceSelectedId, model, forecastAnchorDate, horizon, pastStart, pastEnd]);
+  }, [activeMode, targetCommunityId, model, forecastAnchorDate, horizon, pastStart, pastEnd]);
 
   return { counts, loading, error, matrix};
 }

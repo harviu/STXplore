@@ -203,9 +203,16 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
   //Instance relation counts
   const { counts: instanceRelationCounts, loading: instanceRelationLoading, error: instanceRelationError } = useInstanceRelationCounts(activeMode, targetSelectedId, relationModel, dPastStart, dPastEnd, dFutureStart, dFutureEnd, relationDataMode);
 
-  // Instance-level SHAP: target = right map selection, left map shows source attributions
+  // Instance-level SHAP: predicted-map community = attribution target; left map shows per-source community weights
+  const shapTargetCommunityId = relationTargetCommunityReady ? targetSelectedId : null;
   const { counts: shapCounts, loading: shapLoading, error: shapError, matrix: shapMatrix } = useInstanceShapCounts(
-  activeMode, instanceSelectedId, relationModel, forecastAnchorDate, shapHorizon, dPastStart, dPastEnd
+    activeMode,
+    shapTargetCommunityId,
+    relationModel,
+    forecastAnchorDate,
+    shapHorizon,
+    dPastStart,
+    dPastEnd
   );
 
 
