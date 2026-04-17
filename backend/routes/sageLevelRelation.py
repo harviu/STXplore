@@ -42,7 +42,7 @@ def model_level_sage(  # type: ignore
     future_start: int = Query(0, ge=0, le=29),
     future_days: int = Query(30, ge=1, le=30),
 ):
-    """Model-level SAGE attribution: average over all history lags and horizons.
+    """Model-level SAGE attribution: sum over all selected history lags and horizons.
     
     Returns how much each source community's past crime influences each target
     community's predicted future crime, according to this model's learned weights.
@@ -60,9 +60,9 @@ def model_level_sage(  # type: ignore
     except RuntimeError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     
-    # Average over history_lag (axis 0) and horizon (axis 2) -> (77, 77)
+    # Sum over history_lag (axis 0) and horizon (axis 2) -> (77, 77)
     sliced = arr[past_start:past_days, :, future_start:future_days, :]
-    matrix = sliced.mean(axis=(0, 2)).astype(np.float32)
+    matrix = sliced.sum(axis=(0, 2)).astype(np.float32)
     row = matrix[source, :] if source is not None else matrix[:, target]
 
     return {"source": source, "targets": row.tolist(), "model": model}
@@ -94,8 +94,8 @@ def instance_level_sage(  # type: ignore
 
     # Slice to slider window: (past_days, 77, future_slice, 77)
     sliced = arr[past_start:past_days, :, future_start:future_days, :]
-    # Average over time axes -> (77, 77) instance-specific matrix
-    instance_matrix = sliced.mean(axis=(0, 2)).astype(np.float32)
+    # Sum over time axes -> (77, 77) instance-specific matrix
+    instance_matrix = sliced.sum(axis=(0, 2)).astype(np.float32)
     row = instance_matrix[source, :]
 
     return {
