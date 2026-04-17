@@ -72,14 +72,15 @@ def get_data4d(
 
     result = sliced.T if b1 else sliced
     if b1 and b3:
-        result = np.mean(result, axis=0)
+        # For SAGE, use sum over the selected horizon window; MI remains mean.
+        result = np.sum(result, axis=0) if data_mode == "sage" else np.mean(result, axis=0)
         if d1 is not None:
             if result.ndim == 2:
                 result = result[:, -d1:]
             else:
                 result = result[-d1:]
     if normalize:
-        ref_matrix = loadedArray.mean(axis=(0,2))
+        ref_matrix = loadedArray.sum(axis=(0, 2)) if data_mode == "sage" else loadedArray.mean(axis=(0, 2))
         if data_mode == "sage":
             abs_max = float(np.abs(ref_matrix).max())
             result = (result / abs_max * 100.0) if abs_max > 0 else result
