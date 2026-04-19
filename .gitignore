@@ -30,3 +30,4 @@ venv/
 backend/.env
 __pycache__/
 *.pyc
+deploy/.env.prod
