@@ -91,7 +91,7 @@ const FORECAST_MODEL_OPTIONS = ["Transformer", "iTransformer"];
 export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHighlight=[], targetHighlight=[] }) {
   const MAP_H = "clamp(450px, 55vh, 550px)";
   const [activeMode, setActiveMode] = useState("source"); // "source" | "relation" | "instance"
-  const [secondaryMode, setSecondaryMode] = useState("target"); // "target" | "actual" | "error"
+  const [secondaryMode, setSecondaryMode] = useState("target"); // "target" | "actual" | "error" | "relation"
 
   // Per-tab layer + selection (left: source | relation | instance; right: target | actual | error)
   const [mapFaces, dispatchMapFaces] = useReducer(mapFacesReducer, initialMapFaces);
@@ -103,12 +103,14 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
   const setSelectedId = (newId) =>
     dispatchMapFaces({ type: "SET_FACET_SELECTION", facet: activeMode, selectedId: newId });
 
-  const secondaryLayer = mapFaces[secondaryMode].layer;
-  const secondarySelectedId = mapFaces[secondaryMode].selectedId;
+  // "relation" is not a right-map facet in mapFaces — fall back to "target" facet for layer/selection
+  const secondaryFacet = secondaryMode === "relation" ? "target" : secondaryMode;
+  const secondaryLayer = mapFaces[secondaryFacet].layer;
+  const secondarySelectedId = mapFaces[secondaryFacet].selectedId;
   const setSecondaryLayer = (newLayer) =>
-    dispatchMapFaces({ type: "SET_FACET_LAYER", facet: secondaryMode, layer: newLayer, clearSelection: true });
+    dispatchMapFaces({ type: "SET_FACET_LAYER", facet: secondaryFacet, layer: newLayer, clearSelection: true });
   const setSecondarySelectedId = (newId) =>
-    dispatchMapFaces({ type: "SET_FACET_SELECTION", facet: secondaryMode, selectedId: newId });
+    dispatchMapFaces({ type: "SET_FACET_SELECTION", facet: secondaryFacet, selectedId: newId });
 
   const sourceLayer = mapFaces.source.layer;
   const sourceSelectedId = mapFaces.source.selectedId;
@@ -150,6 +152,11 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
   // "mi" = mutual information (ground truth from data)
   // "sage" = model attribution (what the model learned to pay attention to)
   const [relationDataMode, setRelationDataMode] = useState("mi");
+
+
+  // "target" = classic mode: select right community, left map shows attribution
+  // "source" = new mode: select left community, right map shows attribution
+  const [relationMode, setRelationMode] = useState("target");
 
   // Horizon for SHAP — midpoint of future range slider, clamped to 1..30
   const shapHorizon = useMemo(() => {
@@ -214,15 +221,50 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
     dPastEnd
   );
 
+  // Source-direction: left map selection drives right map attribution
+  const leftActiveSelectedId = mapFaces[activeMode]?.selectedId ?? null;
+  const isSourceMode = relationMode === "source";
 
+  const relationSourceReady = layer === "community" && !!leftActiveSelectedId;
+  // The gate that tab buttons check — depends on which mode we're in
+  const relationReady = relationMode === "source" ? relationSourceReady : relationTargetCommunityReady;
+
+  // Source-direction model-level counts (SAGE or MI, source → all targets) for right map
+  const { counts: sourceRelationCounts, loading: sourceRelationLoading } = useModelRelationCounts(
+    isSourceMode && (activeMode === "relation" || activeMode === "instance") ? activeMode : "__disabled__",
+    layer,
+    leftActiveSelectedId,
+    relationModel,
+    relationDataMode,
+    dPastStart,
+    dPastEnd,
+    dFutureStart,
+    dFutureEnd,
+    "source"
+  );
+
+  // Source-direction instance-level counts (SAGE, source → all targets) for right map
+  const { counts: sourceInstanceRelationCounts, loading: sourceInstanceRelationLoading } = useInstanceRelationCounts(
+    isSourceMode && activeMode === "instance" ? activeMode : "__disabled__",
+    leftActiveSelectedId,
+    relationModel,
+    dPastStart,
+    dPastEnd,
+    dFutureStart,
+    dFutureEnd,
+    relationDataMode
+  );
   // Relation tab: community-only on both sides; snap right map to Target
   useEffect(() => {
     if (activeMode === "relation") {
       dispatchMapFaces({ type: "SET_FACET_LAYER", facet: "relation", layer: "community", clearSelection: false });
-      setSecondaryMode("target");
-      dispatchMapFaces({ type: "SET_FACET_LAYER", facet: "target", layer: "community", clearSelection: false });
+      // In source mode keep whatever the right map is showing; in target mode snap to Predicted
+      if (!isSourceMode) {
+        setSecondaryMode("target");
+        dispatchMapFaces({ type: "SET_FACET_LAYER", facet: "target", layer: "community", clearSelection: false });
+      }
     }
-  }, [activeMode]);
+  }, [activeMode, isSourceMode]);
 
   //get crime data for source heatmap
   useEffect(() => {
@@ -301,7 +343,7 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
     const raw =
       activeMode === "relation"
         ? relationCounts
-        : activeMode === "instance" && relationTargetCommunityReady && shapCounts
+        : activeMode === "instance" && !isSourceMode && relationTargetCommunityReady && shapCounts
           ? shapCounts
           : leftCrimeCounts;
     if (raw == null) return raw;
@@ -387,6 +429,12 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
 
   // Right map: totals vs average per day over the target window (Predicted, Actual, Error)
   const rightCountsForMap = useMemo(() => {
+    // Relation tab: show attribution from active left tab (source mode only)
+    if (secondaryMode === "relation" && isSourceMode) {
+      const counts = activeMode === "instance" ? sourceInstanceRelationCounts : sourceRelationCounts;
+      return counts ?? null;
+    }
+
     const span = futureSpanDays;
     const wantAvg = targetCountMode === "average" && span > 0;
 
@@ -414,6 +462,10 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
     return null;
   }, [
     secondaryMode,
+    isSourceMode,
+    activeMode,
+    sourceRelationCounts,
+    sourceInstanceRelationCounts,
     targetForecastEligible,
     forecastCountsForMap,
     rightCrimeCounts,
@@ -423,6 +475,12 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
   ]);
 
   const rightMapLegendTitle = useMemo(() => {
+    if (secondaryMode === "relation" && isSourceMode) {
+      if (!leftActiveSelectedId) return "Select a community on the left map";
+      return relationDataMode === "sage"
+        ? "SAGE — source influence on all targets"
+        : "MI — source influence on all targets";
+    }
     if (secondaryMode === "error") {
       return targetCountMode === "average"
         ? "Avg difference per day"
@@ -440,11 +498,13 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
       return targetCountMode === "average" ? "Avg crimes per day" : "Crime Count";
     }
     return "Crime Count";
-  }, [secondaryMode, targetCountMode, targetForecastEligible, forecastModel]);
+  }, [secondaryMode, isSourceMode, leftActiveSelectedId, relationDataMode, activeMode, targetCountMode, targetForecastEligible, forecastModel]);
 
-  const rightMapLoading = targetForecastEligible
-    ? predBoundsLoading || (targetForecastReady && forecastDailyLoading)
-    : rightTotalsLoading;
+  const rightMapLoading = secondaryMode === "relation" && isSourceMode
+    ? (activeMode === "instance" ? sourceInstanceRelationLoading : sourceRelationLoading)
+    : targetForecastEligible
+      ? predBoundsLoading || (targetForecastReady && forecastDailyLoading)
+      : rightTotalsLoading;
 
   const forecastErrorText = predBoundsError || forecastDailyError;
 
@@ -481,7 +541,10 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
   const leftSelection = activeMode === "source" ? sourceSelection: activeMode === "relation" ? relationSelection : instanceSelection;
 
   //Chooses what selection should drive the Right map summary
-  const rightSelection = secondaryMode === "target" ? targetSelection : secondaryMode === "actual" ? actualSelection : errorSelection;
+  const rightSelection = secondaryMode === "target" ? targetSelection 
+    : secondaryMode === "actual" ? actualSelection 
+    : secondaryMode === "error" ? errorSelection 
+    : null; // "relation" mode has no single right-map community selection
 
   const {data: leftSummary, loading: leftSummaryLoading, error: leftSummaryError} = useApi(({ signal }) => {
       if (!leftSelection) return Promise.resolve(null);
@@ -697,66 +760,90 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
   return (
     <Panel title="Crime Map" fill style={{ minHeight: 0 }}>
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", flex: "1 1 auto", minHeight: 0 }}>
-        {/* Top toolbar: Anchor date + Recenter */}
-        <div
-          style={{display: "flex", flexWrap: "wrap", alignItems: "center", gap: "var(--space-4)", rowGap: "var(--space-2)", width: "100%", padding: "var(--space-3) 0 var(--space-2)", justifyContent: "center"}}
-        >
-          <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3)" }}>
-            <strong style={{ fontWeight: 600, opacity: 0.95 }}>Anchor date</strong>
-            <div ref={calendarRef} style={{ position: "relative" }}>
+        {/* Top toolbar: Anchor date + Relationship Mode + Recenter */}
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", width: "100%", padding: "var(--space-3) 0 0" }}>
+          <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "var(--space-4)", rowGap: "var(--space-2)", width: "100%", padding: "0 0 var(--space-2)", justifyContent: "center" }}>
+            {/* Anchor date */}
+            <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3)" }}>
+              <strong style={{ fontWeight: 600, opacity: 0.95 }}>Anchor date</strong>
+              <div ref={calendarRef} style={{ position: "relative" }}>
+                <button
+                  type="button"
+                  onClick={() => setCalendarOpen((open) => !open)}
+                  title="Pick start date (anchor for source/target days)"
+                  style={{padding: "6px 14px", cursor: "pointer", border: "1px solid var(--color-border-strong)", borderRadius: 8, background: "var(--color-surface-raised)", color: "inherit", fontSize: "inherit", fontWeight: 500, minWidth: 120}}
+                >
+                  {anchorDate?.slice(0, 10) ?? anchorDate}
+                </button>
+                {calendarOpen && (
+                  <div style={{position: "absolute", top: "100%", left: 0, marginTop: 6, zIndex: 1000, background: "var(--color-surface-popover)", border: "1px solid var(--color-panel-border)", borderRadius: 8, boxShadow: "0 4px 20px var(--color-shadow-drop)", padding: 8}}>
+                    <DayPicker
+                      mode="single"
+                      autoFocus
+                      defaultMonth={anchorDate ? new Date(anchorDate) : undefined}
+                      selected={anchorDate ? new Date(anchorDate + "T12:00:00") : undefined}
+                      onSelect={(date) => {
+                        if (date) {
+                          setAnchorDate(date.toISOString().slice(0, 10));
+                          setCalendarOpen(false);
+                          if (thirtyDaysAgo < date) setSecondaryMode("target");
+                        }
+                      }}
+                      startMonth={new Date(2001, 0)}
+                      disabled={{ before: new Date(2001, 3, 2), after: new Date((predBounds?.anchor_max) + "T12:00:00") }}
+                      navLayout="around"
+                      showOutsideDays
+                      animate
+                      captionLayout="dropdown"
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <span style={{width: 1, height: 22, background: "var(--color-separator)", borderRadius: 1, flexShrink: 0}} aria-hidden />
+
+            {/* Relationship Mode */}
+            <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3)" }}>
+              <strong style={{ fontWeight: 600, opacity: 0.95 }}>Relationship mode</strong>
+              <select
+                value={relationMode}
+                onChange={(e) => setRelationMode(e.target.value)}
+                style={{
+                  padding: "4px 8px",
+                  borderRadius: 6,
+                  border: "1px solid var(--color-border-strong)",
+                  background: "var(--color-surface-input)",
+                  color: "inherit",
+                  fontSize: "inherit",
+                }}
+              >
+                <option value="target">All sources → Target</option>
+                <option value="source">Source → All targets</option>
+              </select>
+            </div>
+
+            <span style={{width: 1, height: 22, background: "var(--color-separator)", borderRadius: 1, flexShrink: 0}} aria-hidden />
+
+            {/* Recenter */}
+            <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3)" }}>
+              <strong style={{ fontWeight: 600, opacity: 0.95 }}>Recenter</strong>
               <button
                 type="button"
-                onClick={() => setCalendarOpen((open) => !open)}
-                title="Pick start date (anchor for source/target days)"
-                style={{padding: "6px 14px", cursor: "pointer", border: "1px solid var(--color-border-strong)", borderRadius: 8, background: "var(--color-surface-raised)", color: "inherit", fontSize: "inherit", fontWeight: 500, minWidth: 120}}
+                onClick={() => setRecenterTrigger((t) => t + 1)}
+                title={`Recenter both maps to Chicago (zoom ${CHICAGO_ZOOM})`}
+                style={{padding: "6px 14px", cursor: "pointer", border: "1px solid var(--color-border-strong)", borderRadius: 8, background: "var(--color-surface-raised)", color: "inherit", fontSize: "inherit", fontWeight: 500}}
               >
-                {anchorDate?.slice(0, 10) ?? anchorDate}
+                Recenter maps
               </button>
-              {calendarOpen && (
-                <div
-                  style={{position: "absolute", top: "100%", left: 0, marginTop: 6, zIndex: 1000, background: "var(--color-surface-popover)", border: "1px solid var(--color-panel-border)", borderRadius: 8, boxShadow: "0 4px 20px var(--color-shadow-drop)", padding: 8}}
-                >
-                  <DayPicker
-                    mode="single"
-                    autoFocus
-                    defaultMonth={anchorDate ? new Date(anchorDate) : undefined}
-                    selected={anchorDate ? new Date(anchorDate + "T12:00:00") : undefined}
-                    onSelect={(date) => {
-                      if (date) {
-                        setAnchorDate(date.toISOString().slice(0, 10));
-                        setCalendarOpen(false);
-                        if (thirtyDaysAgo < date) {
-                          setSecondaryMode("target");
-                        }
-                      }
-                    }}
-                    startMonth={new Date(2001, 0)}
-                    disabled={{ before: new Date(2001, 3, 2), after: new Date((predBounds?.anchor_max) + "T12:00:00") }}
-                    navLayout="around"
-                    showOutsideDays
-                    animate
-                    captionLayout="dropdown"
-                  />
-                </div>
-              )}
             </div>
           </div>
 
-          <span
-            style={{width: 1, height: 22, background: "var(--color-separator)", borderRadius: 1, flexShrink: 0}}
-            aria-hidden
-          />
-
-          <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3)" }}>
-            <strong style={{ fontWeight: 600, opacity: 0.95 }}>Recenter</strong>
-            <button
-              type="button"
-              onClick={() => setRecenterTrigger((t) => t + 1)}
-              title={`Recenter both maps to Chicago (zoom ${CHICAGO_ZOOM})`}
-              style={{padding: "6px 14px", cursor: "pointer", border: "1px solid var(--color-border-strong)", borderRadius: 8, background: "var(--color-surface-raised)", color: "inherit", fontSize: "inherit", fontWeight: 500}}
-            >
-              Recenter maps
-            </button>
+          {/* Hint line — changes based on relationship mode */}
+          <div style={{ fontSize: 12, opacity: 0.7, paddingBottom: "var(--space-2)", textAlign: "center", fontStyle: "italic" }}>
+            {relationMode === "source"
+              ? "Source → All targets: select a community on the left (Past) map to see its influence on all other communities"
+              : "All sources → Target: select a community on the right (Predicted) map to see what influenced its prediction"}
           </div>
         </div>
 
@@ -779,39 +866,66 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
                 </button>
                   <button
                     type="button"
-                    onClick={() => setActiveMode("instance")}
-                    disabled={activeMode === "instance" || !relationTargetCommunityReady}
-                    title={!relationTargetCommunityReady && activeMode !== "instance" ? "Select a community on the Predicted map first." : undefined}
+                    onClick={() => {
+                      if (isSourceMode && sourceSelectedId) {
+                        dispatchMapFaces({ type: "SET_FACET_SELECTION", facet: "instance", selectedId: sourceSelectedId });
+                      }
+                      setActiveMode("instance");
+                    }}
+                    disabled={activeMode === "instance" || !relationReady}
+                    title={!relationReady && activeMode !== "instance"
+                      ? isSourceMode ? "Select a community on the Past map first." : "Select a community on the Predicted map first."
+                      : undefined}
                     style={mapTabButtonStyle(activeMode === "instance", {
                       fontSize: "0.65rem",
                       lineHeight: 1.2,
-                      opacity: !relationTargetCommunityReady ? 0.25 : 1,
+                      opacity: !relationReady ? 0.25 : 1,
                     })}
                   >
-                    Instance <br/> Level
+                  Instance <br/> Level{relationMode === "source" ? " (SAGE)" : " (SHAP)"}
                   </button>
                   <button
                     type="button"
-                    onClick={() => { setActiveMode("relation"); setRelationDataMode("sage"); setSecondaryMode("target"); }}
-                    disabled={(activeMode === "relation" && relationDataMode === "sage") || !relationTargetCommunityReady}
-                    title={!relationTargetCommunityReady && activeMode !== "relation" ? "Select a community on the Predicted map first." : undefined}
+                    onClick={() => {
+                      if (isSourceMode && sourceSelectedId) {
+                        dispatchMapFaces({ type: "SET_FACET_SELECTION", facet: "relation", selectedId: sourceSelectedId });
+                      }
+                      setActiveMode("relation");
+                      setRelationDataMode("sage");
+                      if (!isSourceMode) setSecondaryMode("target");
+                    }}
+                    disabled={(activeMode === "relation" && relationDataMode === "sage") || !relationReady}
+                    title={!relationReady && activeMode !== "instance"
+                      ? relationMode === "source"
+                        ? "Select a community on the left map first."
+                        : "Select a community on the Predicted map first."
+                      : undefined}
                     style={mapTabButtonStyle(activeMode === "relation" && relationDataMode === "sage", {
                       fontSize: "0.65rem",
                       lineHeight: 1.2,
-                      opacity: !relationTargetCommunityReady ? 0.25 : 1,
+                      opacity: !relationReady ? 0.25 : 1,
                     })}
                   >
                     Model <br/> Level
                   </button>
                   <button
                     type="button"
-                    onClick={() => { setActiveMode("relation"); setRelationDataMode("mi"); setSecondaryMode("target"); }}
-                    disabled={(relationDataMode === "mi" && activeMode === "relation") || !relationTargetCommunityReady}
-                    title={!relationTargetCommunityReady && activeMode !== "relation" ? "Select a community on the Predicted map first." : undefined}
+                    onClick={() => {
+                      if (isSourceMode && sourceSelectedId) {
+                        dispatchMapFaces({ type: "SET_FACET_SELECTION", facet: "relation", selectedId: sourceSelectedId });
+                      }
+                      setActiveMode("relation");
+                      setRelationDataMode("mi");
+                      if (!isSourceMode) setSecondaryMode("target");
+                    }}
+                    disabled={(relationDataMode === "mi" && activeMode === "relation") || !relationReady}
+                    title={!relationReady && activeMode !== "relation"
+                      ? isSourceMode ? "Select a community on the left map first." : "Select a community on the Predicted map first."
+                      : undefined}
                     style={mapTabButtonStyle(activeMode === "relation" && relationDataMode === "mi", {
                       fontSize: "0.65rem",
                       lineHeight: 1.2,
-                      opacity: !relationTargetCommunityReady ? 0.25 : 1,
+                      opacity: !relationReady ? 0.25 : 1,
                     })}
                   >
                     Data <br/> Level
@@ -934,14 +1048,18 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
                           ? "Avg crimes per day"
                           : "Crime Count"
                         : activeMode === "instance"
-                          ? shapError
-                            ? "SHAP Error"
-                            : relationTargetCommunityReady
-                              ? `SHAP Attribution (horizon ${shapHorizon})`
-                              : "Select a community on the Predicted map"
+                          ? isSourceMode
+                            ? leftActiveSelectedId
+                              ? "SAGE Attribution (source → all targets)"
+                              : "Select a community to see its influence"
+                            : shapError
+                              ? "SHAP Error"
+                              : relationTargetCommunityReady
+                                ? `SHAP Attribution (horizon ${shapHorizon})`
+                                : "Select a community on the Predicted map"
                           : relationDataMode === "sage"
                             ? "SAGE (model attribution)"
-                            : "Model Relation Weight"
+                            : "MI (data relation)"
                     }
                     layer={layer}
                     highlights={sourceHighlight}
@@ -953,13 +1071,15 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
                     isInstanceShapMap={activeMode === "instance"}
                     isSageMap={
                       (relationDataMode === "sage" && (activeMode === "relation" || activeMode === "instance"))
-                      || activeMode === "instance" // SHAP is also signed/diverging with 0=white
+                      || (!isSourceMode && activeMode === "instance") // SHAP only in target mode
                     }
                     loading={
                       activeMode === "source"
                         ? leftTotalsLoading
                         : activeMode === "instance"
-                          ? shapLoading || instanceSourceLoading
+                          ? isSourceMode
+                            ? leftTotalsLoading  // source mode: left map shows past crime as picker
+                            : shapLoading || instanceSourceLoading
                           : relationLoading
                     }
                   />
@@ -1098,6 +1218,22 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
                     Error
                   </button>
                 </div>
+                {/* Relation tab — only visible in source mode */}
+                {isSourceMode && (
+                  <button
+                    type="button"
+                    onClick={() => setSecondaryMode("relation")}
+                    disabled={secondaryMode === "relation" || !(activeMode === "relation" || activeMode === "instance")}
+                    title={!(activeMode === "relation" || activeMode === "instance") ? "Select a relation tab on the left map first" : undefined}
+                    style={mapTabButtonStyle(secondaryMode === "relation", {
+                      fontSize: "0.65rem",
+                      lineHeight: 1.2,
+                      opacity: !(activeMode === "relation" || activeMode === "instance") ? 0.25 : 1,
+                    })}
+                  >
+                    Relation
+                  </button>
+                )}
               </div>
               {(activeMode === "relation" || activeMode === "instance" || secondaryMode === "target") && (
                 <div
@@ -1230,8 +1366,10 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
                     onSelectId={setSecondarySelectedId}
                     onHover={(h) => setHover(h ? { ...h, which: "right" } : null)}
                     recenterTrigger={recenterTrigger}
-                    isErrorMap={secondaryMode === "error"}
                     loading={rightMapLoading}
+                    isErrorMap={secondaryMode === "error"}
+                    isRelationMap={secondaryMode === "relation" && isSourceMode}
+                    isSageMap={secondaryMode === "relation" && isSourceMode && relationDataMode === "sage"}
                   />
                 </div>
             </div>

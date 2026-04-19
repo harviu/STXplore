@@ -116,6 +116,12 @@ export const api = {
 
   sageLevelRelation: (target, model, pastStart, pastDays, futureStart, futureEnd, opts) =>
     request(`/api/model_level_sage?target=${encodeURIComponent(target)}&model=${encodeURIComponent(model)}&past_start=${encodeURIComponent(pastStart)}&past_days=${encodeURIComponent(pastDays)}&future_start=${encodeURIComponent(futureStart)}&future_days=${encodeURIComponent(futureEnd)}`, opts),
+
+  sageLevelSource: (source, model, pastStart, pastDays, futureStart, futureEnd, opts) =>
+    request(`/api/model_level_sage?source=${encodeURIComponent(source)}&model=${encodeURIComponent(model)}&past_start=${encodeURIComponent(pastStart)}&past_days=${encodeURIComponent(pastDays)}&future_start=${encodeURIComponent(futureStart)}&future_days=${encodeURIComponent(futureEnd)}`, opts),
+
+  relationalModelSource: (source, model, pastStart, pastDays, futureStart, futureEnd, opts) =>
+    request(`/api/model_level_relation?source=${encodeURIComponent(source)}&model=${encodeURIComponent(model)}&past_start=${encodeURIComponent(pastStart)}&past_days=${encodeURIComponent(pastDays)}&future_start=${encodeURIComponent(futureStart)}&future_days=${encodeURIComponent(futureEnd)}`, opts),
   
   instanceLevelSage: (sourceIdx, model, pastStart, pastDays, futureStart, futureEnd, opts) =>
     request(
