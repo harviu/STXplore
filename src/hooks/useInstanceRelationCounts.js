@@ -20,7 +20,6 @@ export function useInstanceRelationCounts(activeMode, instanceSelectedId, model,
 
     //If the instance selected id is not set, set the counts to null, set the loading to false, and set the error to null
     if (!instanceSelectedId) {
-      setCounts(null);
       setLoading(false);
       setError(null);
       return;
@@ -31,7 +30,6 @@ export function useInstanceRelationCounts(activeMode, instanceSelectedId, model,
     if (!Number.isFinite(sourceIdx) || sourceIdx < 0 || sourceIdx > 76) {
       setError("Invalid community id for instance relation.");
       setLoading(false);
-      setCounts(null);
       return;
     }
 

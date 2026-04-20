@@ -172,11 +172,6 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
   // Increment to recenter both maps to CHICAGO_ZOOM
   const [recenterTrigger, setRecenterTrigger] = useState(0);
   
-  // Crime counts state and relation values state (4D array) for heatmaps
-  const [crimeCounts, setCrimeCounts] = useState(null);
-  const [relationValues, setRelationValues] = useState(null);
-  const [futureCounts, setFutureCounts] = useState(null);
-
   //Get boundary geometry
   const geo = BOUNDARY_GEO[layer];
   const secondaryGeo = BOUNDARY_GEO[secondaryLayer];
@@ -264,57 +259,31 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
     }
   }, [activeMode, isSourceMode]);
 
-  //get crime data for source heatmap
-  useEffect(() => {
-    if (activeMode === "source") {
-      let cancelled = false;
-      const ac = new AbortController();
-      api.selectionAllDaily(layer, sourceRange(pastStart, pastEnd, anchorDate).start, sourceRange(pastStart, pastEnd, anchorDate).end, { signal: ac.signal })
-      .then((data) => {
-        if (cancelled) return;
-        setCrimeCounts(data.daily);
-      })
-      .catch((err) => {
-        if (err?.name === "AbortError") return;
-        if (cancelled) return;
-        console.error("selectionAllDaily failed:", err);
-      });
-      return () => {
-        cancelled = true;
-        ac.abort();
-      };
-    }
-  }, [activeMode, layer, pastStart, pastEnd, anchorDate])
+  // Source heatmap: daily crime counts for all communities over the source window.
+  const { data: crimeCountsResp, loading: crimeCountsLoading } = useApi(({ signal }) => {
+    if (activeMode !== "source") return Promise.resolve(null);
+    const { start, end } = sourceRange(dPastStart, dPastEnd, anchorDate);
+    return api.selectionAllDaily(layer, start, end, { signal });
+  }, [activeMode, layer, dPastStart, dPastEnd, anchorDate]);
 
-  //get data for relational heatmaps — fetches full horizon
-  // and averages over the 30 horizon days to produce a (77 x pastEnd (To be transitioned to past window)) matrix
-  useEffect(() => {
-    if (activeMode === "source") return;
-    if (!relationTargetCommunityReady || !targetSelectedId) {
-      setRelationValues(null);
-      return;
-    }
-      let cancelled = false;
-      const ac = new AbortController();
-            api.get4dData(pastEnd, true, null, 30, true, Number(targetSelectedId) - 1, model, relationDataMode, {
-        signal: ac.signal,
-        d3Start: 0,
-        normalize: false,
-      })
-      .then((data) => {
-        if (cancelled) return;
-        setRelationValues(data.map(row => row.reverse().slice(pastStart)));
-      })
-      .catch((err) => {
-        if (err?.name === "AbortError") return;
-        if (cancelled) return;
-        console.error("get4dData failed:", err);
-      });
-      return () => {
-        cancelled = true;
-        ac.abort();
-      };
-  }, [activeMode, pastStart, pastEnd, targetSelectedId, model, relationDataMode]);
+  const crimeCounts = crimeCountsResp?.daily ?? null;
+
+  // Relational heatmap: 4D tensor sliced to the current slider window.
+  const { data: relationValuesRaw, loading: relationValuesLoading } = useApi(({ signal }) => {
+    if (activeMode === "source") return Promise.resolve(null);
+    if (!relationTargetCommunityReady || !targetSelectedId) return Promise.resolve(null);
+    return api.get4dData(pastEnd, true, null, 30, true, Number(targetSelectedId) - 1, model, relationDataMode, {
+      signal,
+      d3Start: 0,
+      normalize: false,
+    });
+  }, [activeMode, pastEnd, targetSelectedId, model, relationDataMode, relationTargetCommunityReady]);
+  // Slice to the past window client-side — no re-fetch needed when only pastStart changes.
+  const relationValues = useMemo(
+    () => relationValuesRaw ? relationValuesRaw.map(row => [...row].reverse().slice(pastStart)) : null,
+    [relationValuesRaw, pastStart]
+  );
+
   // Instance-level map on source side: 4D array → per-community time-averaged over slider date range.
   const {data: instanceSourceResp, loading: instanceSourceLoading, error: instanceSourceError} = useApi(({ signal }) => {
     if (activeMode !== "instance") return Promise.resolve(null);
@@ -323,10 +292,10 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
 
   //Get Data for Source HeatMap (used when activeMode is "source"; instance mode uses instanceSourceResp)
   const {data: leftTotalsResp, loading: leftTotalsLoading, error: leftTotalsError} = useApi(({ signal }) => {
-    const { start, end } = sourceRange(pastStart, pastEnd, anchorDate);
+    const { start, end } = sourceRange(dPastStart, dPastEnd, anchorDate);
     const apiLayer = UI_TO_API_LAYER[layer];
     return api.mapTotals(apiLayer, start, end, { signal });
-  }, [layer, pastStart, pastEnd, anchorDate]);
+  }, [layer, dPastStart, dPastEnd, anchorDate]);
 
   const leftCrimeCounts = useMemo(
     () =>
@@ -506,11 +475,6 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
 
   const forecastErrorText = predBoundsError || forecastDailyError;
 
-  // Load dummy crime counts for source mode
-  // NOT NEEDED ANYMORE, MAKING SINGLE LINE AND COMMENTING OUT
-  //useEffect(() => { if (activeMode !== "relation") { setCrimeCounts(null); return; } let mounted = true; loadDummyCrimeCounts(pastEnd, layer).then(counts => { if (mounted) { setCrimeCounts(counts); } }).catch(error => { console.error('Error loading dummy crime data:', error); if (mounted) { setCrimeCounts(null); } }); return () => { mounted = false; }; }, [activeMode, layer, pastEnd]);
-
-
   function makeSelection(mode, layerX, idX, daysX, anchorISO, dateOffsetDays) {
     if (!idX) return null;
     const geoX = BOUNDARY_GEO[layerX];
@@ -550,8 +514,7 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
       if (!start || !end) return Promise.resolve(null);
       return api.selectionSummary(leftSelection.layer, leftSelection.id, start, end, { signal });
     },
-    [leftSelection?.mode, leftSelection?.layer, leftSelection?.id, pastStart, pastEnd, anchorDate],
-    { keepPreviousData: false }
+    [leftSelection?.mode, leftSelection?.layer, leftSelection?.id, pastStart, pastEnd, anchorDate]
   );
 
   const {data: leftDailyResp} = useApi(({ signal }) => {
@@ -559,7 +522,7 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
     const { start, end } = sourceRange(pastStart, pastEnd, anchorDate);
     if (!start || !end) return Promise.resolve(null);
     return api.selectionDaily(leftSelection.layer, leftSelection.id, start, end, { signal });
-  }, [leftSelection?.mode, leftSelection?.layer, leftSelection?.id, pastStart, pastEnd, anchorDate], { keepPreviousData: false });
+  }, [leftSelection?.mode, leftSelection?.layer, leftSelection?.id, pastStart, pastEnd, anchorDate]);
 
   const {data: rightSummary, loading: rightSummaryLoading, error: rightSummaryError} = useApi(({ signal }) => {
       if (!rightSelection) return Promise.resolve(null);
@@ -568,8 +531,7 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
       if (!start || !end) return Promise.resolve(null);
       return api.selectionSummary(rightSelection.layer, rightSelection.id, start, end, { signal });
     },
-    [rightSelection?.mode, rightSelection?.layer, rightSelection?.id, futureStart, futureEnd, anchorDate],
-    { keepPreviousData: false }
+    [rightSelection?.mode, rightSelection?.layer, rightSelection?.id, futureStart, futureEnd, anchorDate]
   );
 
   //const { data: dateRange } = useApi(({ signal }) => api.dateRange({ signal }), []);
@@ -586,6 +548,30 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
   useEffect(() => {
     if (predBounds?.anchor_max) setAnchorDate(predBounds.anchor_max.slice(0, 10));
   }, [predBounds?.anchor_max]);
+
+  const thirtyDaysAgo = new Date();
+  // fallback to today if max date not loaded yet
+  if (maxDataDate) thirtyDaysAgo.setTime(maxDataDate.getTime());
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+  const canShowActualError = useMemo(()=>{return maxDataDate && new Date(addDaysISO(anchorDate, futureEnd) + "T00:00:00") <= maxDataDate},[maxDataDate, anchorDate, futureEnd]);
+
+  //Reset to target if invalid actual/error
+  useEffect(() => {
+    if (secondaryMode !== "target" && !canShowActualError) {
+      setSecondaryMode("target");
+    }
+  }, [canShowActualError]);
+
+  // Actual/error heatmap: daily crime counts for all communities over the target window.
+  // The +1s sync with the forecast which predicts one day ahead of anchor.
+  const { data: futureCountsResp } = useApi(({ signal }) => {
+    if (secondaryMode !== "actual" && secondaryMode !== "error") return Promise.resolve(null);
+    if (!canShowActualError) return Promise.resolve(null);
+    const { start, end } = targetRange(futureStart + 1, futureEnd + 1, anchorDate);
+    return api.selectionAllDaily(secondaryLayer, start, end, { signal });
+  }, [secondaryMode, secondaryLayer, futureStart, futureEnd, anchorDate, canShowActualError]);
+  const futureCounts = futureCountsResp?.daily ?? null;
 
   const dailyForHeatMap = useMemo(()=>{
     if (forecastDailyResp === null || forecastDailyResp.forecast_daily === null) return null;
@@ -702,47 +688,6 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [calendarOpen]);
-
-  //
-  const thirtyDaysAgo = new Date(); 
-  // fallback to today if max date not loaded yet
-  if (maxDataDate) thirtyDaysAgo.setTime(maxDataDate.getTime());
-  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-
-  const canShowActualError = useMemo(()=>{return maxDataDate && new Date(addDaysISO(anchorDate, futureEnd) + "T00:00:00") <= maxDataDate},[maxDataDate, anchorDate, futureEnd]);
-
-//Reset to target if invalid actual/error
-  useEffect(() => {
-    if (secondaryMode !== "target" && !canShowActualError) {
-      setSecondaryMode("target");
-    }
-  }, [canShowActualError]);
-
-   //get crime data for actual heatmap. Has to be done after canShowActualError is calculated for the first time
-   //The +1s in the range is to sync with the predicted which predicts one day ahead
-  useEffect(() => {
-    if (secondaryMode === "actual" || secondaryMode === "error") {
-      let cancelled = false;
-      const ac = new AbortController();
-      if (canShowActualError) {
-        api.selectionAllDaily(secondaryLayer, targetRange(futureStart+1, futureEnd+1, anchorDate).start, targetRange(futureStart+1, futureEnd+1, anchorDate).end, { signal: ac.signal })
-        .then((data) => {
-          if (cancelled) return;
-          setFutureCounts(data.daily);
-        })
-        .catch((err) => {
-          if (err?.name === "AbortError") return;
-          if (cancelled) return;
-          console.error("selectionAllDaily for actual failed:", err);
-        });
-        return () => {
-          cancelled = true;
-          ac.abort();
-        };
-      } 
-      
-    }
-  }, [secondaryMode, secondaryLayer, futureStart, futureEnd, anchorDate, canShowActualError]);
 
   const isLoadingLeft = activeMode === "source" 
     ? leftTotalsLoading 
@@ -1112,17 +1057,12 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
                       aria-label="Days before start"
                       value={pastDays}
                       onChange={(_e, value) => {
-                          // Ensure the two thumbs are not the same
-                          if (value[0] === value[1]) {
-                            if (value[1] === 30) value[0] = 29;
-                            else value[1] = value[0] + 1;
-                          }
-                          setPastDays(value)
-                        }
-                      }
+                        if (value[1] - value[0] < 1) return;
+                        setPastDays(value);
+                      }}
                       valueLabelDisplay="auto"
                       getAriaValueText={(v) => `${v} days ago`}
-                      min={1}
+                      min={0}
                       max={90}
                       sx={{
                         width: "100%",
@@ -1153,11 +1093,7 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
                   aria-label="Target window after anchor date"
                   value={futureRange}
                   onChange={(_e, value) => {
-                    // Ensure the two thumbs are not the same
-                    if (value[0] === value[1]) {
-                      if (value[1] === 30) value[0] = 29;
-                      else value[1] = value[0] + 1;
-                    }
+                    if (value[1] - value[0] < 1) return;
                     setFutureRange(value);
                   }}
                   valueLabelDisplay="auto"

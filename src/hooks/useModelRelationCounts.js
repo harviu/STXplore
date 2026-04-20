@@ -28,7 +28,6 @@ export function useModelRelationCounts(activeMode, layer, relationSelectedId, mo
 
     //If the relation selected id is not set, set the counts to null, set the loading to false, and set the error to null
     if (!relationSelectedId) {
-      setCounts(null);
       setLoading(false);
       setError(null);
       return;
@@ -38,7 +37,6 @@ export function useModelRelationCounts(activeMode, layer, relationSelectedId, mo
     const targetIdx = Number(relationSelectedId) - 1;
     if (!Number.isFinite(targetIdx) || targetIdx < 0 || targetIdx > 76) {
       setError("Invalid community id for relation mapping.");
-      setCounts(null);
       setLoading(false);
       return;
     }
