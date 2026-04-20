@@ -145,9 +145,7 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
   const [targetCountMode, setTargetCountMode] = useState("average"); // "total" | "average"
 
   // Target map + Community: ML forecast loads automatically (API sums full model horizon)
-  const [forecastModel, setForecastModel] = useState(FORECAST_MODEL_OPTIONS[0]);
-
-  const [relationModel, setRelationModel] = useState(FORECAST_MODEL_OPTIONS[0]);
+  const [model, setModel] = useState(FORECAST_MODEL_OPTIONS[0]);
 
   // "mi" = mutual information (ground truth from data)
   // "sage" = model attribution (what the model learned to pay attention to)
@@ -201,20 +199,20 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
   
   //Hover daily series
   const tensorSourceId = targetSelectedId ?? null;
-  const { hoverDaily, hoverDailyLoading, canShowHoverData } = useHoverDailySeries({hover, activeMode, secondaryMode, tensorSourceId, model: relationModel, pastStart, pastEnd, futureStart, futureEnd, anchorDate, dataMode: relationDataMode, forecastAnchorDate, shapHorizon, });
+  const { hoverDaily, hoverDailyLoading, canShowHoverData } = useHoverDailySeries({hover, activeMode, secondaryMode, tensorSourceId, model, pastStart, pastEnd, futureStart, futureEnd, anchorDate, dataMode: relationDataMode, forecastAnchorDate, shapHorizon, });
 
   //Model relation counts
-  const { counts: relationCounts, loading: relationLoading } = useModelRelationCounts(activeMode, layer, targetSelectedId, relationModel, relationDataMode, dPastStart, dPastEnd, dFutureStart, dFutureEnd);
+  const { counts: relationCounts, loading: relationLoading } = useModelRelationCounts(activeMode, layer, targetSelectedId, model, relationDataMode, dPastStart, dPastEnd, dFutureStart, dFutureEnd);
 
   //Instance relation counts
-  const { counts: instanceRelationCounts, loading: instanceRelationLoading, error: instanceRelationError } = useInstanceRelationCounts(activeMode, targetSelectedId, relationModel, dPastStart, dPastEnd, dFutureStart, dFutureEnd, relationDataMode);
+  const { counts: instanceRelationCounts, loading: instanceRelationLoading, error: instanceRelationError } = useInstanceRelationCounts(activeMode, targetSelectedId, model, dPastStart, dPastEnd, dFutureStart, dFutureEnd, relationDataMode);
 
   // Instance-level SHAP: predicted-map community = attribution target; left map shows per-source community weights
   const shapTargetCommunityId = relationTargetCommunityReady ? targetSelectedId : null;
   const { counts: shapCounts, loading: shapLoading, error: shapError, matrix: shapMatrix } = useInstanceShapCounts(
     activeMode,
     shapTargetCommunityId,
-    relationModel,
+    model,
     forecastAnchorDate,
     shapHorizon,
     dPastStart,
@@ -234,7 +232,7 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
     isSourceMode && (activeMode === "relation" || activeMode === "instance") ? activeMode : "__disabled__",
     layer,
     leftActiveSelectedId,
-    relationModel,
+    model,
     relationDataMode,
     dPastStart,
     dPastEnd,
@@ -247,7 +245,7 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
   const { counts: sourceInstanceRelationCounts, loading: sourceInstanceRelationLoading } = useInstanceRelationCounts(
     isSourceMode && activeMode === "instance" ? activeMode : "__disabled__",
     leftActiveSelectedId,
-    relationModel,
+    model,
     dPastStart,
     dPastEnd,
     dFutureStart,
@@ -298,7 +296,7 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
     }
       let cancelled = false;
       const ac = new AbortController();
-            api.get4dData(pastEnd, true, null, 30, true, Number(targetSelectedId) - 1, relationModel, relationDataMode, {
+            api.get4dData(pastEnd, true, null, 30, true, Number(targetSelectedId) - 1, model, relationDataMode, {
         signal: ac.signal,
         d3Start: 0,
         normalize: false,
@@ -316,7 +314,7 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
         cancelled = true;
         ac.abort();
       };
-  }, [activeMode, pastStart, pastEnd, targetSelectedId, relationModel, relationDataMode]);
+  }, [activeMode, pastStart, pastEnd, targetSelectedId, model, relationDataMode]);
   // Instance-level map on source side: 4D array → per-community time-averaged over slider date range.
   const {data: instanceSourceResp, loading: instanceSourceLoading, error: instanceSourceError} = useApi(({ signal }) => {
     if (activeMode !== "instance") return Promise.resolve(null);
@@ -383,8 +381,8 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
   // Daily forecast series for selected right-map community (for side panel tootip)
   const { data: forecastDailyResp, loading: forecastDailyLoading, error: forecastDailyError } = useApi(({ signal }) => {
     if (!targetForecastReady) return Promise.resolve(null);
-    return api.predictionByDate(forecastAnchorDate, forecastModel, { signal });
-  }, [targetForecastReady, forecastAnchorDate, forecastModel, secondarySelectedId]);
+    return api.predictionByDate(forecastAnchorDate, model, { signal });
+  }, [targetForecastReady, forecastAnchorDate, model, secondarySelectedId]);
   
   const forecastDailySeries = useMemo(() => {
     if (!forecastDailyResp?.forecast_daily || !secondarySelectedId) return null;
@@ -490,7 +488,7 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
       if (targetForecastEligible) {
         return targetCountMode === "average"
           ? "Avg forecast per day"
-          : `Forecast total (${forecastModel}, full horizon)`;
+          : `Forecast total (${model}, full horizon)`;
       }
       return targetCountMode === "average" ? "Avg predicted crimes per day" : "Predicted Crime Count";
     }
@@ -498,7 +496,7 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
       return targetCountMode === "average" ? "Avg crimes per day" : "Crime Count";
     }
     return "Crime Count";
-  }, [secondaryMode, isSourceMode, leftActiveSelectedId, relationDataMode, activeMode, targetCountMode, targetForecastEligible, forecastModel]);
+  }, [secondaryMode, isSourceMode, leftActiveSelectedId, relationDataMode, activeMode, targetCountMode, targetForecastEligible, model]);
 
   const rightMapLoading = secondaryMode === "relation" && isSourceMode
     ? (activeMode === "instance" ? sourceInstanceRelationLoading : sourceRelationLoading)
@@ -825,6 +823,30 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
 
             <span style={{width: 1, height: 22, background: "var(--color-separator)", borderRadius: 1, flexShrink: 0}} aria-hidden />
 
+            {/* Model */}
+            <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3)" }}>
+              <strong style={{ fontWeight: 600, opacity: 0.95 }}>Model</strong>
+              <select
+                value={model}
+                onChange={(e) => setModel(e.target.value)}
+                aria-label="Model"
+                style={{
+                  padding: "4px 8px",
+                  borderRadius: 6,
+                  border: "1px solid var(--color-border-strong)",
+                  background: "var(--color-surface-input)",
+                  color: "inherit",
+                  fontSize: "inherit",
+                }}
+              >
+                {FORECAST_MODEL_OPTIONS.map((m) => (
+                  <option key={m} value={m}>{m}</option>
+                ))}
+              </select>
+            </div>
+
+            <span style={{width: 1, height: 22, background: "var(--color-separator)", borderRadius: 1, flexShrink: 0}} aria-hidden />
+
             {/* Recenter */}
             <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3)" }}>
               <strong style={{ fontWeight: 600, opacity: 0.95 }}>Recenter</strong>
@@ -931,28 +953,6 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
                     Data <br/> Level
                   </button>
               </div>
-              {(activeMode === "relation" || activeMode === "instance" || secondaryMode === "target") && (
-                <div style={{ display: "flex", gap: "var(--space-3)", alignItems: "center", fontSize: 15 }}>
-                  <strong>Relation model:</strong>
-                  <select
-                    value={relationModel}
-                    onChange={(e) => setRelationModel(e.target.value)}
-                    aria-label="Relation model"
-                    style={{
-                      padding: "4px 8px",
-                      borderRadius: 6,
-                      border: "1px solid var(--color-border-strong)",
-                      background: "var(--color-surface-input)",
-                      color: "inherit",
-                      fontSize: "inherit",
-                    }}
-                  >
-                    {FORECAST_MODEL_OPTIONS.map((m) => (
-                      <option key={m} value={m}>{m}</option>
-                    ))}
-                  </select>
-                </div>
-              )}
               {activeMode === "instance" && relationTargetCommunityReady && (
                 <div style={{ display: "flex", gap: "var(--space-3)", alignItems: "center", fontSize: 13, opacity: 0.8 }}>
                   <strong>SHAP horizon:</strong>
@@ -1226,8 +1226,6 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
                     disabled={secondaryMode === "relation" || !(activeMode === "relation" || activeMode === "instance")}
                     title={!(activeMode === "relation" || activeMode === "instance") ? "Select a relation tab on the left map first" : undefined}
                     style={mapTabButtonStyle(secondaryMode === "relation", {
-                      fontSize: "0.65rem",
-                      lineHeight: 1.2,
                       opacity: !(activeMode === "relation" || activeMode === "instance") ? 0.25 : 1,
                     })}
                   >
@@ -1235,51 +1233,18 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
                   </button>
                 )}
               </div>
-              {(activeMode === "relation" || activeMode === "instance" || secondaryMode === "target") && (
-                <div
-                  style={{
-                    display: "flex",
-                    flexWrap: "wrap",
-                    gap: "var(--space-3)",
-                    alignItems: "center",
-                    width: "100%",
-                    fontSize: 15,
-                  }}
+              {forecastErrorText && targetForecastEligible ? (
+                <span
+                  style={{ color: "var(--color-danger-strong)", fontSize: 11, maxWidth: "100%", wordBreak: "break-word" }}
+                  title={forecastErrorText}
                 >
-                  <select
-                    value={forecastModel}
-                    onChange={(e) => setForecastModel(e.target.value)}
-                    disabled={secondaryLayer !== "community"}
-                    aria-label="Forecast model"
-                    style={{
-                      padding: "4px 8px",
-                      borderRadius: 6,
-                      border: "1px solid var(--color-border-strong)",
-                      background: "var(--color-surface-input)",
-                      color: "inherit",
-                      fontSize: "inherit",
-                    }}
-                  >
-                    {FORECAST_MODEL_OPTIONS.map((m) => (
-                      <option key={m} value={m}>
-                        {m}
-                      </option>
-                    ))}
-                  </select>
-                  {forecastErrorText && targetForecastEligible ? (
-                    <span
-                      style={{ color: "var(--color-danger-strong)", fontSize: 11, maxWidth: "100%", wordBreak: "break-word" }}
-                      title={forecastErrorText}
-                    >
-                      {forecastErrorText.length > 160 ? `${forecastErrorText.slice(0, 160)}…` : forecastErrorText}
-                    </span>
-                  ) : null}
-                  {anchorIsClamped && (
-                    <span style={{ fontSize: 15.5, color: "var(--color-warning)" }}>
-                      Predicted Anchor Date: {forecastAnchorDate} (model max)
-                    </span>
-                  )}
-                </div>
+                  {forecastErrorText.length > 160 ? `${forecastErrorText.slice(0, 160)}…` : forecastErrorText}
+                </span>
+              ) : null}
+              {anchorIsClamped && (
+                <span style={{ fontSize: 15.5, color: "var(--color-warning)" }}>
+                  Predicted Anchor Date: {forecastAnchorDate} (model max)
+                </span>
               )}
               {activeMode === "instance" && relationTargetCommunityReady && (
                 <div style={{ display: "flex", gap: "var(--space-3)", alignItems: "center", fontSize: 12, opacity: 0.0, cursor: 'default', userSelect: 'none' }}>
