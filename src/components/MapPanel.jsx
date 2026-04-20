@@ -192,15 +192,22 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
     return clampDateIso(anchorDay, predBounds.anchor_min, predBounds.anchor_max);
   }, [anchorDay, predBounds]);
   
+  // Invert slider values to tensor lag indices.
+  // Slider: pastEnd=90 (far past), pastStart=0 (near anchor) — high value = older.
+  // Tensor axis 0: index 0 = most recent lag, index 89 = oldest lag.
+  // So: tensor past_start = 90 - dPastEnd, tensor past_days = 90 - dPastStart
+  const tPastStart = Math.min(89, 90 - dPastEnd);
+  const tPastDays  = Math.max(1, 90 - dPastStart);
+
   //Hover daily series
   const tensorSourceId = targetSelectedId ?? null;
-  const { hoverDaily, hoverDailyLoading, canShowHoverData } = useHoverDailySeries({hover, activeMode, secondaryMode, tensorSourceId, model, pastStart, pastEnd, futureStart, futureEnd, anchorDate, dataMode: relationDataMode, forecastAnchorDate, shapHorizon, });
+  const { hoverDaily, hoverDailyLoading, canShowHoverData } = useHoverDailySeries({hover, activeMode, secondaryMode, tensorSourceId, model, pastStart, pastEnd, tPastStart, tPastDays, futureStart, futureEnd, anchorDate, dataMode: relationDataMode, forecastAnchorDate, shapHorizon, });
 
   //Model relation counts
-  const { counts: relationCounts, loading: relationLoading } = useModelRelationCounts(activeMode, layer, targetSelectedId, model, relationDataMode, dPastStart, dPastEnd, dFutureStart, dFutureEnd);
+  const { counts: relationCounts, loading: relationLoading } = useModelRelationCounts(activeMode, layer, targetSelectedId, model, relationDataMode, tPastStart, tPastDays, dFutureStart, dFutureEnd);
 
   //Instance relation counts
-  const { counts: instanceRelationCounts, loading: instanceRelationLoading, error: instanceRelationError } = useInstanceRelationCounts(activeMode, targetSelectedId, model, dPastStart, dPastEnd, dFutureStart, dFutureEnd, relationDataMode);
+  const { counts: instanceRelationCounts, loading: instanceRelationLoading, error: instanceRelationError } = useInstanceRelationCounts(activeMode, targetSelectedId, model, tPastStart, tPastDays, dFutureStart, dFutureEnd, relationDataMode);
 
   // Instance-level SHAP: predicted-map community = attribution target; left map shows per-source community weights
   const shapTargetCommunityId = relationTargetCommunityReady ? targetSelectedId : null;
@@ -210,8 +217,8 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
     model,
     forecastAnchorDate,
     shapHorizon,
-    dPastStart,
-    dPastEnd
+    tPastStart,
+    tPastDays
   );
 
   // Source-direction: left map selection drives right map attribution
@@ -229,8 +236,8 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
     leftActiveSelectedId,
     model,
     relationDataMode,
-    dPastStart,
-    dPastEnd,
+    tPastStart,
+    tPastDays,
     dFutureStart,
     dFutureEnd,
     "source"
@@ -241,8 +248,8 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
     isSourceMode && activeMode === "instance" ? activeMode : "__disabled__",
     leftActiveSelectedId,
     model,
-    dPastStart,
-    dPastEnd,
+    tPastStart,
+    tPastDays,
     dFutureStart,
     dFutureEnd,
     relationDataMode
@@ -272,16 +279,17 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
   const { data: relationValuesRaw, loading: relationValuesLoading } = useApi(({ signal }) => {
     if (activeMode === "source") return Promise.resolve(null);
     if (!relationTargetCommunityReady || !targetSelectedId) return Promise.resolve(null);
-    return api.get4dData(pastEnd, true, null, 30, true, Number(targetSelectedId) - 1, model, relationDataMode, {
+    return api.get4dData(tPastDays, true, null, 30, true, Number(targetSelectedId) - 1, model, relationDataMode, {
       signal,
       d3Start: 0,
+      d1Start: tPastStart,
       normalize: false,
     });
-  }, [activeMode, pastEnd, targetSelectedId, model, relationDataMode, relationTargetCommunityReady]);
-  // Slice to the past window client-side — no re-fetch needed when only pastStart changes.
+  }, [activeMode, tPastStart, tPastDays, targetSelectedId, model, relationDataMode, relationTargetCommunityReady]);
+  // No client-side slice needed — tensor is already sliced to window by the backend.
   const relationValues = useMemo(
-    () => relationValuesRaw ? relationValuesRaw.map(row => [...row].reverse().slice(pastStart)) : null,
-    [relationValuesRaw, pastStart]
+    () => relationValuesRaw ? relationValuesRaw.map(row => [...row].reverse()) : null,
+    [relationValuesRaw]
   );
 
   // Instance-level map on source side: 4D array → per-community time-averaged over slider date range.
@@ -475,6 +483,50 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
 
   const forecastErrorText = predBoundsError || forecastDailyError;
 
+  // Global min/max for tooltip color scaling — must use per-day values to match heatmap cell scale
+  const leftMapGlobalMin = useMemo(() => {
+    if (activeMode === "relation" && relationValues) {
+      let min = Infinity;
+      for (const row of relationValues) for (const v of row) if (v < min) min = v;
+      return min === Infinity ? null : min;
+    }
+    if (activeMode === "instance" && shapMatrix) {
+      let min = Infinity;
+      for (const row of shapMatrix) for (const v of row) if (v < min) min = v;
+      return min === Infinity ? null : min;
+    }
+    if (!leftCountsForMap) return null;
+    const vals = Object.values(leftCountsForMap);
+    return vals.length ? Math.min(...vals) : null;
+  }, [activeMode, relationValues, shapMatrix, leftCountsForMap]);
+
+  const leftMapGlobalMax = useMemo(() => {
+    if (activeMode === "relation" && relationValues) {
+      let max = -Infinity;
+      for (const row of relationValues) for (const v of row) if (v > max) max = v;
+      return max === -Infinity ? null : max;
+    }
+    if (activeMode === "instance" && shapMatrix) {
+      let max = -Infinity;
+      for (const row of shapMatrix) for (const v of row) if (v > max) max = v;
+      return max === -Infinity ? null : max;
+    }
+    if (!leftCountsForMap) return null;
+    const vals = Object.values(leftCountsForMap);
+    return vals.length ? Math.max(...vals) : null;
+  }, [activeMode, relationValues, shapMatrix, leftCountsForMap]);
+
+  const rightMapGlobalMin = useMemo(() => {
+    if (!rightCountsForMap) return null;
+    const vals = Object.values(rightCountsForMap);
+    return vals.length ? Math.min(...vals) : null;
+  }, [rightCountsForMap]);
+  const rightMapGlobalMax = useMemo(() => {
+    if (!rightCountsForMap) return null;
+    const vals = Object.values(rightCountsForMap);
+    return vals.length ? Math.max(...vals) : null;
+  }, [rightCountsForMap]);
+
   function makeSelection(mode, layerX, idX, daysX, anchorISO, dateOffsetDays) {
     if (!idX) return null;
     const geoX = BOUNDARY_GEO[layerX];
@@ -602,13 +654,6 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
     }));
   },[forecastDailySeries, futureCounts]);
 
-  /*
-  useEffect(()=>{
-    //use for error clusterheatmap
-    //console.log(futureCounts);
-    //console.log(dailyForHeatMap);
-  },[futureCounts,dailyForHeatMap]);*/
-
   //pass selection and data up
   useEffect(() => {
     onSelectionChange?.({
@@ -628,11 +673,18 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
       //data for heatmaps
       heatData: activeMode === "source" ? crimeCounts : activeMode === "instance" ? shapMatrix : relationValues,
       targetHeatData: secondaryMode === "actual" ? futureCounts : secondaryMode === "target" ? dailyForHeatMap : null,
+      // values needed by DashboardPanel for temporal series graphs
+      forecastAnchorDate,
+      shapHorizon,
+      model,
+      pastStart: dPastStart,
+      pastEnd: dPastEnd
     });
   }, [
     activeMode,
     secondaryMode,
     anchorDate,
+    relationDataMode,
 
     sourceSelection,
     relationSelection,
@@ -647,6 +699,13 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
 
     futureCounts,
     dailyForHeatMap,
+
+    forecastAnchorDate,
+    shapHorizon,
+    model,
+    pastStart,
+    dPastStart,
+    dPastEnd,
 
     onSelectionChange,
   ]);
@@ -665,6 +724,7 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
     leftSummaryError,
     leftDailyResp,
     pastEnd,
+    pastStart,
 
     rightSelection,
     rightSummary,
@@ -1313,6 +1373,8 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
                 )}
                 {!hoverDailyLoading && hoverDaily && hoverDaily.length > 0 && (
                   <TooltipMap
+                    globalMin={hover.which === "left" ? leftMapGlobalMin : rightMapGlobalMin}
+                    globalMax={hover.which === "left" ? leftMapGlobalMax : rightMapGlobalMax}
                     days={hoverDaily}
                     isRelationMap={
                       (activeMode === "relation" || activeMode === "instance") && hover.which === "left"

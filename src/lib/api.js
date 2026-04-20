@@ -99,7 +99,7 @@ export const api = {
   instanceLevelSource: (_pastDays, _futureStart, _futureEnd, _opts) => Promise.resolve({ data: [] }),
 
   get4dData: (d1, b1, d2, d3, b3, d4, model, dataMode = "mi", opts = {}) => {
-    const { signal, d3Start, normalize = false, ...rest } = opts;
+    const { signal, d3Start, d1Start, normalize = false, ...rest } = opts;
     const params = new URLSearchParams();
     params.append("model", model);
     params.append("data_mode", dataMode);
@@ -110,6 +110,7 @@ export const api = {
     if (d3 !== null && d3 !== undefined) params.append("d3", d3);
     if (b3 !== null && b3 !== undefined) params.append("b3", b3);
     if (d4 !== null && d4 !== undefined) params.append("d4", d4);
+    if (d1Start != null) params.append("d1_start", d1Start);
     if (d3Start != null) params.append("d3_start", d3Start);
     return request(`/api/data4d?${params.toString()}`, { signal, ...rest });
   },

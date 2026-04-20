@@ -7,8 +7,7 @@ import { fillDaily } from "../lib/crimeAggregates.js";
  * Debounced fetch of daily series for the map hover tooltip (standard selectionDaily or 4D relation path).
  */
 /** @param {string|null|undefined} tensorSourceId Community id used as tensor source for relation/instance visualization (Predicted map selection). */
-export function useHoverDailySeries({ hover, activeMode, secondaryMode, tensorSourceId, model, dataMode = "mi", pastStart = 0, pastEnd, futureStart, futureEnd, anchorDate, forecastAnchorDate, shapHorizon }) {
-
+export function useHoverDailySeries({ hover, activeMode, secondaryMode, tensorSourceId, model, dataMode = "mi", pastStart = 0, pastEnd, tPastStart = 0, tPastDays, futureStart, futureEnd, anchorDate, forecastAnchorDate, shapHorizon }) {
   //Check if the hover data can be shown
   const canShowHoverData = useMemo(
     () =>
@@ -108,9 +107,10 @@ export function useHoverDailySeries({ hover, activeMode, secondaryMode, tensorSo
       //Model/Data Level: fetch daily relation values from 4D tensor
       } else if (isRelation && tensorSourceId) {
         api
-          .get4dData(pastEnd, true, Number(hover.id) - 1, 30, true, Number(tensorSourceId) - 1, model, dataMode, {
+          .get4dData(tPastDays ?? pastEnd, true, Number(hover.id) - 1, 30, true, Number(tensorSourceId) - 1, model, dataMode, {
             signal: ac.signal,
             d3Start: 0,
+            d1Start: tPastStart ?? 0,
           })
           .then((data) => {
             const nDays = data.length;
@@ -159,7 +159,7 @@ export function useHoverDailySeries({ hover, activeMode, secondaryMode, tensorSo
       if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
       if (hoverAbortRef.current) hoverAbortRef.current.abort();
     };
-  }, [hover?.which, hover?.id, hover?.layer, activeMode, secondaryMode, tensorSourceId, pastEnd, futureStart, futureEnd, anchorDate, canShowHoverData, model, dataMode, forecastAnchorDate, shapHorizon]);
+    }, [hover?.which, hover?.id, hover?.layer, activeMode, secondaryMode, tensorSourceId, pastEnd, tPastStart, tPastDays, futureStart, futureEnd, anchorDate, canShowHoverData, model, dataMode, forecastAnchorDate, shapHorizon]);
   //Return the hover daily series, loading state, and whether the hover data can be shown
   return { hoverDaily, hoverDailyLoading, canShowHoverData };
 }

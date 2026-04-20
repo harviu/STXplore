@@ -128,6 +128,13 @@ export default function App() {
             isSageMap={state.relationDataMode === "sage"}
             onSourceHighlight={setSourceHighlights}
             onTargetHighlight={setTargetHighlights}
+            anchorDate={state.anchorDate}
+            forecastAnchorDate={state.forecastAnchorDate}
+            shapHorizon={state.shapHorizon}
+            model={state.model}
+            relationDataMode={state.relationDataMode}
+            pastStart={state.pastStart ?? 0}
+            pastEnd={state.pastEnd ?? 90}
           />
         </section>
       </main>

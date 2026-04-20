@@ -39,6 +39,7 @@ def get_data4d(
     b3: bool = Query(False),
     d4: Optional[int] = Query(None),
     d3_start: Optional[int] = Query(None, ge=0, le=29),
+    d1_start: Optional[int] = Query(None, ge=0, le=89),
     normalize: bool = Query(False, description="Normalize output against full tensor (MI: 0-100, SAGE: -100-100)"),
 ):
     try:
@@ -75,10 +76,12 @@ def get_data4d(
         # For SAGE, use sum over the selected horizon window; MI remains mean.
         result = np.sum(result, axis=0) if data_mode == "sage" else np.mean(result, axis=0)
         if d1 is not None:
+            hi = int(d1)
+            lo1 = int(d1_start) if d1_start is not None else 0
             if result.ndim == 2:
-                result = result[:, -d1:]
+                result = result[:, lo1:hi]
             else:
-                result = result[-d1:]
+                result = result[lo1:hi]
     if normalize:
         ref_matrix = loadedArray.sum(axis=(0, 2)) if data_mode == "sage" else loadedArray.mean(axis=(0, 2))
         if data_mode == "sage":

@@ -85,12 +85,13 @@ export function useClusterDailySeries({
         const leafIds = selectedCommunities.filter(id => id != null && !String(id).includes("-"));
         const result = leafIds
           .filter(id => id != null)
-          .map(commIdx => {
+          .map(commId => {
+            const commIdx = Number(commId) - 1; // selectedCommunities are 1-based for relation/instance mode
             const series = rows.map((row, i) => ({
               date: addDaysISO(anchorDate, -(rows.length - 1 - i)),
               count: row.values?.[commIdx] ?? 0,
             }));
-            return { id: commIdx, label: `Community ${commIdx + 1}`, series };
+            return { id: commId, label: `Community ${commId}`, series };
           });
         setCommunitySeriesList(result);
         setLoading(false);
@@ -112,13 +113,16 @@ export function useClusterDailySeries({
         return;
       }
       const leafIds = selectedCommunities.filter(id => id != null && !String(id).includes("-"));
-      const result = leafIds.map(commIdx => {
+      const result = leafIds.map(commId => {
+        const commIdx = Number(commId) - 1; // selectedCommunities are 1-based for relation mode
         const dailyValues = heatData[commIdx] ?? [];
-        const series = dailyValues.map((val, i) => ({
-          date: addDaysISO(anchorDate, -(i + 1)),
+        // dailyValues[0] is most recent (reversed in MapPanel) — reverse again so series
+        // goes oldest → newest left to right, matching the heatmap x-axis direction.
+        const series = [...dailyValues].reverse().map((val, i) => ({
+          date: addDaysISO(anchorDate, -(dailyValues.length - i)),
           count: val,
         }));
-        return { id: commIdx, label: `Community ${commIdx + 1}`, series };
+        return { id: commId, label: `Community ${commId}`, series };
       }).filter(r => r.series.length > 0);
       setCommunitySeriesList(result);
       setLoading(false);

@@ -4,6 +4,8 @@ import { select } from 'https://esm.sh/d3-selection';
 import { useRef, useEffect, useState, useMemo, useCallback } from "react";
 import TooltipMap from "./tooltipMap.jsx";
 import { fillDaily } from "../lib/crimeAggregates.js"
+import { useClusterDailySeries } from "../hooks/useClusterDailySeries.js";
+import { addDaysISO } from "../lib/dates.js";
 
 /**A function that renders a horizontal bar chart using D3 
  * 
@@ -67,9 +69,9 @@ function capitalizeFirst(string) {
  * @param {Object} props.right - The summary data for the inactive selection, including loading state and error information.
  * @param {Object} props.heatData - The data for the past map cluster heatmap.
  * @param {Object} props.targetHeatData - The data for the future map cluster heatmap.
- * @returns {JSX.Element} The rendered DashboardPanel component.
+ * @returns {JSX.Element} The rendered DashboardPanel component
  */
-export default function DashboardPanel({ mode, selection, inactiveMode, inactiveSelection, left, right, heatData, targetHeatData, isSageMap = false, onSourceHighlight, onTargetHighlight }) {
+export default function DashboardPanel({ mode, selection, inactiveMode, inactiveSelection, left, right, heatData, targetHeatData, isSageMap = false, onSourceHighlight, onTargetHighlight, anchorDate, forecastAnchorDate, shapHorizon, model, relationDataMode, pastStart = 0, pastEnd = 90}) {
   const barsRef = useRef();
   const labelsRef = useRef();
   const countsRef = useRef();
@@ -112,28 +114,37 @@ export default function DashboardPanel({ mode, selection, inactiveMode, inactive
   },[inactiveMode]);
 
   // For each highlighted community, extract its data from heatData
-  const communitySeriesList = useMemo(() => {
-  if (!heatData || !Array.isArray(heatData) || sourceHighlight.community.length === 0) return [];
-  const rangeStart = left?.range?.start ?? null;
-  const rangeEnd = left?.range?.end ?? null;
-  if(mode === "source"){ //source has a different data structure
-    return sourceHighlight.community
-      .filter(id => id != null)
-      .map(id => {
-        const rows = heatData
-          .filter(d => String(d.id) === String(id))
-          .map(d => ({ date: d.date, count: d.count }));
-        // Fill to full date range so every community always shows all 90 bars
-        const series = (rangeStart && rangeEnd)
-          ? fillDaily(rangeStart, rangeEnd, rows)
-          : rows.sort((a, b) => a.date.localeCompare(b.date));
-        return { id, series };
-      })
-      .filter(c => c.series.length > 0);
-  }
-  return []; //TODO: swap for data processing
+  const { communitySeriesList } = useClusterDailySeries({
+    mode,
+    relationDataMode: relationDataMode ?? "mi",
+    selectedCommunities: sourceHighlight.community,
+    heatData,
+    targetCommunityId: right?.selection?.id ?? null,
+    forecastAnchorDate: forecastAnchorDate ?? null,
+    shapHorizon: shapHorizon ?? null,
+    relationModel: model ?? null,
+    pastDays: left?.days ?? 90,
+    futureEnd: right?.offset ?? 30,
+    anchorDate: anchorDate ?? null,
+    rangeStart: left?.range?.start ?? null,
+    rangeEnd: left?.range?.end ?? null,
+  });
 
-  }, [heatData, sourceHighlight.community, left?.range]);
+  // Global min/max from heatData — matches the cluster heatmap color scaling
+  const heatGlobalMin = useMemo(() => {
+    if (!heatData || mode === "source") return null;
+    let min = Infinity;
+    for (const row of heatData) for (const v of row) if (v < min) min = v;
+    return min === Infinity ? null : min;
+  }, [heatData, mode]);
+  const heatGlobalMax = useMemo(() => {
+    if (!heatData || mode === "source") return null;
+    let max = -Infinity;
+    for (const row of heatData) for (const v of row) if (v > max) max = v;
+    return max === -Infinity ? null : max;
+  }, [heatData, mode]);
+
+
   //aps the source data to the source map graph in source map stats below
   useEffect(() => { 
     renderBarChart(barsRef, labelsRef, countsRef, summary, "steelblue");
@@ -167,7 +178,21 @@ export default function DashboardPanel({ mode, selection, inactiveMode, inactive
                 return (
                   <div key={id}>
                     <div style={{ fontSize: 11, opacity: 0.7, marginBottom: 2 }}>Community {id}</div>
-                    <TooltipMap days={series} height={14} isRelationMap={false} highlightDates={sourceHighlight.date.length > 0 ? sourceHighlight.date : null} />
+                    <TooltipMap
+                      globalMin={heatGlobalMin} 
+                      globalMax={heatGlobalMax}
+                      days={series}
+                      height={14}
+                      isRelationMap={mode !== "source"}
+                      isSageMap={isSageMap && mode !== "source"}
+                      highlightDates={
+                        sourceHighlight.date?.length > 0
+                          ? mode === "source"
+                            ? sourceHighlight.date
+                            : sourceHighlight.date.map(d => addDaysISO(anchorDate, -(Number(d) + 1)))
+                          : null
+                      }
+                    />
                   </div>
                 );
               }
@@ -178,9 +203,9 @@ export default function DashboardPanel({ mode, selection, inactiveMode, inactive
       {/* Cluster Heatmaps */}
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", width: "100%", gap: "var(--space-5)" }}>
         {heatData && (selection?.id || mode === "source") && <p style={{ opacity: 1, margin: 0, fill: "white" }}> Past map cluster heatmap </p>}
-        {heatData && (selection?.id || mode === "source" || (mode != "source" && right?.selection?.id)) && <ClusterHeatmap data={heatData} selectedId={selection?.id || null} isRelationMap={mode !== "source"} isSageMap={isSageMap && mode !== "source"} onHighlight={handleSourceHighlight} />}
+        {heatData && (selection?.id || mode === "source" || (mode != "source" && right?.selection?.id)) && <ClusterHeatmap data={heatData} selectedId={selection?.id || null} isRelationMap={mode !== "source"} isSageMap={isSageMap && mode !== "source"} onHighlight={handleSourceHighlight} anchorDate={anchorDate} offset={pastStart} endOffset={pastEnd} />}
         {targetHeatData && (inactiveMode === "actual" || inactiveMode === "target") && <p style={{ opacity: 1, margin: 0, fill: "white" }}> Future map cluster heatmap ({title})</p>}
-        {targetHeatData && (inactiveMode === "actual" || inactiveMode === "target") && <ClusterHeatmap data={targetHeatData} selectedId={inactiveSelection?.id || null} isRelationMap={false} isFuture={true} offset={inactiveMode === "target"? (right?.offset + 1) : right?.offset} onHighlight={handleTargetHighlight} />}
+        {targetHeatData && (inactiveMode === "actual" || inactiveMode === "target") && <ClusterHeatmap data={targetHeatData} selectedId={inactiveSelection?.id || null} isRelationMap={false} isFuture={true} offset={inactiveMode === "target"? (right?.offset + 1) : right?.offset} onHighlight={handleTargetHighlight} anchorDate={anchorDate} />}
       </div>
     {/* Bar Charts — crime type breakdowns for left and right map selections */}
       <div style={{ padding: "5%", boxSizing: "border-box" }}>

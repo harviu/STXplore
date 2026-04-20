@@ -48,9 +48,9 @@ function choroplethColor(t, isRelationMap = false, isSageMap = false) {
  * @returns {JSX.Element}
  */
 //The box component you see when you hover
-export default function TooltipMap({ days, height = 12, isRelationMap = false, isSageMap = false, highlightDates = null }) {
-  const max = (days ?? []).reduce((m, d) => Math.max(m, d.count || 0), 0);
-  const min = (days ?? []).reduce((m, d) => Math.min(m, d.count || max), max);
+export default function TooltipMap({ days, height = 12, isRelationMap = false, isSageMap = false, highlightDates = null, globalMin = null, globalMax = null }) {
+  const max = globalMax ?? (days ?? []).reduce((m, d) => Math.max(m, d.count || 0), 0);
+  const min = globalMin ?? (days ?? []).reduce((m, d) => Math.min(m, d.count || max), max);
   const tickHeight = height + 8; // taller than bars
   const tickTop = -4; // extend above and below bar row
   const hasHighlight = highlightDates != null && highlightDates.length > 0;

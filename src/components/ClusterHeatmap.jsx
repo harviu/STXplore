@@ -58,7 +58,7 @@ const getClusterOrder = (matrix, ids) => {
  * @param {number} [props.offset=0] Offset for the date axis.
  * @returns {JSX.Element}
  */
-export default function ClusterHeatmap({ data, selectedId, isRelationMap = false, isSageMap = false, isFuture = false, offset = 0, onHighlight }) {
+export default function ClusterHeatmap({ data, selectedId, isRelationMap = false, isSageMap = false, isFuture = false, offset = 0, onHighlight, anchorDate = null, endOffset = null }) {
     const svgRef = useRef(null);
     const divRef = useRef(null);
     const [containerWidth, setContainerWidth] = useState(document.documentElement.clientWidth);
@@ -177,19 +177,23 @@ export default function ClusterHeatmap({ data, selectedId, isRelationMap = false
                 selectedId !== null &&
                 String(isRelationMap ? d.id + 1 : Number(d.id)) === String(selectedId);
 
+            const N = isRelationMap ? Array.from(new Set(heatmapData.map(h => h.date))).length : 0;
             const xTickFormat = 
             isFuture && isRelationMap
                 ? (d) => d+ 1 + offset
                 : isFuture ? (d) => Math.abs(Math.round((d3.min(heatmapData.map(d => new Date(d.date).getTime())) - new Date(d).getTime()) / (1000 * 60 * 60 * 24)))+offset : isRelationMap
-                ? (d) => d+ 1
-                : (d) => Math.round((d3.max(heatmapData.map(d => new Date(d.date).getTime())) - new Date(d).getTime()) / (1000 * 60 * 60 * 24))+1;
+                ? (d) => endOffset !== null ? d + endOffset - N + 1 : d + offset + 1
+                : (d) => {
+                    const ref = anchorDate ? new Date(anchorDate + "T00:00:00").getTime() : d3.max(heatmapData.map(d => new Date(d.date).getTime()));
+                    return Math.round((ref - new Date(d).getTime()) / (1000 * 60 * 60 * 24));
+                  };
 
             const hoverStrokeColor = isRelationMap ? "magenta" : "darkgreen";
             const hoverstrokeWidth = isRelationMap ? 2: 3;
 
             const tooltipHtml = (d) => 
                 `Community: ${isRelationMap ? d.id + 1 : d.id}<br>` +
-                `${isRelationMap ? "Days Ago: " : "Date: "}${isRelationMap ? d.date + 1 : d.date}<br>` +
+                `${isRelationMap ? "Days Ago: " : "Date: "}${isRelationMap ? (endOffset !== null ? d.date + endOffset - Array.from(new Set(heatmapData.map(h => h.date))).length + 1 : d.date + offset + 1) : d.date}<br>` +
                 `${isRelationMap ? "Relation" : "Count"}: ${d.count}`; 
 
             d3.select(svgRef.current).selectAll("*").remove();
@@ -406,7 +410,7 @@ export default function ClusterHeatmap({ data, selectedId, isRelationMap = false
                 .style("font-weight", "500")
                 .text("Community Number");
         }
-    }, [heatmapData, selectedId, interpolate, containerWidth, isSelected, dateCluster, isFuture, isRelationMap, selectedBranch, selectedDateBranch, selectedCommunities, selectedDates]);
+    }, [heatmapData, selectedId, interpolate, containerWidth, isSelected, dateCluster, isFuture, isRelationMap, selectedBranch, selectedDateBranch, selectedCommunities, selectedDates, offset, endOffset, anchorDate]);
         
 
     return (
