@@ -15,7 +15,7 @@ It preserves frontend calls to `/api/...` via a Vercel rewrite.
 
 ## 2) Prepare This Repository
 
-1. Replace the placeholder backend destination in [vercel.json](/mnt/home/khanalni/shield-project/extra/S-D-Mamba/Community-Heatmaps/vercel.json):
+1. Replace the placeholder backend destination in [vercel.json](CrimeSightAI/vercel.json):
    - Replace `http://203.0.113.10:8000` with `http://<YOUR_VM_PUBLIC_IP>:8000`
 2. Commit and push:
 
@@ -52,8 +52,21 @@ docker compose version
 Run on the VM:
 
 ```bash
-git clone https://github.com/<your-github-user>/Community-Heatmaps.git
-cd Community-Heatmaps
+git clone https://github.com/nishanKhanal/CrimeSightAI
+
+git clone 
+
+sudo apt-get update
+sudo apt-get install -y git-lfs
+git lfs install
+
+# pull the large CSV file tracked by Git LFS
+git lfs pull --include="data/Chicago-Data/Crime/cleaned_Crimes_-_2001_to_Present_20250114.csv"
+
+# verify
+head -n 2 data/Chicago-Data/Crime/cleaned_Crimes_-_2001_to_Present_20250114.csv
+
+cd CrimeSightAI
 cp deploy/.env.prod.example deploy/.env.prod
 ```
 
@@ -72,21 +85,21 @@ set +a
 Start database:
 
 ```bash
-docker compose --env-file deploy/.env.prod -f deploy/docker-compose.prod.yml up -d db
-docker compose --env-file deploy/.env.prod -f deploy/docker-compose.prod.yml ps
+docker compose --project-directory . --env-file deploy/.env.prod -f deploy/docker-compose.prod.yml up -d db
+docker compose --project-directory . --env-file deploy/.env.prod -f deploy/docker-compose.prod.yml ps
 ```
 
 Create schema:
 
 ```bash
-docker compose --env-file deploy/.env.prod -f deploy/docker-compose.prod.yml exec -T db \
+docker compose --project-directory . --env-file deploy/.env.prod -f deploy/docker-compose.prod.yml exec -T db \
   psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" < deploy/sql/create_crime_data_table.sql
 ```
 
 Import CSV into Postgres:
 
 ```bash
-docker compose --env-file deploy/.env.prod -f deploy/docker-compose.prod.yml exec -T db \
+docker compose --project-directory . --env-file deploy/.env.prod -f deploy/docker-compose.prod.yml exec -T db \
   psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "\copy crime_data (
     csv_index,
     id,
@@ -117,8 +130,8 @@ docker compose --env-file deploy/.env.prod -f deploy/docker-compose.prod.yml exe
 Build and start backend:
 
 ```bash
-docker compose --env-file deploy/.env.prod -f deploy/docker-compose.prod.yml up -d --build backend
-docker compose --env-file deploy/.env.prod -f deploy/docker-compose.prod.yml ps
+docker compose --project-directory . --env-file deploy/.env.prod -f deploy/docker-compose.prod.yml up -d --build backend
+docker compose --project-directory . --env-file deploy/.env.prod -f deploy/docker-compose.prod.yml ps
 ```
 
 ## 5) Configure Frontend on Vercel
