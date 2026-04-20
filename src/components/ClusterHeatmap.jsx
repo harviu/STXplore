@@ -67,6 +67,7 @@ export default function ClusterHeatmap({ data, selectedId, isRelationMap = false
     const [selectedBranch, setSelectedBranch] = useState(null); //for storing selected branch in cluster
     const [selectedDateBranch, setSelectedDateBranch] = useState(null); //for storing selected branch in cluster
 
+    //Auto resize with webpage
     useEffect(() => {
         const handleResize = () => {
             setContainerWidth(document.documentElement.clientWidth);
@@ -112,6 +113,7 @@ export default function ClusterHeatmap({ data, selectedId, isRelationMap = false
         }
     }, [data]);
 
+    //get present community IDs
     const clusteredIds = useMemo(() => {
         if (!heatmapData || heatmapData.length === 0) return [];
         const ids = Array.from(new Set(heatmapData.map(d => d.id))).sort((a, b) => a - b);
@@ -129,6 +131,7 @@ export default function ClusterHeatmap({ data, selectedId, isRelationMap = false
         return [hierarchy.leaves().map(d => d.data.id), root];
     }, [heatmapData, isSelected, isRelationMap]);
 
+    //get present dates
     const clusteredDates = useMemo(() => {
         if (!heatmapData || heatmapData.length === 0) return [];
         const ids = Array.from(new Set(heatmapData.map(d => d.id))).sort((a, b) => a - b);
@@ -146,25 +149,28 @@ export default function ClusterHeatmap({ data, selectedId, isRelationMap = false
         return [hierarchy.leaves().map(d => d.data.id), root];
     }, [heatmapData, dateCluster, isFuture, isRelationMap]);
 
+    //identify highlighted communities
     const selectedCommunities = useMemo(() => {
         if (!selectedBranch || !clusteredIds[1]) return [];
         const root = d3.hierarchy(clusteredIds[1]);
         const selectedNode = root.descendants().find(n => n.data.id === selectedBranch);
         return selectedNode ? selectedNode.descendants().map(n => n.data.id) : [];
     }, [selectedBranch, clusteredIds]);
+    //identify highlighted dates
     const selectedDates = useMemo(() => {
         if (!selectedDateBranch || !clusteredDates[1]) return [];
         const root = d3.hierarchy(clusteredDates[1]);
         const selectedNode = root.descendants().find(n => n.data.id === selectedDateBranch);
         return selectedNode ? selectedNode.descendants().map(n => n.data.id) : [];
     }, [selectedDateBranch, clusteredDates]);
-
+    //ensure correct ID
     useEffect(() => {
         const mapCommunities = isRelationMap
             ? selectedCommunities.map(id => (typeof id === 'number' || !String(id).includes('-')) ? String(Number(id) + 1) : id)
             : selectedCommunities;
         onHighlight?.({community: mapCommunities, date: selectedDates});
     }, [selectedCommunities, selectedDates, onHighlight, isRelationMap]);
+    //use d3 to create the cluster heatmap
     useEffect(() => {
         if (heatmapData.length > 0 && svgRef.current) { //isRelation
             const matchesSelected = (d) => 
