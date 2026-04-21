@@ -325,8 +325,9 @@ export default function ClusterHeatmap({ data, selectedId, isRelationMap = false
             const mousemove = function(event, d) {
                 const [x, y] = d3.pointer(event);
                 const dy = dateCluster ? y + 110 : y + 10;
+                const dx = x + (isSelected ? 100 : 0) + (x < containerWidth - (isSelected ? 220 : 120) ? 10 : -60);
                 tooltip.html(tooltipHtml(d))
-                    .style("left", (x + (x < containerWidth - 120 ? 10 : -80)) + "px")
+                    .style("left", (dx) + "px")
                     .style("top", (dy) + "px")
                     .style("overflow", "wrap");
             };
