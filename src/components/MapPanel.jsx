@@ -176,6 +176,7 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
   const geo = BOUNDARY_GEO[layer];
   const secondaryGeo = BOUNDARY_GEO[secondaryLayer];
 
+  //Get prediction date limits
   const targetForecastEligible = secondaryLayer === "community";
 
   const wantPredBounds = targetForecastEligible;
@@ -449,6 +450,7 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
     futureSpanDays,
   ]);
 
+  //select the correct title based on mode. Defaults to "Crime Count"
   const rightMapLegendTitle = useMemo(() => {
     if (secondaryMode === "relation" && isSourceMode) {
       if (!leftActiveSelectedId) return "Select a community on the left map";
@@ -636,6 +638,7 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
     });
   },[forecastDailyResp]);
 
+  //Calculate the daily error
   const errorSideValues = useMemo(()=>{
     if (!forecastDailySeries || ! futureCounts) return;
     const actual = futureCounts?.filter((day)=>{return day?.id === secondarySelectedId});
@@ -759,6 +762,9 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
     !!hover &&
     (hover.which === "right" ? !rightMapLoading : true) &&
     (hover.which === "left" ? !isLoadingLeft : true);
+
+  //protection for when you shouldnt be on relation tab
+  useEffect(()=>{if (secondaryMode === "relation" && !(activeMode === "relation" || activeMode === "instance")) setSecondaryMode("target");},[secondaryMode, activeMode]);
 
   return (
     <Panel title="Crime Map" fill style={{ minHeight: 0 }}>
