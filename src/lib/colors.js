@@ -6,6 +6,7 @@
  * Light blue → teal → dark green relation colors for relation counts
  * 
  */
+//used for crime counts which should be positive
 export const CHOROPLETH_STOPS = [
   "#ffffb2", // light yellow (low)
   "#fecc5c",
@@ -14,6 +15,7 @@ export const CHOROPLETH_STOPS = [
   "#bd0026", // dark red (high)
 ];
 
+//for positive relational values
 export const RELATION_STOPS = [
   "#0acaff", //light blue (low)
   "#4ae4e4",
@@ -28,6 +30,7 @@ export const RELATION_STOPS = [
  * Negative = source community suppresses target crime prediction.
  * Positive = source community amplifies target crime prediction.
  */
+//Implicit color scale as people interpret red/green scales as good/bad
 export const SAGE_STOPS = [
   "#d73027",
   "#f46d43",
@@ -37,6 +40,7 @@ export const SAGE_STOPS = [
   "#1a9850",
 ];
 
+//Neutral color scale
 export const ERROR_STOPS = [
   "#171e9b", 
   "#306dbc",
