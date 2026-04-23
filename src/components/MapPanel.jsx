@@ -222,6 +222,11 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
     tPastDays
   );
 
+  const correctSHAPOrder = useMemo(()=>{
+    if(!shapMatrix) return null;
+    return shapMatrix.map(row => [...row].reverse());
+  },[shapMatrix]);
+
   // Source-direction: left map selection drives right map attribution
   const leftActiveSelectedId = mapFaces[activeMode]?.selectedId ?? null;
   const isSourceMode = relationMode === "source";
@@ -674,7 +679,7 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
       actual: actualSelection,
       error: errorSelection,
       //data for heatmaps
-      heatData: activeMode === "source" ? crimeCounts : activeMode === "instance" ? shapMatrix : relationValues,
+      heatData: activeMode === "source" ? crimeCounts : activeMode === "instance" ? correctSHAPOrder : relationValues,
       targetHeatData: secondaryMode === "actual" ? futureCounts : secondaryMode === "target" ? dailyForHeatMap : null,
       // values needed by DashboardPanel for temporal series graphs
       forecastAnchorDate,
@@ -712,6 +717,8 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
 
     onSelectionChange,
   ]);
+
+  useEffect(()=>{console.log(shapMatrix);},[shapMatrix]);
 
   //pass summary data up
   useEffect(() => {
