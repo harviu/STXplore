@@ -842,28 +842,29 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
             <span style={{width: 1, height: 22, background: "var(--color-separator)", borderRadius: 1, flexShrink: 0}} aria-hidden />
 
             {/* Model */}
-            <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3)" }}>
-              <strong style={{ fontWeight: 600, opacity: 0.95 }}>Model</strong>
-              <select
-                value={model}
-                onChange={(e) => setModel(e.target.value)}
-                aria-label="Model"
-                style={{
-                  padding: "4px 8px",
-                  borderRadius: 6,
-                  border: "1px solid var(--color-border-strong)",
-                  background: "var(--color-surface-input)",
-                  color: "inherit",
-                  fontSize: "inherit",
-                }}
-              >
-                {FORECAST_MODEL_OPTIONS.map((m) => (
-                  <option key={m} value={m}>{m}</option>
-                ))}
-              </select>
-            </div>
-
-            <span style={{width: 1, height: 22, background: "var(--color-separator)", borderRadius: 1, flexShrink: 0}} aria-hidden />
+            {!(activeMode === "instance") && (
+              <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3)" }}>
+                <strong style={{ fontWeight: 600, opacity: 0.95 }}>Model</strong>
+                <select
+                  value={model}
+                  onChange={(e) => setModel(e.target.value)}
+                  aria-label="Model"
+                  style={{
+                    padding: "4px 8px",
+                    borderRadius: 6,
+                    border: "1px solid var(--color-border-strong)",
+                    background: "var(--color-surface-input)",
+                    color: "inherit",
+                    fontSize: "inherit",
+                  }}
+                >
+                  {FORECAST_MODEL_OPTIONS.map((m) => (
+                    <option key={m} value={m}>{m}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+            {!(activeMode === "instance") && (<span style={{width: 1, height: 22, background: "var(--color-separator)", borderRadius: 1, flexShrink: 0}} aria-hidden />)}
 
             {/* Recenter */}
             <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3)" }}>
