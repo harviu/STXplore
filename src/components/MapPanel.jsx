@@ -842,7 +842,7 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
             <span style={{width: 1, height: 22, background: "var(--color-separator)", borderRadius: 1, flexShrink: 0}} aria-hidden />
 
             {/* Model */}
-            {!(activeMode === "instance") && (
+            {!(activeMode === "relation" && relationDataMode === "mi") && (
               <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3)" }}>
                 <strong style={{ fontWeight: 600, opacity: 0.95 }}>Model</strong>
                 <select
@@ -864,7 +864,7 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
                 </select>
               </div>
             )}
-            {!(activeMode === "instance") && (<span style={{width: 1, height: 22, background: "var(--color-separator)", borderRadius: 1, flexShrink: 0}} aria-hidden />)}
+            {!(activeMode === "relation" && relationDataMode === "mi") && (<span style={{width: 1, height: 22, background: "var(--color-separator)", borderRadius: 1, flexShrink: 0}} aria-hidden />)}
 
             {/* Recenter */}
             <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3)" }}>
