@@ -12,6 +12,36 @@ def selection_all_daily(  # type: ignore
     end: str = Query(..., description="YYYY-MM-DD (exclusive)"),
     db: Session = Depends(get_db),
 ):
+    """Return day-by-day crime counts for every boundary feature, sourced from the database.
+
+    Queries raw crime records from `crime_data` and groups them by boundary
+    feature ID and calendar day. Returns one row per (feature, day) pair that
+    had at least one crime. Used to build the source (past) cluster heatmap —
+    where every community's daily crime pattern is needed simultaneously — and
+    for the actual crime counts displayed on the right map in source mode.
+
+    Note: This endpoint reads from the raw database. For data consistent with
+    the model's training distribution use /api/selection-all-daily-csv instead.
+
+    Args:
+        layer: Boundary type — "community", "beat", or "district".
+        start: Inclusive start date in YYYY-MM-DD format.
+        end: Exclusive end date in YYYY-MM-DD format.
+
+    Returns:
+        {
+            "layer": str,
+            "start": str,
+            "end": str,
+            "daily": [
+                {"id": str, "date": "YYYY-MM-DD", "count": int},
+                ...   # ordered ascending by date, gaps omitted
+            ]
+        }
+
+    Raises:
+        400: If layer is not one of "community", "beat", or "district".
+    """
     col_map = {
         "community": "community_area",
         "beat": "beat",

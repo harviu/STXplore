@@ -26,6 +26,7 @@ export function useInstanceRelationCounts(activeMode, instanceSelectedId, model,
     }
 
     //Get the source index
+    // instanceSelectedId is 1-based from the UI; subtract 1 for the 0-based tensor index.
     const sourceIdx = Number(instanceSelectedId) - 1;
     if (!Number.isFinite(sourceIdx) || sourceIdx < 0 || sourceIdx > 76) {
       setError("Invalid community id for instance relation.");
@@ -33,45 +34,37 @@ export function useInstanceRelationCounts(activeMode, instanceSelectedId, model,
       return;
     }
 
-    //Abort controller for the instance relation counts
     let cancelled = false;
     const ac = new AbortController();
     setLoading(true);
-    //Set the error to null
     setError(null);
 
-    //Fetch the instance relation counts
+    // dataMode determines whether to use the SAGE or MI tensor for instance-level attribution.
+    // Both return the same shape: a 77-element targets array (0-indexed) for the selected source.
     (dataMode === "sage"
     ? api.instanceLevelSage(sourceIdx, model, pastStart, pastDays, futureStart, futureEnd, { signal: ac.signal })
     : api.instanceLevelRelation(sourceIdx, model, pastStart, pastDays, futureStart, futureEnd, { signal: ac.signal })
     ).then((data) => {
         if (cancelled) return;
-        //Format the data
         const targets = data?.targets;
         if (!Array.isArray(targets) || targets.length !== RELATION_TARGET_LEN) {
           throw new Error("Instance relation API returned invalid targets array.");
         }
-        //Set the counts to the formatted data
+        // targetsToCountsByCommunityId converts the 0-indexed array to {"1": val, ..., "77": val}
         setCounts(targetsToCountsByCommunityId(targets));
         setLoading(false);
       })
       .catch((err) => {
-        //If the error is an abort error, return
         if (err?.name === "AbortError") return;
-        //If the request is cancelled, return
         if (cancelled) return;
         console.error("instanceLevelRelation failed:", err);
-        //Set the error to the error message
         setError(String(err?.message ?? err));
-        //Set the counts to null
         setCounts(null);
         setLoading(false);
       });
 
     return () => {
-      //Set the cancelled flag to true
       cancelled = true;
-      //Abort the abort controller
       ac.abort();
     };
   }, [activeMode, instanceSelectedId, model, pastStart, pastDays, futureStart, futureEnd, dataMode]);

@@ -1,4 +1,5 @@
 # Database Schema
+> **Related documents:** [README](../README.md) | [Architecture](../docs/Architecture.md) | [Code Reference](../docs/Code_Reference.md)
 DB Name: crime_data
 Table Name: crime_data
 

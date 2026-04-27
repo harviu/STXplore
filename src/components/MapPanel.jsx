@@ -104,6 +104,8 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
     dispatchMapFaces({ type: "SET_FACET_SELECTION", facet: activeMode, selectedId: newId });
 
   // "relation" is not a right-map facet in mapFaces — fall back to "target" facet for layer/selection
+  // The Relation tab reuses the target facet's state so selecting a community while on Predicted
+  // carries over to Relation without needing a separate selection.
   const secondaryFacet = secondaryMode === "relation" ? "target" : secondaryMode;
   const secondaryLayer = mapFaces[secondaryFacet].layer;
   const secondarySelectedId = mapFaces[secondaryFacet].selectedId;
@@ -121,6 +123,8 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
   const targetLayer = mapFaces.target.layer;
   const targetSelectedId = mapFaces.target.selectedId;
   const relationTargetCommunityReady = targetLayer === "community" && !!targetSelectedId;
+  // This gate is checked before firing attribution API calls and before enabling Model/Instance/Data tabs.
+  // Layer must be community because MI and SAGE tensors only exist at the community granularity.
   const actualLayer = mapFaces.actual.layer;
   const actualSelectedId = mapFaces.actual.selectedId;
   const errorLayer = mapFaces.error.layer;
@@ -157,6 +161,8 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
   const [relationMode, setRelationMode] = useState("target");
 
   // Horizon for SHAP — midpoint of future range slider, clamped to 1..30
+  // Using the midpoint means SHAP always explains the "center" of whatever window the user has selected,
+  // rather than a fixed or arbitrary horizon. Clamped so it's always a valid model output index.
   const shapHorizon = useMemo(() => {
     const mid = Math.round((futureStart + futureEnd) / 2);
     return Math.max(1, Math.min(30, mid || 1));
@@ -188,6 +194,10 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
 
   const anchorDay = anchorDate?.slice(0, 10) ?? "";
 
+  // forecastAnchorDate is the anchor date clamped to the model's valid range (anchor_min..anchor_max).
+  // anchorDate tracks the user's raw calendar selection, which may be beyond the CSV data range.
+  // The map and side panel use anchorDate for DB queries (no range restriction needed there),
+  // while the prediction and SHAP endpoints use forecastAnchorDate so they always get a valid input.
   const forecastAnchorDate = useMemo(() => {
     if (!predBounds?.anchor_min || !predBounds?.anchor_max) return anchorDay;
     return clampDateIso(anchorDay, predBounds.anchor_min, predBounds.anchor_max);
@@ -222,6 +232,9 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
     tPastDays
   );
 
+  // The SHAP matrix from the backend is ordered oldest→newest (matching history_dates).
+  // The cluster heatmap expects newest→oldest (matching the tensor and relation heatmap convention),
+  // so each community's row needs to be reversed before passing it down.
   const correctSHAPOrder = useMemo(()=>{
     if(!shapMatrix) return null;
     return shapMatrix.map(row => [...row].reverse());
@@ -236,6 +249,8 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
   const relationReady = relationMode === "source" ? relationSourceReady : relationTargetCommunityReady;
 
   // Source-direction model-level counts (SAGE or MI, source → all targets) for right map
+  // "__disabled__" is a sentinel value that useModelRelationCounts treats as a no-op,
+  // effectively disabling the hook without needing a separate flag.
   const { counts: sourceRelationCounts, loading: sourceRelationLoading } = useModelRelationCounts(
     isSourceMode && (activeMode === "relation" || activeMode === "instance") ? activeMode : "__disabled__",
     layer,
@@ -285,6 +300,9 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
   const { data: relationValuesRaw, loading: relationValuesLoading } = useApi(({ signal }) => {
     if (activeMode === "source") return Promise.resolve(null);
     if (!relationTargetCommunityReady || !targetSelectedId) return Promise.resolve(null);
+    // get4dData args: (d1=past window end, b1=use full history range, d2=null (all sources),
+    //   d3=30 horizons, b3=use horizon range, d4=target community 0-indexed, model, dataMode)
+    // targetSelectedId is 1-based from the UI, subtract 1 for the 0-based tensor index.
     return api.get4dData(tPastDays, true, null, 30, true, Number(targetSelectedId) - 1, model, relationDataMode, {
       signal,
       d3Start: 0,
@@ -293,6 +311,7 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
     });
   }, [activeMode, tPastStart, tPastDays, targetSelectedId, model, relationDataMode, relationTargetCommunityReady]);
   // No client-side slice needed — tensor is already sliced to window by the backend.
+  // Rows are reversed so the heatmap x-axis goes newest-on-left, matching the source heatmap convention.
   const relationValues = useMemo(
     () => relationValuesRaw ? relationValuesRaw.map(row => [...row].reverse()) : null,
     [relationValuesRaw]
@@ -320,6 +339,10 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
   );
 
   // When source map and "average" mode: show count / days; otherwise raw counts
+  // Picks which data source colors the left map depending on the active mode:
+  //   relation → SAGE/MI attribution counts for the selected target community
+  //   instance (target mode, community selected) → SHAP per-source-community sums
+  //   everything else → raw crime totals from the DB
   const leftCountsForMap = useMemo(() => {
     const raw =
       activeMode === "relation"
@@ -382,6 +405,9 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
     return entry?.count ?? null;
   }, [forecastDailyResp, secondarySelectedId]);
 
+  // Slice the 30-day forecast to just the days in the future slider window, then sum
+  // across those days per community. This is what gets used to color the right map —
+  // so dragging the future slider narrows which forecast days contribute to the map color.
     const forecastCountsForMap = useMemo(() => {
   if (!forecastDailyResp?.forecast_daily) return null;
   const sliced = forecastDailyResp.forecast_daily.slice(futureStart, futureEnd);
@@ -482,6 +508,10 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
     return "Crime Count";
   }, [secondaryMode, isSourceMode, leftActiveSelectedId, relationDataMode, activeMode, targetCountMode, targetForecastEligible, model]);
 
+  // Pick the correct loading state for the right map based on what it's currently showing:
+  //   Relation tab (source mode) → whichever attribution hook is active
+  //   Predicted tab with forecast eligible → prediction bounds + forecast loading
+  //   Actual/Error/non-eligible → simple totals loading
   const rightMapLoading = secondaryMode === "relation" && isSourceMode
     ? (activeMode === "instance" ? sourceInstanceRelationLoading : sourceRelationLoading)
     : targetForecastEligible
@@ -534,6 +564,9 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
     return vals.length ? Math.max(...vals) : null;
   }, [rightCountsForMap]);
 
+  // Builds a structured selection object for a given boundary feature.
+  // dateOffsetDays is negative for left-map selections (past) and positive for right-map (future),
+  // so the dateISO field always points to the representative date of the selected window end.
   function makeSelection(mode, layerX, idX, daysX, anchorISO, dateOffsetDays) {
     if (!idX) return null;
     const geoX = BOUNDARY_GEO[layerX];
@@ -609,10 +642,15 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
   }, [predBounds?.anchor_max]);
 
   const thirtyDaysAgo = new Date();
+  // thirtyDaysAgo is used as a heuristic: if the selected anchor date is within the last 30 days,
+  // there likely isn't enough future data yet for the Actual/Error tabs, so we snap back to Predicted.
   // fallback to today if max date not loaded yet
   if (maxDataDate) thirtyDaysAgo.setTime(maxDataDate.getTime());
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
+  // Actual/Error tabs are only valid if the end of the selected future window is already in the past.
+  // addDaysISO(anchorDate, futureEnd) gives the last day of the window; if that's before maxDataDate
+  // then real data exists to compare against.
   const canShowActualError = useMemo(()=>{return maxDataDate && new Date(addDaysISO(anchorDate, futureEnd) + "T00:00:00") <= maxDataDate},[maxDataDate, anchorDate, futureEnd]);
 
   //Reset to target if invalid actual/error
@@ -718,7 +756,7 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
     onSelectionChange,
   ]);
 
-  useEffect(()=>{console.log(shapMatrix);},[shapMatrix]);
+
 
   //pass summary data up
   useEffect(() => {
@@ -802,6 +840,9 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
                         if (date) {
                           setAnchorDate(date.toISOString().slice(0, 10));
                           setCalendarOpen(false);
+                          // If the new anchor is recent enough that actual data won't exist for the
+                          // forecast window, snap back to Predicted so the user isn't left on a
+                          // blank Actual or Error tab.
                           if (thirtyDaysAgo < date) setSecondaryMode("target");
                         }
                       }}
@@ -1088,6 +1129,9 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
                     recenterTrigger={recenterTrigger}
                     isRelationMap={activeMode === "relation" || activeMode === "instance"}
                     isInstanceShapMap={activeMode === "instance"}
+                    // isSageMap tells the map to use a diverging color scale centered at zero.
+                    // True when: SAGE mode (model level) OR SHAP mode in target direction (instance level, not source).
+                    // Source mode instance level shows SAGE-from-tensor which is also signed, so same scale applies.
                     isSageMap={
                       (relationDataMode === "sage" && (activeMode === "relation" || activeMode === "instance"))
                       || (!isSourceMode && activeMode === "instance") // SHAP only in target mode
@@ -1124,6 +1168,8 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
                 </label>
               </div>
               <div style={{ display: "flex", flexDirection: "row", width: "100%", height: "100%", justifyContent: "left" }}>
+                {/* RTL theme flips the past slider so high values (further back) are on the left,
+                    matching the intuition that older dates are on the left side of the timeline. */}
                 <ThemeProvider theme={RTL_THEME}>
                   <div dir="rtl" style={{ width: "100%" }}>
                     <Slider

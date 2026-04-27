@@ -111,6 +111,8 @@ export function LineChart({ days, height = 30, isRelationMap = false, isSageMap 
               {data.map((d, i) => {
                 const offset = (i / (data.length - 1)) * 100;
                 const val = d.count || 0;
+                // Same normalization as tooltipMap: map [min,max] → [0,1] so zero lands at 0.5
+                // on the SAGE diverging scale. Falls back to 0.5 (white) when max===min.
                 const color = isSageMap
                   ? choroplethColor((max === min ? 0.5 : (val - min) / (Math.max(1, max - min))), false, true)
                   : choroplethColor((max === min ? 1 : (val - min) / (Math.max(1, max - min))), isRelationMap);
@@ -191,6 +193,8 @@ export function MultiLineChart({ days, height = 30, isRelationMap = false, isSag
       return `${x},${y}`;
     }).join(" ");
   };
+  // Guard against the error mode payload shape — MapPanel passes [forecastSeries, actualSeries, errorSeries]
+  // and any of those can be null if data hasn't loaded yet. Rendering with null datasets would crash.
   if (data[0] === null || data[1] === null) return;
  return (
     <div style={{ position: "relative", marginTop: 12, width: "100%", paddingLeft: labelGutter, boxSizing: "border-box" }}>
@@ -214,6 +218,7 @@ export function MultiLineChart({ days, height = 30, isRelationMap = false, isSag
               {data[j].map((d, i) => {
                 const offset = (i / (data[j].length - 1)) * 100;
                 const val = d.count || 0;
+                // Same normalization as LineChart — [min,max] → [0,1], zero at 0.5 for SAGE scale
                 const color = isSageMap
                   ? choroplethColor((max === min ? 0.5 : (val - min) / (Math.max(1, max - min))), false, true)
                   : choroplethColor((max === min ? 1 : (val - min) / (Math.max(1, max - min))), isRelationMap);

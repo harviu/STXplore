@@ -262,11 +262,19 @@ export default function MapBoxMap({
   const selectedIdRef = useRef(selectedId);
   const isRelationMapRef = useRef(isRelationMap);
   const relationFixedScale = isRelationMap && !isSageMap && !isInstanceShapMap;
+  // relationFixedScale is true only for plain MI (data level) — it maps 0–100 to a fixed scale.
+  // SAGE and SHAP are excluded because they are signed and need a data-driven diverging domain instead.
   const relationFixedScaleRef = useRef(relationFixedScale);
   const [mapStyle, setMapStyle] = useState("streets");
   const lastHoverStateRef = useRef(null);
   const basemapSelectId = useId();
   
+  // These refs mirror the current prop/state values so that Mapbox event handlers
+  // (registered once on map creation) always read the latest values without needing
+  // to be re-registered every time a prop changes. Re-registering handlers would
+  // require removing and re-adding map event listeners on every render, which is
+  // expensive and causes flicker. The pattern: update the ref in a useEffect,
+  // read the ref inside the handler closure.
   useEffect(() => {
     onSelectIdRef.current = onSelectId;
   }, [onSelectId]);
@@ -346,6 +354,9 @@ export default function MapBoxMap({
 
   const [showLoadingOverlay, setShowLoadingOverlay] = useState(false);
   const loadingHideTimerRef = useRef(null);
+  // Debounce the loading overlay hide by 400ms to prevent a flicker when one
+  // request finishes and a new one starts immediately (e.g. slider debounce fires).
+  // Show is instant; hide is delayed.
   useEffect(() => {
     if (loading) {
       if (loadingHideTimerRef.current) clearTimeout(loadingHideTimerRef.current);
@@ -356,6 +367,8 @@ export default function MapBoxMap({
     return () => { if (loadingHideTimerRef.current) clearTimeout(loadingHideTimerRef.current); };
   }, [loading])
 
+// Pass fixed scale only for plain MI (not SAGE or SHAP) — SAGE/SHAP need a data-driven
+// diverging domain, and isErrorMap gets its own symmetric domain inside buildMergedGeo.
 const { mergedGeo, minCount: dataMin, maxCount: dataMax } = useMemo(
   () => buildMergedGeo(geo, crimeCounts, layer, isRelationMap && !isSageMap, isErrorMap),
   [geo, crimeCounts, layer, isRelationMap, isSageMap, isErrorMap]
@@ -466,6 +479,7 @@ const minCount = dataMin;
         const idRaw = feature.properties?.boundary_id ?? getBoundaryId(layerRef.current, feature);
         const id = String(idRaw);
         const current = selectedIdRef.current == null ? null : String(selectedIdRef.current);
+        // Clicking the already-selected community deselects it (returns null); clicking a new one selects it.
         onSelectIdRef.current(id === current ? null : id);
       }
     };
@@ -639,6 +653,9 @@ const minCount = dataMin;
     map.flyTo({ center: CHICAGO_CENTER, zoom: CHICAGO_ZOOM });
   }, [recenterTrigger]);
 
+  // When crimeCounts changes (new data loaded), re-fire the hover callback for the
+  // currently hovered feature so the tooltip value updates immediately without the
+  // user needing to move the cursor. lastHoverStateRef holds the last mousemove state.
   useEffect(() => {
     const h = lastHoverStateRef.current;
     if (!h || !onHoverRef.current) return;

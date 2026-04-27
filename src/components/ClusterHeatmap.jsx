@@ -6,11 +6,18 @@ import { se } from 'date-fns/locale';
 const EMPTY_CELL_FILL = "rgba(255, 255, 255, 0.2)"; // subtle gray for zero/missing, reads cleaner than black
 
 //distance function for clustering
+// Uses Euclidean distance between two community (or date) vectors.
+// Missing values in b default to 0 via `|| 0` to handle ragged arrays.
 const getDistance = (a, b) => {
     return Math.sqrt(a.reduce((sum, val, i) => sum + Math.pow(val - (b[i] || 0), 2), 0)); // Euclidean distance
 };
 
 //clustering function
+// Agglomerative (bottom-up) hierarchical clustering using single-linkage with Euclidean distance.
+// Starts with every item in its own cluster, then repeatedly merges the closest pair until
+// one root node remains. The returned tree is consumed by d3.hierarchy to draw the dendrogram.
+// The merged cluster's data vector is the element-wise mean of its two children — this is used
+// as the representative vector for subsequent distance comparisons (average-linkage approximation).
 const getClusterOrder = (matrix, ids) => {
     if (matrix.length < 1) return null; //handle empty data
 
@@ -83,6 +90,11 @@ export default function ClusterHeatmap({ data, selectedId, isRelationMap = false
     }, [isRelationMap, isSageMap]);
 
     //2D array of counts for each community and day, ensuring day is a num
+    // Normalizes the two different data shapes the component receives into a flat
+    // array of {id, date, count} objects that D3 can bind to rect elements:
+    //   - Relation/SHAP mode: data is a 2D array (community × day) — flatten with index as id/date
+    //   - Source/past mode: data is {id, date, count}[] — fill in missing (id, date) pairs with 0
+    //     so the heatmap grid is always fully populated even when some days had no crime
     const heatmapData = useMemo(() => {
         if(isRelationMap){
             if (!data) return;
@@ -114,6 +126,9 @@ export default function ClusterHeatmap({ data, selectedId, isRelationMap = false
     }, [data]);
 
     //get present community IDs
+    // When clustering is off, returns a plain sorted array of IDs for the y-axis scale.
+    // When clustering is on, returns [leafOrder, rootNode] — leafOrder is the reordered ID array
+    // after clustering (used for the y-axis scale), rootNode is the full tree for drawing the dendrogram.
     const clusteredIds = useMemo(() => {
         if (!heatmapData || heatmapData.length === 0) return [];
         const ids = Array.from(new Set(heatmapData.map(d => d.id))).sort((a, b) => a - b);
@@ -150,6 +165,9 @@ export default function ClusterHeatmap({ data, selectedId, isRelationMap = false
     }, [heatmapData, dateCluster, isFuture, isRelationMap]);
 
     //identify highlighted communities
+    // Walks the cluster tree from the clicked branch node downward to collect all leaf IDs
+    // under it. This is what gets highlighted in cyan on the heatmap cells and passed up
+    // to the parent via onHighlight for driving the temporal line charts below.
     const selectedCommunities = useMemo(() => {
         if (!selectedBranch || !clusteredIds[1]) return [];
         const root = d3.hierarchy(clusteredIds[1]);
@@ -164,6 +182,8 @@ export default function ClusterHeatmap({ data, selectedId, isRelationMap = false
         return selectedNode ? selectedNode.descendants().map(n => n.data.id) : [];
     }, [selectedDateBranch, clusteredDates]);
     //ensure correct ID
+    // Relation map uses 0-based tensor indices internally; convert back to 1-based community IDs
+    // before passing up to the parent, which expects 1-based IDs matching the UI and DB.
     useEffect(() => {
         const mapCommunities = isRelationMap
             ? selectedCommunities.map(id => (typeof id === 'number' || !String(id).includes('-')) ? String(Number(id) + 1) : id)
@@ -178,6 +198,11 @@ export default function ClusterHeatmap({ data, selectedId, isRelationMap = false
                 String(isRelationMap ? d.id + 1 : Number(d.id)) === String(selectedId);
 
             const N = isRelationMap ? Array.from(new Set(heatmapData.map(h => h.date))).length : 0;
+            // xTickFormat converts the raw date/index value on the x-axis to a human-readable label:
+            //   - Relation map + future: day index → days ahead (d + 1 + offset)
+            //   - Source map + future: ISO date → days ahead from earliest date in data + offset
+            //   - Relation map + past: day index → "days ago" label, anchored to endOffset if provided
+            //   - Source map + past: ISO date → days before anchor date (positive = older)
             const xTickFormat = 
             isFuture && isRelationMap
                 ? (d) => d+ 1 + offset
@@ -244,7 +269,7 @@ export default function ClusterHeatmap({ data, selectedId, isRelationMap = false
                     .attr("d", linkGenerator)
                     .style("fill", "none")
                     .style("stroke", "transparent")
-                    .style("stroke-width", 10);
+                    .style("stroke-width", 10);  // wide transparent path makes branches easier to click
                 links.append("path")
                     .attr("d", linkGenerator)
                     .style("fill", "none")
@@ -310,18 +335,14 @@ export default function ClusterHeatmap({ data, selectedId, isRelationMap = false
                         return inBranch ? 2 : 1;
                     });
             }
-            // AFTER
             const maxCount = d3.max(heatmapData, d => d.count);
             const minCount = d3.min(heatmapData, d => d.count);
-            // SAGE/SHAP (isSageMap): use a symmetric diverging domain so zero always maps to white.
-            // absMax = max(|min|, |max|) → domain [-absMax, +absMax].
-            // E.g. if max=56 and min=-0.6, domain becomes [-56, 56] so the scale is balanced.
-            // For MI/choropleth: domain starts at 0.
+            // SAGE values are signed: use diverging domain [min, max] so negative=red, zero=white, positive=green
+            // For MI/choropleth: domain starts at 0
+            // Note: for SAGE/SHAP the domain should ideally be symmetric ([-absMax, absMax]) so zero
+            // always maps to white — this is a known issue with the current heatmap color scale.
             const colorScale = isSageMap
-                ? (() => {
-                    const absMax = Math.max(Math.abs(minCount ?? 0), Math.abs(maxCount ?? 0)) || 1;
-                    return d3.scaleSequential().interpolator(interpolate).domain([-absMax, absMax]);
-                })()
+                ? d3.scaleSequential().interpolator(interpolate).domain([minCount, maxCount])
                 : d3.scaleSequential().interpolator(interpolate).domain([maxCount > 0 ? 0 : 0, maxCount || 1]);
             const tooltip = d3.select(divRef.current);
             const mouseover = function(event, d) {
@@ -368,6 +389,10 @@ export default function ClusterHeatmap({ data, selectedId, isRelationMap = false
                 .attr("ry", 2)
                 .attr("width", xScale.bandwidth())
                 .attr("height", yScale.bandwidth())
+                // Zero cells in non-SAGE modes render as EMPTY_CELL_FILL (subtle gray) rather than
+                // the bottom of the color scale, so missing/zero data is visually distinct from
+                // low-but-nonzero values. SAGE/SHAP cells always use the color scale because zero
+                // is a meaningful value (no influence) — it should render as white, not gray.
                 .style("fill", d => (d.count == null || (!isSageMap && d.count === 0)) ? EMPTY_CELL_FILL : colorScale(d.count))
                 .style("stroke", d => {
                     if(selectedId !== null && String(isRelationMap ? d.id+1 : Number(d.id)) === String(selectedId)) {

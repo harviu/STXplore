@@ -28,6 +28,42 @@ def instance_relation(  # type: ignore
     future_days: int = Query(..., ge=1, le=30, description="Exclusive end index on future axis (1...30)"),
     future_start: int = Query(0, ge=0, le=29, description="Inclusive start index on future axis (0...29)"),
 ):
+    """Return instance-level MI attribution scores for a selected source community.
+
+    Similar to /api/model_level_relation but scoped to a specific source
+    community and slider window, making it instance-specific rather than
+    a global model-level average. Slices the MI tensor to the given past and
+    future window, then averages over those axes to return a 77-element vector
+    of how much the selected source community relates to each target.
+
+    The tensor shape is (90, 77, 30, 77): (history_lag, source, horizon, target).
+    All community indices are 0-based (community 1 in the UI = index 0 here).
+
+    This endpoint is used in Source → All Targets relationship mode to show the
+    outgoing MI influence of a user-selected source community on the right map.
+
+    Args:
+        source: 0-based source community index (0..76).
+        model: Model folder name under the models directory (e.g. "Transformer").
+        past_start: Inclusive start index on the history lag axis.
+        past_days: Exclusive end index on the history lag axis (slice: past_start:past_days).
+        future_start: Inclusive start index on the horizon axis.
+        future_days: Exclusive end index on the horizon axis (slice: future_start:future_days).
+
+    Returns:
+        {
+            "source": int,
+            "targets": [float, ...],   # 77 MI scores (0-indexed by community)
+            "past_days": int,
+            "future_days": int,
+            "future_start": int,
+            "model": str
+        }
+
+    Raises:
+        404: If the MI tensor file is not found for the given model.
+        422: If future_start >= future_days.
+    """
     if future_start >= future_days:
         raise HTTPException(status_code=422, detail="future_start must be less than future_days")
     try:

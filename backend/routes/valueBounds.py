@@ -9,6 +9,29 @@ _cache: dict[str, dict] = {}
 
 @router.get("/value-bounds")
 def value_bounds(model: str = Query(..., description="Model folder name (e.g. Transformer)")):
+    """Return the global min and max values of the MI and SAGE tensors for a given model.
+
+    Loads both the full MI and SAGE 4D tensors for the model and computes their
+    global minimum and maximum values. These bounds are used by the frontend to
+    build a consistent color scale anchored to the true data range rather than
+    the range of whichever slice happens to be visible at a given moment.
+
+    Both tensors are loaded fresh on first request and the result is cached in
+    memory per model name. Subsequent requests for the same model return
+    immediately from cache without re-reading disk.
+
+    Args:
+        model: Model folder name under the models directory (e.g. "Transformer").
+
+    Returns:
+        {
+            "sage": {"min": float, "max": float},
+            "mi":   {"min": float, "max": float}
+        }
+
+    Raises:
+        404: If the SAGE or MI tensor file is not found for the given model.
+    """
     if model in _cache:
         return _cache[model]
 

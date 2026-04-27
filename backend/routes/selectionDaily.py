@@ -13,6 +13,40 @@ def selection_daily(  # type: ignore
     end: str = Query(..., description="YYYY-MM-DD (exclusive)"),
     db: Session = Depends(get_db),
 ):
+    """Return a crime summary for a single selected boundary, sourced from the database.
+
+    Computes the total crime count and the top 10 crime types (by frequency)
+    for the specified boundary feature over the given date range. Used by the
+    right side panel to populate the crime summary block when the user clicks
+    a community, beat, or district on either map.
+
+    Beat IDs are normalized before querying: the frontend may send zero-padded
+    strings like "0735" but the database stores them as "735", so leading zeros
+    are stripped on the way in.
+
+    Args:
+        layer: Boundary type — "community", "beat", or "district".
+        id: The boundary feature ID as a string (e.g. "24" for community 24,
+            "0735" or "735" for beat 735).
+        start: Inclusive start date in YYYY-MM-DD format.
+        end: Exclusive end date in YYYY-MM-DD format.
+
+    Returns:
+        {
+            "layer": str,
+            "id": str,               # normalized id after beat zero-stripping
+            "start": str,
+            "end": str,
+            "total_crimes": int,
+            "top_types": [
+                {"primary_type": str, "count": int},
+                ...                  # up to 10 entries, ordered by count desc
+            ]
+        }
+
+    Raises:
+        400: If layer is not one of "community", "beat", or "district".
+    """
     col_map = {
         "community": "community_area",
         "beat": "beat",

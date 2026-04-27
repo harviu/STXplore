@@ -131,6 +131,9 @@ export default function DashboardPanel({ mode, selection, inactiveMode, inactive
   });
 
   // Global min/max from heatData — matches the cluster heatmap color scaling
+  // Skipped in source mode because heatData there is a flat {id, date, count}[] array,
+  // not a 2D array of rows, so iterating it as a matrix would give wrong results.
+  // Source mode tooltips use per-slice min/max instead.
   const heatGlobalMin = useMemo(() => {
     if (!heatData || mode === "source") return null;
     let min = Infinity;
@@ -174,6 +177,9 @@ export default function DashboardPanel({ mode, selection, inactiveMode, inactive
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-3)", paddingBottom: "var(--space-4)" }}>
             {communitySeriesList.map(({ id, series }) => {
+              // Cluster tree internal node IDs are composite strings like "1-2-5" (hyphen-joined leaf IDs).
+              // id.length < 3 filters to leaf nodes only — individual communities with short numeric IDs.
+              // We only render temporal charts for actual communities, not intermediate cluster nodes.
               if (id.length < 3){
                 return (
                   <div key={id}>
@@ -203,8 +209,11 @@ export default function DashboardPanel({ mode, selection, inactiveMode, inactive
       {/* Cluster Heatmaps */}
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", width: "100%", gap: "var(--space-5)" }}>
         {heatData && (selection?.id || mode === "source") && <p style={{ opacity: 1, margin: 0, fill: "white" }}> Past map cluster heatmap </p>}
+        {/* isSageMap is only true in non-source modes — source mode always shows raw crime counts
+            which use the sequential choropleth scale, never the diverging SAGE/SHAP scale */}
         {heatData && (selection?.id || mode === "source" || (mode != "source" && right?.selection?.id)) && <ClusterHeatmap data={heatData} selectedId={selection?.id || null} isRelationMap={mode !== "source"} isSageMap={isSageMap && mode !== "source"} onHighlight={handleSourceHighlight} anchorDate={anchorDate} offset={pastStart} endOffset={pastEnd} />}
         {targetHeatData && (inactiveMode === "actual" || inactiveMode === "target") && <p style={{ opacity: 1, margin: 0, fill: "white" }}> Future map cluster heatmap ({title})</p>}
+        {/* Future heatmap is always source-mode-style flat data (not relation), so isSageMap is never needed */}
         {targetHeatData && (inactiveMode === "actual" || inactiveMode === "target") && <ClusterHeatmap data={targetHeatData} selectedId={inactiveSelection?.id || null} isRelationMap={false} isFuture={true} offset={inactiveMode === "target"? (right?.offset + 1) : right?.offset} onHighlight={handleTargetHighlight} anchorDate={anchorDate} />}
       </div>
     {/* Bar Charts — crime type breakdowns for left and right map selections */}

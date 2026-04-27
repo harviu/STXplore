@@ -8,7 +8,11 @@ import { fillDaily } from "../lib/crimeAggregates.js";
  */
 /** @param {string|null|undefined} tensorSourceId Community id used as tensor source for relation/instance visualization (Predicted map selection). */
 export function useHoverDailySeries({ hover, activeMode, secondaryMode, tensorSourceId, model, dataMode = "mi", pastStart = 0, pastEnd, tPastStart = 0, tPastDays, futureStart, futureEnd, anchorDate, forecastAnchorDate, shapHorizon }) {
-  //Check if the hover data can be shown
+  // canShowHoverData gates whether the tooltip actually fetches and displays data.
+  // Left map: always show for source mode; only show for relation/instance if a target community
+  //   is already selected (tensorSourceId) — without it there's nothing to slice the tensor against.
+  // Right map: only show in actual mode, since predicted/error values are choropleth totals
+  //   not day-by-day series, and relation mode attribution isn't per-day.
   const canShowHoverData = useMemo(
     () =>
       !!(
@@ -56,7 +60,11 @@ export function useHoverDailySeries({ hover, activeMode, secondaryMode, tensorSo
       ({ start, end } = targetRange(futureStart, futureEnd, anchorDate));
     }
 
-    //Generate a unique key for the hover daily series
+    // Cache key encodes all inputs that determine a unique data response.
+    // Instance mode needs a different key shape because the data comes from SHAP
+    // (anchored to forecastAnchorDate + shapHorizon + tensorSourceId) rather than
+    // a date range query — the same hovered community can have different values
+    // depending on which target and horizon are currently selected.
     const key = isInstance
       ? `instance:${hover.id}:${forecastAnchorDate}:${shapHorizon}:${tensorSourceId}`
       : `${hover.which}:${hover.layer}:${hover.id}:${start}:${end}:${isRelation}`;
@@ -105,6 +113,8 @@ export function useHoverDailySeries({ hover, activeMode, secondaryMode, tensorSo
           setHoverDailyLoading(false);
         });
       //Model/Data Level: fetch daily relation values from 4D tensor
+      // Args: source community (hovered, 0-based), target community (tensorSourceId, 0-based),
+      // sliced to the current past window. Returns a 1D array of values over history days.
       } else if (isRelation && tensorSourceId) {
         api
           .get4dData(tPastDays ?? pastEnd, true, Number(hover.id) - 1, 30, true, Number(tensorSourceId) - 1, model, dataMode, {

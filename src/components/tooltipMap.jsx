@@ -73,6 +73,9 @@ export default function TooltipMap({ days, height = 12, isRelationMap = false, i
               ? "rgba(255,255,255, 0.9)"
               :  isSageMap
               // SAGE: map signed value to [0,1] where 0.5 = zero, <0.5 = suppressive (red), >0.5 = amplifying (green)
+              // (c-min)/(max-min) maps the full [min,max] range to [0,1] linearly.
+              // When the data is symmetric (min=-max), zero lands at exactly 0.5 = white center of SAGE_STOPS.
+              // Falls back to 0.5 (white) when max===min to avoid division by zero.
               ? choroplethColor((max === min ? 0.5 : (c-min) / (max - min)), false, true)
               : choroplethColor((max === min ? 1 : (c-min) / (max - min)), isRelationMap);
 

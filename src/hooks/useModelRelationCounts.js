@@ -34,6 +34,10 @@ export function useModelRelationCounts(activeMode, layer, relationSelectedId, mo
     }
 
     //Get the source index
+    // Note: despite the variable name, targetIdx is used for both directions.
+    // In target mode it's the right-map community (the attribution target).
+    // In source mode it's the left-map community (the attribution source).
+    // Both are 1-based in the UI so we subtract 1 for the 0-based tensor index.
     const targetIdx = Number(relationSelectedId) - 1;
     if (!Number.isFinite(targetIdx) || targetIdx < 0 || targetIdx > 76) {
       setError("Invalid community id for relation mapping.");
@@ -41,15 +45,14 @@ export function useModelRelationCounts(activeMode, layer, relationSelectedId, mo
       return;
     }
 
-    //Abort controller for the model relation counts
     let cancelled = false;
     const ac = new AbortController();
     setLoading(true);
-    //Set the error to null
     setError(null);
 
-    //Fetch the model relation counts
-    //Fetch the model relation counts
+    // Pick the correct endpoint based on dataMode (SAGE vs MI) and direction (target vs source).
+    // sageLevelRelation / relationalModel → all sources → selected target
+    // sageLevelSource / relationalModelSource → selected source → all targets
     (dataMode === "sage"
       ? direction === "source"
         ? api.sageLevelSource(targetIdx, model, pastStart, pastDays, futureStart, futureEnd, { signal: ac.signal })
@@ -63,6 +66,7 @@ export function useModelRelationCounts(activeMode, layer, relationSelectedId, mo
       if (!Array.isArray(targets) || targets.length !== RELATION_TARGET_LEN) {
         throw new Error("Relation API returned invalid targets array.");
       }
+      // targetsToCountsByCommunityId converts the 0-indexed array to a {"1": val, ..., "77": val} map
       setCounts(targetsToCountsByCommunityId(targets));
       setLoading(false);
     }).catch((err) => {
@@ -73,11 +77,8 @@ export function useModelRelationCounts(activeMode, layer, relationSelectedId, mo
       setCounts(null);
       setLoading(false);
     });
-    //Abort the abort controller
     return () => {
-      //Set the cancelled flag to true
       cancelled = true;
-      //Abort the abort controller
       ac.abort();
     };
   }, [activeMode, layer, relationSelectedId, model, dataMode, pastStart, pastDays, futureStart, futureEnd, direction]);
