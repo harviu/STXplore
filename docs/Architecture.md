@@ -170,7 +170,7 @@ Selected via the "Relationship mode" dropdown. This is the default mode.
 
 The left map tab buttons (Model Level, Instance Level, Data Level) are grayed out and unclickable until a community has been selected on the right map. The right map selection is the prerequisite for all left-map attribution views in this mode.
 
-**Typical use case:** A researcher wants to understand what drove the model's crime forecast for a specific community. Selecting that community on the right map immediately shows which other communities around Chicago the model considered most influential — essentially a spatial explanation of one prediction.
+**Typical use case:** A user wants to understand what drove the model's crime forecast for a specific community. Selecting that community on the right map immediately shows which other communities around Chicago the model considered most influential — essentially a spatial explanation of one prediction.
 
 ---
 
@@ -186,7 +186,7 @@ Selected via the "Relationship mode" dropdown.
 
 **A key quirk of this mode:** Both map selections are live simultaneously. The community selected on the left drives the right map's Relation coloring. The community selected on the right drives the left map's attribution coloring (when on Model Level, Instance Level, or Data Level tabs). You can have both selected at once and read attribution in both directions.
 
-**Typical use case:** A researcher wants to use the visualization as a ground truth check — selecting a high-crime community to see whether the model correctly identifies it as having widespread influence on surrounding areas, or whether its influence is concentrated in a specific direction.
+**Typical use case:** A user wants to use the visualization as a ground truth check — selecting a high-crime community to see whether the model correctly identifies it as having widespread influence on surrounding areas, or whether its influence is concentrated in a specific direction.
 
 ---
 
