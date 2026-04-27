@@ -570,6 +570,33 @@ A visible discontinuity appears around the 46-day mark in the SAGE tensor when v
 
 KernelExplainer is not GPU-accelerated. At current interactive settings the computation takes several seconds per request. This is an inherent limitation of live SHAP computation at interactive scale.
 
+### Cluster heatmap uses wrong color scale in Instance Level (SHAP) mode
+
+When a community is selected on the right map and the user switches to Instance Level (SHAP) mode, the cluster heatmap incorrectly renders using the Data Level (MI) color scale rather than the SHAP diverging scale. The map itself colors correctly — the issue is isolated to the heatmap component not receiving or applying the correct scale flag in this specific entry path.
+
+### Model Level (SAGE) color scale incorrect in cluster heatmap
+
+The color scale applied to SAGE values in the cluster heatmap is not rendering correctly. The symmetric diverging scale fix applied to the map choropleth may not be fully reflected in the heatmap's color domain calculation for this mode. Needs investigation in `ClusterHeatmap.jsx`.
+
+### Dendrogram branch time series always shows full 90 days
+
+When a user selects a branch in the past cluster heatmap dendrogram, the temporal line charts that appear below should reflect the current past slider window. Currently they always display the full 90-day history regardless of the slider position. The fix would require passing the current slider window into `useClusterDailySeries` and slicing the series accordingly before rendering.
+
+### Both relationship modes are simultaneously active in Source → All Targets
+In Source → All Targets mode, selecting a community on the left drives the right map's Relation tab, while selecting a community on the right simultaneously drives the left map's attribution coloring. This dual-selection behavior was noted as a quirk but is technically unintended — the two selections were not designed to be independent and active at the same time. Resolving this would require deciding which selection should take priority and gating the other accordingly.
+
+### Hover tooltips occasionally persist on screen after the cursor leaves
+
+Map hover tooltips sometimes remain visible after the user moves the cursor off a community polygon, particularly when the cursor moves quickly across boundaries. The tooltip state is driven by MapboxGL's `mouseleave` event which can be missed during fast movement. A timeout-based cleanup or a document-level mousemove fallback could resolve this.
+
+### Relation tooltips do not show values until after a community is selected and the cursor moves
+
+In relation and attribution modes, hover tooltips do not display a value for a community until a community has already been selected and the cursor has moved. Since the map is already colored with attribution values, tooltips should be available immediately on hover without requiring a prior selection or cursor movement. The issue is likely a gate condition in `useHoverDailySeries` or the tooltip rendering logic that checks for a selected community before allowing hover data to load.
+
+### Side panel crime count line chart readability
+
+The daily crime count line chart displayed in the right side panel for a selected community is difficult to read at its current size and design. A redesign for better readability — larger render area, clearer axis labels, or an alternative chart type — has been identified as a future improvement but not yet implemented.
+
 ---
 
 ## 20. Environment & Configuration
