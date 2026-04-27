@@ -628,7 +628,7 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
     if (secondaryMode !== "actual" && secondaryMode !== "error") return Promise.resolve(null);
     if (!canShowActualError) return Promise.resolve(null);
     const { start, end } = targetRange(futureStart + 1, futureEnd + 1, anchorDate);
-    return api.selectionAllDaily(secondaryLayer, start, end, { signal });
+    return api.selectionAllDailyCsv(start, end, { signal });
   }, [secondaryMode, secondaryLayer, futureStart, futureEnd, anchorDate, canShowActualError]);
   const futureCounts = futureCountsResp?.daily ?? null;
 

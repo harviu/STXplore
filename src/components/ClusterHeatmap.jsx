@@ -310,12 +310,18 @@ export default function ClusterHeatmap({ data, selectedId, isRelationMap = false
                         return inBranch ? 2 : 1;
                     });
             }
+            // AFTER
             const maxCount = d3.max(heatmapData, d => d.count);
             const minCount = d3.min(heatmapData, d => d.count);
-            // SAGE values are signed: use diverging domain [min, max] so negative=red, zero=white, positive=green
-            // For MI/choropleth: domain starts at 0
+            // SAGE/SHAP (isSageMap): use a symmetric diverging domain so zero always maps to white.
+            // absMax = max(|min|, |max|) → domain [-absMax, +absMax].
+            // E.g. if max=56 and min=-0.6, domain becomes [-56, 56] so the scale is balanced.
+            // For MI/choropleth: domain starts at 0.
             const colorScale = isSageMap
-                ? d3.scaleSequential().interpolator(interpolate).domain([minCount, maxCount])
+                ? (() => {
+                    const absMax = Math.max(Math.abs(minCount ?? 0), Math.abs(maxCount ?? 0)) || 1;
+                    return d3.scaleSequential().interpolator(interpolate).domain([-absMax, absMax]);
+                })()
                 : d3.scaleSequential().interpolator(interpolate).domain([maxCount > 0 ? 0 : 0, maxCount || 1]);
             const tooltip = d3.select(divRef.current);
             const mouseover = function(event, d) {

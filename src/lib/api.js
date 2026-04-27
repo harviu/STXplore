@@ -87,6 +87,18 @@ export const api = {
       opts
     ),
 
+  selectionDailyCsv: (id, start, end, opts) =>
+    request(
+      `/api/selection-daily-csv?id=${encodeURIComponent(id)}&start=${encodeURIComponent(start)}&end=${encodeURIComponent(end)}`,
+      opts
+    ),
+
+  selectionAllDailyCsv: (start, end, opts) =>
+    request(
+      `/api/selection-all-daily-csv?start=${encodeURIComponent(start)}&end=${encodeURIComponent(end)}`,
+      opts
+    ),
+
   relationalModel: (target, model, pastStart, pastDays, futureStart, futureEnd, opts) =>
     request(`/api/model_level_relation?target=${encodeURIComponent(target)}&model=${encodeURIComponent(model)}&past_start=${encodeURIComponent(pastStart)}&past_days=${encodeURIComponent(pastDays)}&future_start=${encodeURIComponent(futureStart)}&future_days=${encodeURIComponent(futureEnd)}`, opts),
   

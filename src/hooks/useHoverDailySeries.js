@@ -136,7 +136,7 @@ export function useHoverDailySeries({ hover, activeMode, secondaryMode, tensorSo
         }
         //Source mode or right map: fetch actual daily crime counts
         api
-          .selectionDaily(hover.layer, hover.id, start, end, { signal: ac.signal })
+          .selectionDailyCsv(hover.id, start, end, { signal: ac.signal })
           .then((data) => {
             //Fill the data
             const filled = fillDaily(start, end, data?.daily);

@@ -11,6 +11,7 @@ from backend.routes.data4d import router as data4d_router
 from backend.routes.predictions import router as predictions_router
 from backend.routes.sageLevelRelation import router as sage_level_router
 from backend.routes.valueBounds import router as valueBounds_router
+from backend.routes.selectionDailyCsv import router as selectionDailyCsv_router
 routers = [
     health_router,
     count_router,
@@ -25,4 +26,5 @@ routers = [
     predictions_router,
     sage_level_router,
     valueBounds_router,
+    selectionDailyCsv_router,
 ]
