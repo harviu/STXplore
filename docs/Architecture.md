@@ -574,16 +574,13 @@ KernelExplainer is not GPU-accelerated. At current interactive settings the comp
 
 When a community is selected on the right map and the user switches to Instance Level (SHAP) mode, the cluster heatmap incorrectly renders using the Data Level (MI) color scale rather than the SHAP diverging scale. The map itself colors correctly — the issue is isolated to the heatmap component not receiving or applying the correct scale flag in this specific entry path.
 
-### Model Level (SAGE) color scale incorrect in cluster heatmap
-
-The color scale applied to SAGE values in the cluster heatmap is not rendering correctly. The symmetric diverging scale fix applied to the map choropleth may not be fully reflected in the heatmap's color domain calculation for this mode. Needs investigation in `ClusterHeatmap.jsx`.
-
 ### Dendrogram branch time series always shows full 90 days
 
 When a user selects a branch in the past cluster heatmap dendrogram, the temporal line charts that appear below should reflect the current past slider window. Currently they always display the full 90-day history regardless of the slider position. The fix would require passing the current slider window into `useClusterDailySeries` and slicing the series accordingly before rendering.
 
-### Both relationship modes are simultaneously active in Source → All Targets
-In Source → All Targets mode, selecting a community on the left drives the right map's Relation tab, while selecting a community on the right simultaneously drives the left map's attribution coloring. This dual-selection behavior was noted as a quirk but is technically unintended — the two selections were not designed to be independent and active at the same time. Resolving this would require deciding which selection should take priority and gating the other accordingly.
+### iTransformer SAGE self-influence dominates color scale
+
+When viewing Model Level (SAGE) with the iTransformer model, the selected community's self-influence score is significantly larger than all cross-community values. Because the color scale is symmetric around the absolute maximum, this causes all other communities to appear white. This is expected behavior from the model — the self-influence value genuinely dominates — but it makes cross-community attribution effectively unreadable in this mode.
 
 ### Hover tooltips occasionally persist on screen after the cursor leaves
 

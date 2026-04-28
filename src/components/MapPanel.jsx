@@ -303,7 +303,7 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
     // get4dData args: (d1=past window end, b1=use full history range, d2=null (all sources),
     //   d3=30 horizons, b3=use horizon range, d4=target community 0-indexed, model, dataMode)
     // targetSelectedId is 1-based from the UI, subtract 1 for the 0-based tensor index.
-    return api.get4dData(tPastDays, true, null, 30, true, Number(targetSelectedId) - 1, model, relationDataMode, {
+    return api.get4dData(tPastDays, true, null, dFutureEnd, true, Number(targetSelectedId) - 1, model, relationDataMode, {
       signal,
       d3Start: dFutureStart,
       d1Start: tPastStart,

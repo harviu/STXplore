@@ -35,6 +35,7 @@ export const SAGE_STOPS = [
   "#d73027",
   "#f46d43",
   "#fee08b",
+  "#ffffff",
   "#a6d96a",
   "#66bd63",
   "#1a9850",
