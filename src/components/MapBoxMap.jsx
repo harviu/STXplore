@@ -135,7 +135,7 @@ function getCount(crimeCounts, id) {
 
 //Adds crime count data to map data
 /** @param useFixedRelationScale When true (model-level MI relation), map 0–100. When false, stretch colors from data min/max (crime counts, SAGE, SHAP / instance). */
-function buildMergedGeo(geo, crimeCounts, layer, useFixedRelationScale = false, isErrorMap = false) {
+function buildMergedGeo(geo, crimeCounts, layer, useFixedRelationScale = false, isErrorMap = false, isSageMap = false) {
   if (!geo?.features?.length) return { mergedGeo: geo, minCount: 0, maxCount: 1 };
   const hasCounts = hasAnyCounts(crimeCounts);
   const features = geo.features.map((f) => {
@@ -149,7 +149,7 @@ function buildMergedGeo(geo, crimeCounts, layer, useFixedRelationScale = false, 
   const counts = features.map((f) => f.properties.count);
   let minCount = counts.length ? Math.min(...counts) : 0;
   let maxCount = counts.length ? Math.max(...counts) : 1;
-  if (isErrorMap) { // Set the range to the max abs to scale correctly around zero
+  if (isErrorMap || isSageMap) { // Set the range to the max abs to scale correctly around zero
     const absMax = Math.max(...counts.map(c => Math.abs(c)), 1);
     minCount = -absMax;
     maxCount = absMax;
@@ -370,7 +370,7 @@ export default function MapBoxMap({
 // Pass fixed scale only for plain MI (not SAGE or SHAP) — SAGE/SHAP need a data-driven
 // diverging domain, and isErrorMap gets its own symmetric domain inside buildMergedGeo.
 const { mergedGeo, minCount: dataMin, maxCount: dataMax } = useMemo(
-  () => buildMergedGeo(geo, crimeCounts, layer, isRelationMap && !isSageMap, isErrorMap),
+  () => buildMergedGeo(geo, crimeCounts, layer, isRelationMap && !isSageMap, isErrorMap, isSageMap),
   [geo, crimeCounts, layer, isRelationMap, isSageMap, isErrorMap]
 );
 

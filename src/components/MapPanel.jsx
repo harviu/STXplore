@@ -305,11 +305,11 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
     // targetSelectedId is 1-based from the UI, subtract 1 for the 0-based tensor index.
     return api.get4dData(tPastDays, true, null, 30, true, Number(targetSelectedId) - 1, model, relationDataMode, {
       signal,
-      d3Start: 0,
+      d3Start: dFutureStart,
       d1Start: tPastStart,
       normalize: false,
     });
-  }, [activeMode, tPastStart, tPastDays, targetSelectedId, model, relationDataMode, relationTargetCommunityReady]);
+  }, [activeMode, tPastStart, tPastDays, dFutureStart, dFutureEnd, targetSelectedId, model, relationDataMode, relationTargetCommunityReady]);
   // No client-side slice needed — tensor is already sliced to window by the backend.
   // Rows are reversed so the heatmap x-axis goes newest-on-left, matching the source heatmap convention.
   const relationValues = useMemo(
