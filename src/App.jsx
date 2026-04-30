@@ -125,7 +125,7 @@ export default function App() {
             right={summaries.right}
             heatData={state.heatData}
             targetHeatData={state.targetHeatData}
-            isSageMap={state.relationDataMode === "sage"}
+            isSageMap={state.relationDataMode === "sage" || state.activeMode === "instance"}
             onSourceHighlight={setSourceHighlights}
             onTargetHighlight={setTargetHighlights}
             anchorDate={state.anchorDate}

@@ -502,7 +502,7 @@ A slider value change flows through: raw state → debounced state → tensor in
 
 ## 16. Color Scaling
 
-Different modes use different color scales. All color stop arrays are defined in `src/lib/colors.js` and shared between the map choropleth layer and the cluster heatmap.
+Different modes use different color scales. Color stop arrays are defined in `src/lib/colors.js`. Most are shared between the map choropleth layer and the cluster heatmap, with one exception: SAGE/SHAP use two separate arrays — `SAGE_STOPS` (which includes a white midpoint) for the cluster heatmap's d3 interpolator, and `SAGE_LEGEND_STOPS` (without white) for the map legend, which inserts white programmatically at zero via `getLegendStepsDiverging`.
 
 | Mode | Scale type | Colors | Domain |
 |---|---|---|---|

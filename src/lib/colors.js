@@ -40,6 +40,16 @@ export const SAGE_STOPS = [
   "#66bd63",
   "#1a9850",
 ];
+// SAGE_STOPS without the white midpoint — for use in getLegendStepsDiverging,
+// which inserts white programmatically. ClusterHeatmap uses SAGE_STOPS directly.
+export const SAGE_LEGEND_STOPS = [
+  "#d73027",
+  "#f46d43",
+  "#fee08b",
+  "#a6d96a",
+  "#66bd63",
+  "#1a9850",
+];
 
 //Neutral color scale
 export const ERROR_STOPS = [

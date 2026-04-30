@@ -3,7 +3,7 @@ import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import "./MapBoxMap.css";
 import { getBoundaryId, getBoundaryLabel } from "../lib/boundaries.js";
-import { CHOROPLETH_STOPS, RELATION_STOPS, SAGE_STOPS, ERROR_STOPS } from "../lib/colors.js"
+import { CHOROPLETH_STOPS, RELATION_STOPS, SAGE_STOPS, SAGE_LEGEND_STOPS, ERROR_STOPS } from "../lib/colors.js"
 
 export const CHICAGO_CENTER = [-87.70, 41.84]; // Approximate center of Chicago
 export const CHICAGO_ZOOM = 9.1; // Initial zoom level to show the whole city
@@ -71,13 +71,14 @@ function getLegendStepsDiverging(minCount, maxCount, stops, midValue = 0, deadba
     boundaries.push(loMid);
   }
 
-  // Deadband: exactly one white bin [loMid, hiMid]
+  // Deadband: exactly one white bin [loMid, hiMid] — only when deadband > 0
   if (boundaries[boundaries.length - 1] !== hiMid) boundaries.push(hiMid);
-  colors.push("#ffffff");
+  if (deadband > 0) colors.push("#ffffff");
 
   // Positive side: hiMid -> max split into `posColors.length` bins.
   if (maxCount > hiMid && posColors.length > 0) {
-    for (let i = 0; i <= posColors.length; i++) {
+    if (boundaries[boundaries.length - 1] !== hiMid) boundaries.push(hiMid);
+    for (let i = 1; i <= posColors.length; i++) {
       const t = i / posColors.length;
       boundaries.push(hiMid + t * (maxCount - hiMid));
     }
@@ -89,11 +90,7 @@ function getLegendStepsDiverging(minCount, maxCount, stops, midValue = 0, deadba
     const low = boundaries[i];
     const high = boundaries[i + 1];
     if (low == null || high == null || !(high > low)) continue;
-    // When deadband=0, white gets paired with first positive bin — use the next color instead
-    const effectiveColor = (colors[i] === "#ffffff" && low >= 0 && high > 0)
-      ? (colors[i + 1] ?? posColors[0])
-      : colors[i];
-    steps.push({ color: effectiveColor, low, high });
+    steps.push({ color: colors[i], low, high });
   }
 
   // Insert zero entry only between negative and positive, 
@@ -248,7 +245,7 @@ export default function MapBoxMap({
   // SAGE uses a signed diverging scale (red=suppressive, white=zero, green=amplifying).
   // Relation uses a sequential scale (low=cool, high=warm).
   // Source/target uses the choropleth scale.
-  const stops = isSageMap ? SAGE_STOPS : isRelationMap ? RELATION_STOPS : isErrorMap ? ERROR_STOPS : CHOROPLETH_STOPS;
+  const stops = isSageMap ? SAGE_LEGEND_STOPS : isRelationMap ? RELATION_STOPS : isErrorMap ? ERROR_STOPS : CHOROPLETH_STOPS;
   //Hooks to ensure updates
   const containerRef = useRef(null);
   const mapRef = useRef(null);

@@ -917,10 +917,11 @@ Color stop arrays for all map and heatmap scales. Import from here — do not ha
 |---|---|---|
 | `CHOROPLETH_STOPS` | Past map crime counts | Sequential yellow → red |
 | `RELATION_STOPS` | MI (Data Level) attribution | Sequential light blue → dark green |
-| `SAGE_STOPS` | SAGE and SHAP attribution | Diverging red → white → green |
+| `SAGE_STOPS` | SAGE and SHAP cluster heatmap (d3 interpolator) | Diverging red → white → green, 7 stops including explicit white midpoint |
+| `SAGE_LEGEND_STOPS` | SAGE and SHAP map legend (`getLegendStepsDiverging`) | Diverging red → green, 6 stops — no white; legend inserts white at zero programmatically |
 | `ERROR_STOPS` | Error map (actual − predicted) | Diverging blue → white → red |
 
-All arrays contain 5–6 hex color strings ordered low → high. They are passed to `d3.interpolateRgbBasis()` to produce a continuous color interpolator.
+All arrays contain 5–7 hex color strings ordered low → high. `SAGE_STOPS` is passed to `d3.interpolateRgbBasis()` in `ClusterHeatmap` and requires the explicit white midpoint for correct zero rendering. `SAGE_LEGEND_STOPS` omits white because `getLegendStepsDiverging` in `MapBoxMap` handles the zero entry itself — including white in both would produce a duplicate step in the legend.
 
 ---
 
