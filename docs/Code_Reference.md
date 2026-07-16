@@ -436,7 +436,7 @@ Same as `/api/predictions/by-date` but formats the response as a flat map payloa
 
 Compute instance-level SHAP values for a specific prediction.
 
-Explains one scalar model output — the predicted crime count for a single target community at a single forecast horizon on a specific anchor date. Uses `shap.KernelExplainer` with a randomly selected background anchor date as the baseline.
+Explains one scalar model output for a target community and forecast horizon. Kernel SHAP operates on 77 community-history groups against sampled background histories; group values are distributed across 90 days for the response matrix. Optional controls are `samples` (64–2048, default 256), `background_size` (1–32, default 4), and `seed` (default 0).
 
 Returns a `(90, 77)` SHAP value matrix serialized as an array of 90 history day objects, each containing 77 community SHAP values. The frontend sums these across days to get one value per community for the map.
 

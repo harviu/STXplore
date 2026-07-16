@@ -422,7 +422,7 @@ SHAP (SHapley Additive exPlanations) answers: *for this specific prediction, how
 
 In this application, the inputs are the 90 days × 77 community crime counts fed into the model. The SHAP output is a `(90, 77)` matrix — one value per history day per source community. The frontend sums these across days to produce one value per community for the map.
 
-SHAP is computed live using `shap.KernelExplainer`. It works by comparing the model's output on the actual input against a background sample (a different day's history used as a neutral baseline), then distributing the difference across all inputs using Shapley values from cooperative game theory.
+SHAP is computed live using `shap.KernelExplainer`. For production safety it explains 77 grouped features—one complete 90-day history per community—against a background history. Each community attribution is then distributed across its days according to their absolute deviation from the background. This preserves community totals and the existing 90×77 response without an unsafe 6,930-feature regression.
 
 The forecast horizon explained by SHAP is derived from the midpoint of the future window slider. If the slider covers days 0–30, SHAP explains the prediction at horizon day 15.
 
@@ -556,7 +556,7 @@ Each of the six map "faces" (source, relation, instance, target, actual, error) 
 
 ### SHAP values are non-deterministic between calls
 
-SHAP values may differ between clicks even when all inputs are the same. The root cause is that `KernelExplainer` uses a randomly selected background sample — one anchor date chosen from the full dataset as a baseline — and the random number generator is not seeded consistently. Attempts to seed it deterministically did not fully resolve the issue. This is a known limitation of the current interactive SHAP implementation.
+The endpoint defaults to `samples=256`, `background_size=4`, and `seed=0`. The seed controls both background-window selection and Kernel SHAP coalition sampling, making identical requests reproducible. Changing the seed intentionally tests sensitivity to a different sampled explanation.
 
 ### SAGE value sparsity causes collapsed color scales
 

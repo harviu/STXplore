@@ -57,12 +57,16 @@ export const api = {
     ),
 
   predictionInstanceShap: (date, model, horizon, targetCommunity, opts = {}) => {
+    const { samples, backgroundSize, seed, ...requestOpts } = opts;
     const params = new URLSearchParams();
     params.append("date", String(date));
     params.append("model", String(model));
     params.append("horizon", String(horizon));
     params.append("target_community", String(targetCommunity));
-    return request(`/api/predictions/instance-shap?${params.toString()}`, opts);
+    if (samples != null) params.append("samples", String(samples));
+    if (backgroundSize != null) params.append("background_size", String(backgroundSize));
+    if (seed != null) params.append("seed", String(seed));
+    return request(`/api/predictions/instance-shap?${params.toString()}`, requestOpts);
   },
 
   mapPredictions: (layer, date, model, opts) =>

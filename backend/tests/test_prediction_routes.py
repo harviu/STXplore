@@ -5,6 +5,7 @@ import numpy as np
 from fastapi import HTTPException
 
 from backend.prediction.schemas import MapPredictionResult, PredictionResult
+from backend.prediction.service import distribute_group_shap
 from backend.routes.predictions import map_predictions, predictions_anchor_bounds, predictions_by_date
 
 
@@ -66,3 +67,15 @@ def test_map_predictions_shape():
     assert out["start"] == "2025-02-01"
     assert out["end"] == "2025-03-03"
     assert len(out["data"]) == 77
+
+
+def test_group_shap_distribution_preserves_community_totals():
+    query = np.array([[1.0, 2.0], [3.0, 2.0]], dtype=np.float32)
+    baseline = np.zeros_like(query)
+    group_values = np.array([8.0, -4.0], dtype=np.float32)
+
+    distributed = distribute_group_shap(group_values, query, baseline)
+
+    np.testing.assert_allclose(distributed.sum(axis=0), group_values)
+    np.testing.assert_allclose(distributed[:, 0], [2.0, 6.0])
+    np.testing.assert_allclose(distributed[:, 1], [-2.0, -2.0])

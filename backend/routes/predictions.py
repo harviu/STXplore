@@ -131,6 +131,9 @@ def instance_shap(  # type: ignore
     model: str = Query(..., description="Model folder name under Community-Heatmaps/models"),
     horizon: int = Query(..., ge=1, description="1-based forecast horizon (1..30)"),
     target_community: int = Query(..., ge=1, le=77, description="Community ID in 1..77"),
+    samples: int = Query(256, ge=64, le=2048, description="Kernel SHAP coalition samples"),
+    background_size: int = Query(4, ge=1, le=32, description="Number of history windows averaged for the SHAP baseline"),
+    seed: int = Query(0, ge=0, le=2_147_483_647, description="Seed for background and coalition sampling"),
 ):
     anchor_date = _parse_date(date)
 
@@ -140,6 +143,9 @@ def instance_shap(  # type: ignore
             model_name=model,
             target_horizon=horizon,
             target_community_id=target_community,
+            nsamples=samples,
+            background_size=background_size,
+            seed=seed,
         )
     except FileNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
@@ -160,6 +166,9 @@ def instance_shap(  # type: ignore
         "target_date": result.target_date.isoformat(),
         "horizon": result.target_horizon,
         "target_community": result.target_community_id,
+        "samples": samples,
+        "background_size": background_size,
+        "seed": seed,
         "source": source,
         "prediction": float(result.prediction),
         "baseline": float(result.baseline),

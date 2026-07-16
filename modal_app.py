@@ -16,6 +16,9 @@ image = (
             "PRED_MODELS_DIR": "/runtime/models",
             "PRED_DATA_FALLBACK_CSV": "/runtime/crime_1_day_pivot.csv",
             "PRED_DEVICE": "cpu",
+            "OMP_NUM_THREADS": "1",
+            "MKL_NUM_THREADS": "1",
+            "OPENBLAS_NUM_THREADS": "1",
         }
     )
     .add_local_dir("backend", remote_path="/root/backend")
