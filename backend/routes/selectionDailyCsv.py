@@ -19,7 +19,7 @@ def selection_daily_csv(  # type: ignore
     """Return a day-by-day crime count series for a single community, sourced from the CSV pivot file.
 
     Reads from the smoothed CSV pivot file (crime_1_day_pivot.csv) that was used
-    to train the AI model, rather than the raw PostgreSQL database. Used for hover
+    to train the AI model, rather than incident-derived aggregates. Used for hover
     tooltip time series in source and actual modes, ensuring the displayed data
     comes from the same distribution the model was trained on.
 
@@ -68,7 +68,7 @@ def selection_all_daily_csv(  # type: ignore
     """Return day-by-day crime counts for all 77 communities, sourced from the CSV pivot file.
 
     Reads from the smoothed CSV pivot file (crime_1_day_pivot.csv) that was used
-    to train the AI model, rather than the raw PostgreSQL database. Used for the
+    to train the AI model, rather than incident-derived aggregates. Used for the
     actual crime counts in the prediction time series chart (the "actual" and
     "error" lines), ensuring a fair comparison with model outputs that were also
     trained on this data.

@@ -1,21 +1,16 @@
-from fastapi import APIRouter, Depends
-from sqlalchemy import text
-from sqlalchemy.orm import Session
-from backend.db.database import get_db
+from fastapi import APIRouter, HTTPException
+
+from backend.db.analytics import crime_analytics
+
 
 router = APIRouter(tags=["health"])
-# Old code to check API, use for debugging and testing API
+
+
 @router.get("/health")
-def health(db: Session = Depends(get_db)):
-    """Check that the API server and database connection are both alive.
-
-    Executes a trivial SQL statement against the database. If the server is
-    running but the DB is unreachable, this will raise a 500 error rather than
-    returning ok=True — making it useful for diagnosing connection issues during
-    development or deployment.
-
-    Returns:
-        {"ok": True} if both the server and DB are reachable.
-    """
-    db.execute(text("SELECT 1"))
-    return {"ok": True}
+def health():  # type: ignore
+    """Check that the API and read-only Parquet analytics dataset are available."""
+    try:
+        crime_analytics.health()
+    except (FileNotFoundError, RuntimeError) as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    return {"ok": True, "storage": "duckdb-parquet"}

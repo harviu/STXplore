@@ -6,7 +6,7 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "http://130.107.48.36:8000/api/:path*"
+      "destination": "https://harviu--stxplore-backend-fastapi-app.modal.run/api/:path*"
     }
   ]
 }

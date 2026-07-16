@@ -42,7 +42,7 @@ The application serves two main purposes:
 
 
 
-The student development team built the entire application — the frontend, the backend routes, and the database layer. The research team contributed the AI model, its training pipeline, and the precomputed attribution tensors, which live in the `backend/prediction/` and `models/` folders. All of this is included in the repository. The only external dependency not included is a running PostgreSQL database instance, which needs to be set up locally using the provided crime data CSV and the instructions in `backend/DB_SetUp.md`.
+The student development team built the frontend and backend routes. The research team contributed the AI model, its training pipeline, and the precomputed attribution tensors. Historical analytics now run from a generated, read-only Parquet file through DuckDB, so no external database service is required.
 
 ---
 
@@ -52,7 +52,7 @@ The student development team built the entire application — the frontend, the 
 Community-Heatmaps/
 ├── backend/                        # Python / FastAPI backend
 │   ├── db/
-│   │   └── database.py             # SQLAlchemy DB connection
+│   │   └── analytics.py            # DuckDB/Parquet query service
 │   ├── prediction/                 # Prediction + attribution logic (research team)
 │   │   ├── models/                 # PyTorch model definitions
 │   │   ├── config.py               # Paths and model constants
@@ -109,13 +109,13 @@ Community-Heatmaps/
 │                                                      │
 │   backend/routes/         (one file per feature)     │
 │   backend/prediction/     (model + attribution)      │
-│   backend/db/             (database connection)      │
+│   backend/db/             (DuckDB analytics service) │
 └──────────┬──────────────────────────┬───────────────┘
            │                          │
 ┌──────────▼──────────┐   ┌───────────▼──────────────┐
-│   PostgreSQL DB      │   │  File System              │
-│   crime_data table   │   │  models/  (checkpoints,   │
-│   (raw crime records)│   │   MI + SAGE tensors)      │
+│   Parquet analytics  │   │  File System              │
+│   daily aggregates   │   │  models/  (checkpoints,   │
+│   queried by DuckDB  │   │   MI + SAGE tensors)      │
 │                      │   │  data/    (pivot CSV)      │
 └─────────────────────┘   └──────────────────────────┘
 ```
@@ -128,9 +128,9 @@ The frontend runs on **React + Vite**. During development, Vite proxies all `/ap
 
 The application uses two different data sources. Knowing which one is used where — and why — is important, because mixing them up produces inconsistent results.
 
-### PostgreSQL Database
+### DuckDB + Parquet analytics
 
-The database holds raw individual crime incident records from Chicago's public crime dataset. Each row is one crime event with fields like `date`, `community_area`, `primary_type`, `beat`, `district`, and more. See `backend/DB_SetUp.md` for the full schema and the import command.
+`data/derived/crime_daily.parquet` holds daily counts derived from Chicago's public crime dataset. Rows are grouped by day, boundary layer, boundary identifier, and primary crime type. DuckDB queries this file directly.
 
 Used for:
 - The **past (left) map** — real historical crime counts
@@ -150,7 +150,7 @@ Used for:
 - All **model inputs** — any time data is fed into the model for prediction or explanation
 - The **time series actual and error lines** in the prediction panel — to ensure fair comparison with model output
 
-**Why the split?** The raw database counts differ from the smoothed training data. If the "actual" line in a chart used raw DB counts while the "predicted" line came from a model trained on smoothed data, the comparison would be between two different distributions. Using the CSV for both keeps it consistent with what the model was trained on.
+**Why the split?** The incident-derived counts differ from the smoothed training data. If the "actual" line in a chart used incident counts while the "predicted" line came from a model trained on smoothed data, the comparison would be between two different distributions. Using the pivot CSV for both keeps it consistent with what the model was trained on.
 
 ### Data Coverage
 
@@ -607,9 +607,9 @@ The daily crime count line chart displayed in the right side panel for a selecte
 | `PRED_DEVICE` | `auto` | Inference device: `auto`, `cpu`, or `cuda` |
 | `CORS_ORIGINS` | `http://localhost:5173, http://localhost:3000, http://localhost:8000` | Allowed CORS origins |
 
-### Database
+### Analytics storage
 
-PostgreSQL database named `crime_data` with a single table also named `crime_data`. See `backend/DB_SetUp.md` for the full column schema and the `psql` copy command used to import crime data from CSV.
+DuckDB queries `data/derived/crime_daily.parquet`. Rebuild it from the raw Git LFS CSV with `python -m backend.scripts.build_crime_aggregates`.
 
 ### Setup
 The following was written based on the development environment used by the student team. Tested on Python 3.12.3 and Node v22.22.0.
@@ -628,7 +628,7 @@ source .venv/bin/activate        # on Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 ```
  
-The `requirements.txt` pulls PyTorch from the PyTorch CUDA 12.4 index (`--extra-index-url https://download.pytorch.org/whl/cu124`). If you are on CPU only and do not need CUDA support, you can remove that line and install the CPU-only torch build instead. Set `PRED_DEVICE=cpu` in your `.env` accordingly.
+The default requirements use the CPU PyTorch wheel index for portable local and Modal deployments.
  
 **3. Set up environment variables**
  
@@ -641,16 +641,16 @@ Open `.env` and set the following:
  
 | Variable | Required | Description |
 |---|---|---|
-| `DATABASE_URL` | Yes | PostgreSQL connection string. Format: `postgresql+psycopg2://user:password@localhost:5432/crime_data` |
+| `CRIME_AGGREGATES_PATH` | No | Path to `crime_daily.parquet`. Defaults to `data/derived/crime_daily.parquet`. |
 | `VITE_MAPBOX_ACCESS_TOKEN` | No | Mapbox token for the Streets map style. Without it the map falls back to OpenStreetMap. |
 | `CORS_ORIGINS` | No | Comma-separated allowed origins. Defaults to `http://localhost:5173, http://localhost:3000, http://localhost:8000`. |
 | `PRED_MODELS_DIR` | No | Absolute path to the `models/` folder. Defaults to `<repo_root>/models`. |
 | `PRED_DATA_FALLBACK_CSV` | No | Absolute path to the pivot CSV. Defaults to `<repo_root>/data/Chicago-Data/Crime/crime_1_day_pivot.csv`. |
 | `PRED_DEVICE` | No | Inference device: `auto`, `cpu`, or `cuda`. Defaults to `auto`. |
  
-**4. Set up the database**
+**4. Build analytics data**
  
-Create a PostgreSQL database named `crime_data` and import the crime data using the command in `backend/DB_SetUp.md`. You will need PostgreSQL installed and running locally. The import command uses `psql` and points to the crime CSV in `data/Chicago-Data/Crime/`.
+Run `python -m backend.scripts.build_crime_aggregates` from the repository root.
  
 **5. Install frontend dependencies**
 ```bash

@@ -1,11 +1,9 @@
 from datetime import date
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Query
 from fastapi import HTTPException 
-from sqlalchemy import text
-from sqlalchemy.orm import Session
 
-from backend.db.database import get_db
+from backend.db.analytics import crime_analytics
 from backend.prediction.config import COMMUNITY_IDS
 from backend.prediction.data_source import get_daily_rows
 
@@ -22,12 +20,11 @@ def _parse_iso_date(value: str, field: str) -> date:
 def map_counts( # type: ignore
     start: str = Query(..., description="YYYY-MM-DD (inclusive)"),
     end: str = Query(..., description="YYYY-MM-DD (inclusive)"),
-    db: Session = Depends(get_db),
   ):
     """Return total crime counts per community area for a date range, sourced from the database.
 
-    Aggregates raw crime incident records from `crime_data` grouped by
-    `community_area`. Community-only — does not support beat or district layers.
+    Aggregates precomputed Parquet counts grouped by community area.
+    Community-only — does not support beat or district layers.
     Use /api/map/totals for multi-layer support.
 
     Args:
@@ -41,15 +38,15 @@ def map_counts( # type: ignore
             "data": [{"community_area": str, "count": int}, ...]
         }
     """
-    sql = text("""
-      SELECT community_area, COUNT(*)::int AS count
-      FROM crime_data
-      WHERE "date" >= :start AND "date" <  :end AND community_area IS NOT NULL
-      GROUP BY community_area
-      ORDER BY community_area;
-    """)
-    rows = db.execute(sql, {"start": start, "end": end}).mappings().all()
-    return {"start": start, "end": end, "data": list(rows)}  # type: ignore
+    try:
+        totals = crime_analytics.totals("community_area", start, end)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    rows = [
+        {"community_area": row["feature_id"], "count": row["count"]}
+        for row in totals
+    ]
+    return {"start": start, "end": end, "data": rows}  # type: ignore
 
 
 @router.get("/map/counts/pivot")
@@ -59,7 +56,7 @@ def map_counts_pivot( # type: ignore
 ):
     """Return total crime counts per community area for a date range, sourced from the CSV pivot file.
 
-    Unlike /api/map/counts which queries the raw PostgreSQL database, this
+    Unlike /api/map/counts which queries incident-derived Parquet aggregates, this
     endpoint reads from the smoothed CSV pivot file (crime_1_day_pivot.csv)
     that was used to train the AI model. Counts are the smoothed daily values
     summed over the requested date range.

@@ -1,26 +1,7 @@
 services:
-  db:
-    image: postgres:16
-    container_name: chm-postgres
-    restart: unless-stopped
-    env_file:
-      - ./deploy/.env.prod
-    environment:
-      POSTGRES_DB: ${POSTGRES_DB:-crime_data}
-      POSTGRES_USER: ${POSTGRES_USER:-crime_app}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-    volumes:
-      - pgdata:/var/lib/postgresql/data
-      - ./data:/seed:ro
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-crime_app} -d ${POSTGRES_DB:-crime_data}"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-
   backend:
-    image: ${BACKEND_IMAGE:-community-heatmaps-backend:latest}
-    container_name: chm-backend
+    image: ${BACKEND_IMAGE:-stxplore-backend:latest}
+    container_name: stxplore-backend
     build:
       context: .
       dockerfile: deploy/Dockerfile.backend
@@ -28,14 +9,10 @@ services:
     env_file:
       - ./deploy/.env.prod
     environment:
-      DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER:-crime_app}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-crime_data}
-      CORS_ORIGINS: ${CORS_ORIGINS}
+      CRIME_AGGREGATES_PATH: /app/data/derived/crime_daily.parquet
       PRED_MODELS_DIR: /app/models
       PRED_DATA_FALLBACK_CSV: /app/data/Chicago-Data/Crime/crime_1_day_pivot.csv
       PRED_DEVICE: ${PRED_DEVICE:-cpu}
-    depends_on:
-      db:
-        condition: service_healthy
     command: ["uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "8000"]
     ports:
       - "8000:8000"
@@ -47,6 +24,3 @@ services:
       interval: 20s
       timeout: 5s
       retries: 8
-
-volumes:
-  pgdata:

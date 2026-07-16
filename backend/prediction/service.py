@@ -6,7 +6,6 @@ from typing import Any, Callable
 
 import numpy as np
 import torch
-from sqlalchemy.orm import Session
 
 from backend.prediction.config import COMMUNITY_IDS
 from backend.prediction.data_source import (
@@ -31,7 +30,7 @@ class PredictionService:
     def __init__(self):
         self.registry = RuntimeRegistry()
 
-    def _build_history_matrix(self, anchor_date: date, seq_len: int, db: Session | None = None) -> tuple[np.ndarray, list[date], str]:
+    def _build_history_matrix(self, anchor_date: date, seq_len: int, db: Any | None = None) -> tuple[np.ndarray, list[date], str]:
         # Compute the date range for the history window: seq_len days ending on anchor_date (inclusive)
         hist_days = history_dates(anchor_date, seq_len=seq_len)
         hist_start, hist_end_exclusive = history_window(anchor_date, seq_len=seq_len)
@@ -54,7 +53,7 @@ class PredictionService:
         matrix = build_dense_history_matrix(rows, hist_days, community_ids=COMMUNITY_IDS)
         return matrix, hist_days, source
 
-    def predict_by_date(self, anchor_date: date, model_name: str, db: Session | None = None) -> tuple[PredictionResult, str]:
+    def predict_by_date(self, anchor_date: date, model_name: str, db: Any | None = None) -> tuple[PredictionResult, str]:
         bundle = self.registry.get(model_name)
         seq_len = int(bundle.cfg["seq_len"])
         pred_len = int(bundle.cfg["pred_len"])
@@ -79,7 +78,7 @@ class PredictionService:
             source,
         )
 
-    def map_prediction(self, anchor_date: date, model_name: str, db: Session | None = None) -> tuple[MapPredictionResult, str]:
+    def map_prediction(self, anchor_date: date, model_name: str, db: Any | None = None) -> tuple[MapPredictionResult, str]:
         pred, source = self.predict_by_date(anchor_date=anchor_date, model_name=model_name, db=db)
         start, end_exclusive = forecast_window(anchor_date, pred_len=pred.forecast_daily.shape[0])
 
@@ -94,7 +93,7 @@ class PredictionService:
             source,
         )
 
-    def build_inference_context(self, anchor_date: date, model_name: str, db: Session | None = None) -> InferenceContext:
+    def build_inference_context(self, anchor_date: date, model_name: str, db: Any | None = None) -> InferenceContext:
         bundle = self.registry.get(model_name)
         history_matrix, _, _ = self._build_history_matrix(anchor_date, seq_len=int(bundle.cfg["seq_len"]), db=db)
         sample = bundle.prepare_sample(history_matrix, anchor_date)
@@ -109,7 +108,7 @@ class PredictionService:
         self,
         seq_len: int,
         requested_size: int,
-        db: Session | None,
+        db: Any | None,
     ) -> list[date]:
         min_day, max_day, _ = get_available_date_range(db=db)
         # The earliest valid anchor needs seq_len days of history before it
@@ -191,7 +190,7 @@ class PredictionService:
         background_size: int = 1,
         nsamples: int | str = "auto",
         top_k: int = 20,
-        db: Session | None = None,
+        db: Any | None = None,
     ) -> tuple[InstanceShapResult, str]:
         # Lazy import so non-SHAP prediction endpoints do not require shap.
         try:

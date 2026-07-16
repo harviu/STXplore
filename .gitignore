@@ -31,3 +31,6 @@ backend/.env
 __pycache__/
 *.pyc
 deploy/.env.prod
+
+# Generated analytics data (rebuild from the Git LFS source CSV)
+data/derived/*.parquet.tmp

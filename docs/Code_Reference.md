@@ -31,9 +31,9 @@
 
 ### `GET /api/health`
 
-Check that the API server and database connection are both alive.
+Check that the API server and Parquet analytics dataset are available.
 
-Executes a trivial SQL statement against the database. If the server is running but the DB is unreachable, this will raise a 500 error rather than returning `ok: true` — making it useful for diagnosing connection issues during development or deployment.
+Reads the Parquet dataset through DuckDB. A missing runtime dataset produces a 503 response.
 
 **Response**
 ```json
@@ -44,11 +44,11 @@ Executes a trivial SQL statement against the database. If the server is running 
 
 ### `GET /api/date-range`
 
-Return the earliest and latest crime record dates available in the database.
+Return the earliest and latest crime dates available in the aggregate dataset.
 
-Queries the MIN and MAX of the `date` column in the `crime_data` table. The frontend uses this to disable out-of-range dates in the past map date picker, preventing users from selecting a window with no data.
+Queries the minimum and maximum `day` in the Parquet dataset. The frontend uses this to disable out-of-range dates in the past map date picker.
 
-> Note: This reflects the raw database date range, which may differ from the CSV pivot file range used for model predictions. For the prediction-valid date range use `/api/predictions/anchor-bounds` instead.
+> Note: This reflects the incident-derived date range, which may differ from the CSV pivot file range used for model predictions.
 
 **Response**
 ```json
@@ -64,11 +64,11 @@ Queries the MIN and MAX of the `date` column in the `crime_data` table. The fron
 
 ### `GET /api/map/totals`
 
-Return total crime counts per boundary feature for a given date range, sourced from the database.
+Return total crime counts per boundary feature from the Parquet aggregates.
 
-Aggregates raw crime incident records from the `crime_data` table, grouping by the specified boundary layer. Used to color the left (past) map and right (actual) map polygons with real crime counts.
+Sums precomputed daily counts for the specified boundary layer. Used to color the left and right map polygons.
 
-The `layer` parameter is validated against a hard-coded allow-list before being interpolated into the SQL identifier, making it safe against injection. Beat IDs are zero-padded to 4 digits (e.g. `"735"` → `"0735"`) to match the GeoJSON boundary feature IDs used by the frontend.
+The `layer` parameter is validated against a hard-coded allow-list. Beat IDs are zero-padded to four digits to match the GeoJSON identifiers.
 
 **Query Parameters**
 
@@ -95,9 +95,9 @@ The `layer` parameter is validated against a hard-coded allow-list before being 
 
 ### `GET /api/map/counts`
 
-Return total crime counts per community area for a date range, sourced from the database.
+Return total incident-derived counts per community area for a date range.
 
-Aggregates raw crime incident records from `crime_data` grouped by `community_area`. Community-only — does not support beat or district layers. Use `/api/map/totals` for multi-layer support.
+Sums Parquet aggregates by community. Use `/api/map/totals` for multi-layer support.
 
 **Query Parameters**
 
@@ -123,7 +123,7 @@ Aggregates raw crime incident records from `crime_data` grouped by `community_ar
 
 Return total crime counts per community area for a date range, sourced from the CSV pivot file.
 
-Unlike `/api/map/counts` which queries the raw PostgreSQL database, this endpoint reads from the smoothed CSV pivot file (`crime_1_day_pivot.csv`) that was used to train the AI model. Counts are the smoothed daily values summed over the requested date range.
+Unlike `/api/map/counts`, this endpoint reads from the smoothed model-training pivot CSV.
 
 Use this endpoint — rather than `/api/map/counts` — wherever results will be compared against or used alongside model outputs, to ensure the data comes from the same distribution the model was trained on.
 
@@ -157,15 +157,15 @@ Always returns one entry per community 1–77 even if the count is 0, guaranteei
 
 ### `GET /api/selection-daily`
 
-Return a day-by-day crime count series for a single boundary, sourced from the database.
+Return a day-by-day crime count series for a single boundary from Parquet.
 
-Queries raw crime records from `crime_data` and groups them by calendar day for the specified boundary feature. Used to populate the daily crime count line chart in the right side panel when a community is selected on the left (past) map, and for hover tooltip time series in source mode.
+Sums precomputed counts by calendar day for the selected boundary.
 
 Only days that had at least one crime are included in the response. The frontend fills any missing days with zeros using the `fillDaily` utility in `crimeAggregates.js` before rendering the chart.
 
 Beat IDs are normalized before querying: leading zeros are stripped (e.g. `"0735"` → `"735"`) to match the database storage format.
 
-> Note: This endpoint reads from the raw database. For data consistent with the model's training distribution use `/api/selection-daily-csv` instead.
+> Note: For data consistent with the model's training distribution use `/api/selection-daily-csv` instead.
 
 **Query Parameters**
 
@@ -199,7 +199,7 @@ Beat IDs are normalized before querying: leading zeros are stripped (e.g. `"0735
 
 Return a day-by-day crime count series for a single community, sourced from the CSV pivot file.
 
-Reads from the smoothed CSV pivot file (`crime_1_day_pivot.csv`) that was used to train the AI model, rather than the raw PostgreSQL database. Used for hover tooltip time series in source and actual modes, ensuring the displayed data comes from the same distribution the model was trained on.
+Reads from the smoothed model-training pivot CSV rather than incident-derived Parquet aggregates.
 
 Only days that had a non-zero count in the CSV are included in the response. The frontend fills any missing days with zeros using the `fillDaily` utility in `crimeAggregates.js` before rendering the chart.
 
@@ -236,7 +236,7 @@ Return day-by-day crime counts for every boundary feature, sourced from the data
 
 Queries raw crime records from `crime_data` and groups them by boundary feature ID and calendar day. Returns one row per (feature, day) pair that had at least one crime. Used to build the source (past) cluster heatmap — where every community's daily crime pattern is needed simultaneously — and for the actual crime counts displayed on the right map in source mode.
 
-> Note: This endpoint reads from the raw database. For data consistent with the model's training distribution use `/api/selection-all-daily-csv` instead.
+> Note: For data consistent with the model's training distribution use `/api/selection-all-daily-csv` instead.
 
 **Query Parameters**
 
@@ -268,7 +268,7 @@ Queries raw crime records from `crime_data` and groups them by boundary feature 
 
 Return day-by-day crime counts for all 77 communities, sourced from the CSV pivot file.
 
-Reads from the smoothed CSV pivot file (`crime_1_day_pivot.csv`) that was used to train the AI model, rather than the raw PostgreSQL database. Used for the actual crime counts in the prediction time series chart (the "actual" and "error" lines), ensuring a fair comparison with model outputs that were also trained on this data.
+Reads from the smoothed model-training pivot CSV rather than incident-derived Parquet aggregates.
 
 Only days and communities with non-zero counts are included. The response shape is identical to `/api/selection-all-daily` so the frontend can treat both interchangeably.
 
@@ -345,7 +345,7 @@ Return the valid anchor date range for running predictions.
 
 Reads from the CSV pivot file date range and computes the earliest anchor date that has enough history for the model (`data_min + seq_len - 1` days). The frontend uses these bounds to clamp the date picker so users cannot select a date the model cannot run on.
 
-> Note: This reflects the CSV pivot file date range, not the raw database range. Use `/api/date-range` for the database range.
+> Note: This reflects the pivot-file date range. Use `/api/date-range` for the incident-derived range.
 
 **Response**
 ```json

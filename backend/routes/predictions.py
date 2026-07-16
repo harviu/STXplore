@@ -22,7 +22,7 @@ def _parse_date(value: str) -> date:
 
 @router.get("/predictions/anchor-bounds")
 def predictions_anchor_bounds() -> dict:  # type: ignore
-    """Anchor dates valid for prediction (pivot CSV), independent of SQL `crime_data` date range."""
+    """Anchor dates valid for prediction, based on the model-training pivot CSV."""
     try:
         min_day, max_day, source = get_available_date_range()
     except FileNotFoundError as exc:
