@@ -48,33 +48,30 @@ export function isoRangeDays(startISO, endISO) {
 }
 
 /**
- * Creates a date range from before the included date.
- * @param {number} pastDays - the number of days in the past
- * @param {string} anchorISO - the anchor date as an ISO string
- * @returns {Object} - an object with start and end dates
+ * Convert a half-open history-lag slice to calendar dates.
+ * Lag 0 is the anchor itself, so [0, 90) maps to [D-89, D+1):
+ * model history D-89 through D, inclusive.
  */
 export function sourceRange(pastStartOffset, pastEndOffset, anchorISO) {
   if (!Number.isFinite(pastStartOffset) || !Number.isFinite(pastEndOffset) || !anchorISO) {
     return { start: null, end: null };
   }
-  const start = addDaysISO(anchorISO, -pastEndOffset);
-  const end = addDaysISO(anchorISO, -pastStartOffset);
+  const start = addDaysISO(anchorISO, -(pastEndOffset - 1));
+  const end = addDaysISO(anchorISO, 1 - pastStartOffset);
   return { start, end };
 }
 
 /**
- * Creates a date range after the anchor: [anchor + startOffset, anchor + endOffset) in calendar-day steps.
- * @param {number} futureStartOffset - days after anchor where the window starts (≥ 0)
- * @param {number} futureEndOffset - days after anchor where the window ends (exclusive end date via addDays)
- * @param {string} anchorISO - the anchor date as an ISO string
- * @returns {{ start: string, end: string }}
+ * Convert a half-open forecast-index slice to calendar dates.
+ * Forecast index 0 is D+1, so [0, 30) maps to [D+1, D+31):
+ * prediction days D+1 through D+30, inclusive.
  */
 export function targetRange(futureStartOffset, futureEndOffset, anchorISO) {
   if (!Number.isFinite(futureStartOffset) || !Number.isFinite(futureEndOffset) || !anchorISO) {
     return { start: null, end: null };
   }
-  const start = addDaysISO(anchorISO, futureStartOffset);
-  const end = addDaysISO(anchorISO, futureEndOffset);
+  const start = addDaysISO(anchorISO, futureStartOffset + 1);
+  const end = addDaysISO(anchorISO, futureEndOffset + 1);
   return { start, end };
 }
 /**

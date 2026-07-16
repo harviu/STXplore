@@ -1,9 +1,6 @@
 import { useEffect, useRef, useState, useMemo } from 'react';
 import * as d3 from 'd3';
-import { CHOROPLETH_STOPS, RELATION_STOPS, SAGE_STOPS } from "../lib/colors.js"
-import { se } from 'date-fns/locale';
-
-const EMPTY_CELL_FILL = "rgba(255, 255, 255, 0.2)"; // subtle gray for zero/missing, reads cleaner than black
+import { createColorScale } from "../lib/colorScale.js";
 
 //distance function for clustering
 // Uses Euclidean distance between two community (or date) vectors.
@@ -61,11 +58,12 @@ const getClusterOrder = (matrix, ids) => {
  * @param {Array|Object} props.data For relation map, a 2D array of counts by community (outer) and day (inner). For source/target map, an array of objects with shape {id: communityId, date: date, count: count}
  * @param {string|number|null} props.selectedId Currently selected community ID to highlight (1-based for relation map, numeric for source/target). Null if no selection.
  * @param {boolean} [props.isRelationMap=false] Whether this heatmap is for relation data (true) or source/target data (false). Affects color scheme and formatting.
+ * @param {boolean} [props.isErrorMap=false] Whether values are signed actual-minus-predicted errors.
  * @param {boolean} [props.isFuture=false] Whether the date axis represents future days (true) or past days (false). Affects date sorting and axis label.
  * @param {number} [props.offset=0] Offset for the date axis.
  * @returns {JSX.Element}
  */
-export default function ClusterHeatmap({ data, selectedId, isRelationMap = false, isSageMap = false, isFuture = false, offset = 0, onHighlight, anchorDate = null, endOffset = null }) {
+export default function ClusterHeatmap({ data, selectedId, isRelationMap = false, isSageMap = false, isErrorMap = false, isFuture = false, offset = 0, onHighlight, anchorDate = null, endOffset = null }) {
     const svgRef = useRef(null);
     const divRef = useRef(null);
     const [containerWidth, setContainerWidth] = useState(document.documentElement.clientWidth);
@@ -83,11 +81,6 @@ export default function ClusterHeatmap({ data, selectedId, isRelationMap = false
         window.addEventListener('resize', handleResize);
         return () => window.removeEventListener('resize', handleResize);
     }, []);
-
-    const interpolate = useMemo(() => {
-        // SAGE uses a diverging scale: red (suppressive/negative) → white (zero) → green (amplifying/positive)
-        return d3.interpolateRgbBasis(isSageMap ? SAGE_STOPS : isRelationMap ? RELATION_STOPS : CHOROPLETH_STOPS);
-    }, [isRelationMap, isSageMap]);
 
     //2D array of counts for each community and day, ensuring day is a num
     // Normalizes the two different data shapes the component receives into a flat
@@ -207,7 +200,7 @@ export default function ClusterHeatmap({ data, selectedId, isRelationMap = false
             isFuture && isRelationMap
                 ? (d) => d+ 1 + offset
                 : isFuture ? (d) => Math.abs(Math.round((d3.min(heatmapData.map(d => new Date(d.date).getTime())) - new Date(d).getTime()) / (1000 * 60 * 60 * 24)))+offset : isRelationMap
-                ? (d) => endOffset !== null ? d + endOffset - N + 1 : d + offset + 1
+                ? (d) => endOffset !== null ? d + endOffset - N : d + offset
                 : (d) => {
                     const ref = anchorDate ? new Date(anchorDate + "T00:00:00").getTime() : d3.max(heatmapData.map(d => new Date(d.date).getTime()));
                     return Math.round((ref - new Date(d).getTime()) / (1000 * 60 * 60 * 24));
@@ -218,8 +211,8 @@ export default function ClusterHeatmap({ data, selectedId, isRelationMap = false
 
             const tooltipHtml = (d) => 
                 `Community: ${isRelationMap ? d.id + 1 : d.id}<br>` +
-                `${isRelationMap ? "Days Ago: " : "Date: "}${isRelationMap ? (endOffset !== null ? d.date + endOffset - Array.from(new Set(heatmapData.map(h => h.date))).length + 1 : d.date + offset + 1) : d.date}<br>` +
-                `${isRelationMap ? "Relation" : "Count"}: ${d.count}`; 
+                `${isRelationMap ? "Days Ago: " : "Date: "}${isRelationMap ? (endOffset !== null ? d.date + endOffset - Array.from(new Set(heatmapData.map(h => h.date))).length : d.date + offset) : d.date}<br>` +
+                `${isRelationMap ? "Relation" : isErrorMap ? "Error (actual - predicted)" : "Count"}: ${d.count}`;
 
             d3.select(svgRef.current).selectAll("*").remove();
             const margin = { top: dateCluster ? 140 : 40, right: 30, bottom: 30, left: isSelected ? 150 : 50 };
@@ -337,16 +330,13 @@ export default function ClusterHeatmap({ data, selectedId, isRelationMap = false
             }
             const maxCount = d3.max(heatmapData, d => d.count);
             const minCount = d3.min(heatmapData, d => d.count);
-            // SAGE/SHAP: use symmetric diverging domain [-absMax, +absMax] so zero always maps to white.
-            // MI/choropleth: domain starts at 0.
-            const colorScale = isSageMap
-                ? (() => {
-                    const absMax = Math.max(Math.abs(minCount ?? 0), Math.abs(maxCount ?? 0)) || 1;
-                    return d3.scaleSequential().interpolator(interpolate).domain([-absMax, absMax]);
-                })()
-                : d3.scaleSequential().interpolator(interpolate).domain([maxCount > 0 ? 0 : 0, maxCount || 1]);
+            const colorScale = createColorScale(minCount, maxCount, {
+                isRelationMap,
+                isSageMap,
+                isErrorMap,
+            });
             const tooltip = d3.select(divRef.current);
-            const mouseover = function(event, d) {
+            const mouseover = function() {
                 tooltip.style("opacity", 1);
                 d3.select(this).style("stroke", hoverStrokeColor).style("stroke-width", hoverstrokeWidth).style("opacity", 1);
             };
@@ -390,11 +380,9 @@ export default function ClusterHeatmap({ data, selectedId, isRelationMap = false
                 .attr("ry", 2)
                 .attr("width", xScale.bandwidth())
                 .attr("height", yScale.bandwidth())
-                // Zero cells in non-SAGE modes render as EMPTY_CELL_FILL (subtle gray) rather than
-                // the bottom of the color scale, so missing/zero data is visually distinct from
-                // low-but-nonzero values. SAGE/SHAP cells always use the color scale because zero
-                // is a meaningful value (no influence) — it should render as white, not gray.
-                .style("fill", d => (d.count == null || (!isSageMap && d.count === 0)) ? EMPTY_CELL_FILL : colorScale(d.count))
+                // Zero is a real value: render it through the active scale instead of
+                // replacing it with a translucent gray cell.
+                .style("fill", d => colorScale(d.count))
                 .style("stroke", d => {
                     if(selectedId !== null && String(isRelationMap ? d.id+1 : Number(d.id)) === String(selectedId)) {
                         return "blue";
@@ -444,7 +432,7 @@ export default function ClusterHeatmap({ data, selectedId, isRelationMap = false
                 .style("font-weight", "500")
                 .text("Community Number");
         }
-    }, [heatmapData, selectedId, interpolate, containerWidth, isSelected, dateCluster, isFuture, isRelationMap, selectedBranch, selectedDateBranch, selectedCommunities, selectedDates, offset, endOffset, anchorDate]);
+    }, [heatmapData, selectedId, containerWidth, isSelected, dateCluster, isFuture, isRelationMap, isSageMap, isErrorMap, selectedBranch, selectedDateBranch, selectedCommunities, selectedDates, offset, endOffset, anchorDate]);
         
 
     return (

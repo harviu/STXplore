@@ -1,6 +1,7 @@
 import Panel from "./Panel.jsx";
 import { LineChart, MultiLineChart } from "./lineChartTooltip.jsx";
 import { fillDaily } from "../lib/crimeAggregates.js";
+import { addDaysISO } from "../lib/dates.js";
 import "./SidePanel.css";
 
 // convert mode to a title
@@ -93,7 +94,7 @@ function SelectionBlock({ heading, payload, showApi = true, isLeft }) {
                   <p className="sidePanel__subhead">Crime summary</p>
                   <dl className="sidePanel__kvList">
                     <KvRow label="Starting date">{summary.start}</KvRow>
-                    <KvRow label="Ending date">{summary.end}</KvRow>
+                    <KvRow label="Ending date">{addDaysISO(summary.end, -1)}</KvRow>
                     <KvRow label="Total crimes">{summary.total_crimes}</KvRow>
                     {days > 0 && summary.total_crimes != null ? (
                       <KvRow label="Avg per day">{(summary.total_crimes / days).toFixed(2)}</KvRow>
@@ -144,13 +145,19 @@ function SelectionBlock({ heading, payload, showApi = true, isLeft }) {
 
           {!isLeft && payload?.forecastDaily ? (
             <div className="sidePanel__chartBlock">
-              <p className="sidePanel__chartCaption">{selection?.mode === "target" ? "Predicted daily counts" : selection?.mode === "error" ? "Daily counts" : "Actual daily counts"}</p>
+              <p className="sidePanel__chartCaption">{selection?.mode === "target" ? "Predicted daily counts" : selection?.mode === "error" ? "Predicted vs actual daily counts" : "Actual daily counts"}</p>
               {payload.forecastTotal != null ? (
-                <div className="sidePanel__chartMeta">30-day  total: {Math.round(payload.forecastTotal)}</div>
+                <div className="sidePanel__chartMeta">{payload.days}-day total: {Math.round(payload.forecastTotal)}</div>
               ) : null}
               {selection?.mode === "error" ? (
                 <div>
-                    <MultiLineChart days={payload.forecastDaily} isRelationMap={false} height={74} />
+                    <MultiLineChart
+                      days={payload.forecastDaily}
+                      seriesLabels={["Predicted", "Actual"]}
+                      seriesColors={["#60a5fa", "#fb7185"]}
+                      isRelationMap={false}
+                      height={74}
+                    />
                 </div>) : (
                 <div className="sidePanel__chartPlot">
                   <LineChart days={payload.forecastDaily} isRelationMap={false} height={74} />

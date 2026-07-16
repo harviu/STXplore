@@ -50,7 +50,7 @@ def get_data4d(
     All community indices are 0-based.
 
     The parameter naming (d1..d4, b1, b3) maps to tensor axes as follows:
-        d1 / b1  →  axis 0: history_lag   (0 = most recent, 89 = oldest)
+        d1 / b1  →  axis 0: history day   (0 = D-89 oldest, 89 = D newest)
         d2       →  axis 1: source community (0-indexed, None = all)
         d3 / b3  →  axis 2: horizon day   (0 = D+1, 29 = D+30)
         d4       →  axis 3: target community (0-indexed, None = all)

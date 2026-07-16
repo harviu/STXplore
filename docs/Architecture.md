@@ -194,19 +194,19 @@ Selected via the "Relationship mode" dropdown.
 
 With the relationship modes in mind, here is a summary of what each map shows and what controls it.
 
-**The left map** is controlled by the left tab buttons (Past, Model Level, Instance Level, Data Level) and the past window slider (0–90 days before the anchor date).
+**The left map** is controlled by the left tab buttons (Past, Model Level, Instance Level, Data Level) and the history slider, whose full range represents `D-89` through anchor day `D`.
 
 - In **Past mode** — shows real historical crime counts, colored yellow to red. Doubles as a community picker in Source → All Targets mode.
 - In **Model Level, Instance Level, or Data Level** — shows attribution scores (SAGE, SHAP, or MI) for all communities relative to the currently selected target or source community. Colors use a diverging red-white-green scale centered at zero. The specific target or source that drives this coloring depends on the active relationship mode (see Sections 5 and 6).
 
-**The right map** is controlled by the right tab buttons (Predicted, Actual, Error, Relation) and the future window slider (0–30 days after the anchor date).
+**The right map** is controlled by the right tab buttons (Predicted, Actual, Error, Relation) and the prediction slider, whose full range represents `D+1` through `D+30`.
 
 - In **Predicted** — shows the model's crime forecast per community over the selected future window.
 - In **Actual** — shows real crime counts from the same future window, sourced from the CSV pivot file.
 - In **Error** — shows the difference between actual and predicted (actual minus predicted) per community.
 - In **Relation** (Source → All Targets mode only) — shows the outgoing attribution of the left-map selected community across all 77 targets.
 
-The **anchor date** is the dividing line between past and future. It is set by the user via a date picker and defaults to the latest available date in the CSV. The left map always looks backward from it; the right map always looks forward.
+The **anchor date** `D` is the final day included in the model input. It is set by the user via a date picker and defaults to the latest available date in the CSV. History includes `D`; prediction begins on `D+1`.
 
 The **side panel** sits on the right side of the screen and shows summary statistics and daily charts for whichever community is selected on either map.
 
@@ -240,7 +240,7 @@ These buttons appear above the right map and switch what the right map is displa
 
 ### Predicted
 
-The model's crime forecast for the 30 days following the anchor date, summed over the selected future window. Requires community layer and a valid anchor date within the CSV date range.
+The model's crime forecast for `D+1` through `D+30`, summed over the selected prediction window. Requires community layer and a valid anchor date within the CSV date range.
 
 ### Actual
 
@@ -280,7 +280,7 @@ The most complex component in the codebase. It manages:
 
 - All left and right map mode and tab state
 - Left and right community selections, tracked independently per tab via `mapFacesReducer`
-- The past (0–90 days) and future (0–30 days) slider controls, debounced at 150ms
+- The history (`D-89` through `D`) and prediction (`D+1` through `D+30`) slider controls, debounced at 150ms
 - Model selection and relationship mode selection
 - All data fetching for both maps (crime counts, predictions, SAGE, MI, SHAP)
 - Computing what value to color each polygon based on the current mode
@@ -427,7 +427,7 @@ In this application, the model input is 90 days × 77 community crime counts, bu
 
 This removes the former heuristic that distributed community attribution over time and avoids an unsafe 6,930-feature regression.
 
-The forecast horizon explained by SHAP is derived from the midpoint of the future window slider. If the slider covers days 0–30, SHAP explains the prediction at horizon day 15.
+The forecast horizon explained by SHAP is derived from the midpoint of the future window slider. The full slider range `[0, 30)` represents prediction days 1–30 (`D+1` through `D+30`), so SHAP explains prediction day 15.
 
 SHAP values are signed: positive means that source community's past crime pushed the prediction up; negative means it pushed it down.
 
@@ -452,7 +452,7 @@ MI is precomputed and stored in the same 4D tensor shape as SAGE. MI values are 
 Both MI and SAGE tensors share the same shape: `(90, 77, 30, 77)`. Understanding the axes is essential for working with any backend tensor-slicing code.
 
 ```
-axis 0: history_lag        — 90 past input days  (index 0 = most recent, index 89 = oldest)
+axis 0: history_day        — 90 past input days  (index 0 = D-89 oldest, index 89 = D newest)
 axis 1: source_community   — 77 source areas     (0-indexed: community 1 = index 0)
 axis 2: horizon            — 30 forecast days    (index 0 = D+1, index 29 = D+30)
 axis 3: target_community   — 77 target areas     (0-indexed: community 1 = index 0)
@@ -472,11 +472,11 @@ row = matrix[source_idx, :]          # → (77,): this source against all target
 
 ### Slider → Tensor Index Mapping
 
-The past slider counts forward from the anchor (0 = anchor, 90 = 90 days ago). The tensor counts backward from the anchor (index 0 = most recent). They are inverted. The conversion in `MapPanel.jsx`:
+The past slider stores a half-open range of lags, where lag 0 is `D` and lag 89 is `D-89`. The tensor stores those same 90 days chronologically, from index 0 (`D-89`) to index 89 (`D`), so the lag bounds must be inverted. The conversion in `MapPanel.jsx`:
 
 ```js
-tPastStart = 90 - dPastEnd;    // slider's far-past end → tensor's near-anchor end
-tPastDays  = 90 - dPastStart;  // slider's near-anchor end → tensor's far-past end
+tPastStart = 90 - dPastEnd;    // inclusive chronological tensor start
+tPastDays  = 90 - dPastStart;  // exclusive chronological tensor end
 ```
 
 This inversion is a frequent source of bugs. If you change slider behavior, verify the tensor slice is still correct by checking both ends of the range explicitly.
@@ -487,11 +487,11 @@ This inversion is a frequent source of bugs. If you change slider behavior, veri
 
 Two range sliders control the time windows used across all maps, charts, and backend queries.
 
-**Past slider** (0–90 days before anchor) controls:
+**Past slider** (`[0, 90)` history lags) represents `D-89` through `D`, inclusive, and controls:
 - Which days of historical crime are aggregated for the left map colors
 - Which portion of the SAGE/MI tensor is sliced
 
-**Future slider** (0–30 days after anchor) controls:
+**Future slider** (`[0, 30)` forecast indices) represents prediction days 1–30, or `D+1` through `D+30`, inclusive, and controls:
 - Which forecast days are summed for the right map colors
 - Which horizon SHAP explains (midpoint of the selected range)
 - Which forecast days are included in SAGE/MI tensor slices
@@ -504,7 +504,7 @@ A slider value change flows through: raw state → debounced state → tensor in
 
 ## 16. Color Scaling
 
-Different modes use different color scales. Color stop arrays are defined in `src/lib/colors.js`. Most are shared between the map choropleth layer and the cluster heatmap, with one exception: SAGE/SHAP use two separate arrays — `SAGE_STOPS` (which includes a white midpoint) for the cluster heatmap's d3 interpolator, and `SAGE_LEGEND_STOPS` (without white) for the map legend, which inserts white programmatically at zero via `getLegendStepsDiverging`.
+Different modes use different color scales. Color stop arrays are defined in `src/lib/colors.js`. Heatmap cells and temporal tooltip bars both use `createColorScale` from `src/lib/colorScale.js`, ensuring that MI uses `[0, max]` and SAGE/SHAP uses `[-absMax, +absMax]`. Its piecewise RGB interpolation reaches the explicit white SAGE midpoint exactly at zero. The map legend uses `SAGE_LEGEND_STOPS` without white because `getLegendStepsDiverging` inserts its zero entry programmatically.
 
 | Mode | Scale type | Colors | Domain |
 |---|---|---|---|

@@ -100,7 +100,8 @@ export default function DashboardPanel({ mode, selection, inactiveMode, inactive
       : null;
 
   const [sourceHighlight, setSourceHighlight] = useState({ community: [], date: [] });
-  const [targetHighlight, setTargetHighlight] = useState({ community: [], date: [] });
+  const [, setTargetHighlight] = useState({ community: [], date: [] });
+  const showTemporalBars = mode !== "relation";
 
   const handleSourceHighlight = useCallback((highlight) => { setSourceHighlight(highlight); onSourceHighlight?.(highlight); }, [onSourceHighlight]);
   const handleTargetHighlight = useCallback((highlight) => { setTargetHighlight(highlight); onTargetHighlight?.(highlight); }, [onTargetHighlight]);
@@ -116,7 +117,9 @@ export default function DashboardPanel({ mode, selection, inactiveMode, inactive
   const { communitySeriesList, loading: communitySeriesLoading } = useClusterDailySeries({
     mode,
     relationDataMode: relationDataMode ?? "mi",
-    selectedCommunities: sourceHighlight.community,
+    // Model/Data Level cluster selections only highlight the map; they do not
+    // produce temporal bars above the heatmap.
+    selectedCommunities: showTemporalBars ? sourceHighlight.community : [],
     heatData,
     targetCommunityId: right?.selection?.id ?? null,
     sourceCommunityId: mode === "instance" ? selection?.id ?? null : null,
@@ -168,8 +171,9 @@ export default function DashboardPanel({ mode, selection, inactiveMode, inactive
 
   return (
     <Panel title="Dashboard">
-      {/* Temporal graph panel — instance mode shows one on-demand 90-day SHAP row. */}
-      <div style={{ padding: "0 5%", boxSizing: "border-box", width: "100%" }}>
+      {/* Past and Instance Level retain their temporal display. Model/Data Level
+          cluster selections are represented only by map highlighting. */}
+      {showTemporalBars && <div style={{ padding: "0 5%", boxSizing: "border-box", width: "100%" }}>
         {mode === "instance" && right?.selection?.id && (
           <p style={{ opacity: 1, margin: "12px 0 0", textAlign: "center" }}>Past map SHAP history</p>
         )}
@@ -203,7 +207,7 @@ export default function DashboardPanel({ mode, selection, inactiveMode, inactive
                         sourceHighlight.date?.length > 0
                           ? mode === "source"
                             ? sourceHighlight.date
-                            : sourceHighlight.date.map(d => addDaysISO(anchorDate, -(Number(d) + 1)))
+                            : sourceHighlight.date.map(d => addDaysISO(anchorDate, -(pastStart + Number(d))))
                           : null
                       }
                     />
@@ -213,16 +217,16 @@ export default function DashboardPanel({ mode, selection, inactiveMode, inactive
             })}
           </div>
         )}
-      </div>
+      </div>}
       {/* Cluster Heatmaps */}
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", width: "100%", gap: "var(--space-5)" }}>
         {heatData && (selection?.id || mode === "source") && <p style={{ opacity: 1, margin: 0, fill: "white" }}> Past map cluster heatmap </p>}
         {/* isSageMap is only true in non-source modes — source mode always shows raw crime counts
             which use the sequential choropleth scale, never the diverging SAGE/SHAP scale */}
         {heatData && (selection?.id || mode === "source" || (mode != "source" && right?.selection?.id)) && <ClusterHeatmap data={heatData} selectedId={selection?.id || null} isRelationMap={mode !== "source"} isSageMap={isSageMap && mode !== "source"} onHighlight={handleSourceHighlight} anchorDate={anchorDate} offset={pastStart} endOffset={pastEnd} />}
-        {targetHeatData && (inactiveMode === "actual" || inactiveMode === "target") && <p style={{ opacity: 1, margin: 0, fill: "white" }}> Future map cluster heatmap ({title})</p>}
+        {targetHeatData && (inactiveMode === "actual" || inactiveMode === "target" || inactiveMode === "error") && <p style={{ opacity: 1, margin: 0, fill: "white" }}> Future map cluster heatmap ({title})</p>}
         {/* Future heatmap is always source-mode-style flat data (not relation), so isSageMap is never needed */}
-        {targetHeatData && (inactiveMode === "actual" || inactiveMode === "target") && <ClusterHeatmap data={targetHeatData} selectedId={inactiveSelection?.id || null} isRelationMap={false} isFuture={true} offset={inactiveMode === "target"? (right?.offset + 1) : right?.offset} onHighlight={handleTargetHighlight} anchorDate={anchorDate} />}
+        {targetHeatData && (inactiveMode === "actual" || inactiveMode === "target" || inactiveMode === "error") && <ClusterHeatmap data={targetHeatData} selectedId={inactiveSelection?.id || null} isRelationMap={false} isErrorMap={inactiveMode === "error"} isFuture={true} offset={(right?.offset ?? 0) + 1} onHighlight={handleTargetHighlight} anchorDate={anchorDate} />}
       </div>
     {/* Bar Charts — crime type breakdowns for left and right map selections */}
       <div style={{ padding: "5%", boxSizing: "border-box" }}>

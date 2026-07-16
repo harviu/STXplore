@@ -123,10 +123,12 @@ export function useClusterDailySeries({
       const result = leafIds.map(commId => {
         const commIdx = Number(commId) - 1; // selectedCommunities are 1-based for relation mode
         const dailyValues = heatData[commIdx] ?? [];
-        // dailyValues[0] is most recent (reversed in MapPanel) — reverse again so series
-        // goes oldest → newest left to right, matching the heatmap x-axis direction.
+        // dailyValues[0] is the newest selected day (reversed in MapPanel).
+        // Reverse again so the chart is chronological from rangeStart.
         const series = [...dailyValues].reverse().map((val, i) => ({
-          date: addDaysISO(anchorDate, -(dailyValues.length - i)),
+          date: rangeStart
+            ? addDaysISO(rangeStart, i)
+            : addDaysISO(anchorDate, -(dailyValues.length - 1 - i)),
           count: val,
         }));
         return { id: commId, label: `Community ${commId}`, series };

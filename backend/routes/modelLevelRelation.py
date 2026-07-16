@@ -51,7 +51,8 @@ def model_relation(
         source: 0-based source community index (0..76). Mutually exclusive with target.
         target: 0-based target community index (0..76). Mutually exclusive with source.
         model: Model folder name under the models directory (e.g. "Transformer").
-        past_start: Inclusive start index on the history axis (0 = most recent lag).
+        past_start: Inclusive start index on the chronological history axis
+            (0 = D-89 oldest, 89 = D newest).
         past_days: Exclusive end index on the history axis (tensor slice: past_start:past_days).
         future_start: Inclusive start index on the horizon axis.
         future_days: Exclusive end index on the horizon axis.

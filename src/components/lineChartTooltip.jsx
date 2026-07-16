@@ -44,7 +44,8 @@ function choroplethColor(t, isRelationMap = false, isSageMap = false) {
  * @param {number} [props.height=30] - The height of the bars in pixels. Default is 30.
  * @param {boolean} [props.isRelationMap=false] - A flag indicating whether to use relation map color stops. Default is false.
  * @param {boolean} [props.isSageMap=false] - A flag indicating whether to use sage map color stops. Default is false.
- * @param {Array} [props.highlightDates=null] - An array of dates to highlight.
+ * @param {Array<string>} [props.seriesLabels=[]] Labels for each series.
+ * @param {Array<string>} [props.seriesColors=[]] Optional fixed stroke colors for each series.
  * @returns {JSX.Element}
  */
 export function LineChart({ days, height = 30, isRelationMap = false, isSageMap = false }) {
@@ -167,13 +168,13 @@ export function LineChart({ days, height = 30, isRelationMap = false, isSageMap 
  * @param {Array} [props.highlightDates=null] - An array of dates to highlight.
  * @returns {JSX.Element}
  */
-export function MultiLineChart({ days, height = 30, isRelationMap = false, isSageMap = false }) {
+export function MultiLineChart({ days, height = 30, isRelationMap = false, isSageMap = false, seriesLabels = [], seriesColors = [] }) {
   const data = days ?? [[]];
-  if (data.length === 0) return null;
+  if (data.length === 0 || data.some((dataset) => !Array.isArray(dataset) || dataset.length === 0)) return null;
 
   const labelGutter = 35;
 
-  const flatData = data.flatMap(row=>row?.map(d=>d.count || 0))
+  const flatData = data.flatMap(row => row.map(d => Number(d.count) || 0));
   const max = Math.max(...flatData);
   const min = Math.min(...flatData);
   
@@ -185,7 +186,7 @@ export function MultiLineChart({ days, height = 30, isRelationMap = false, isSag
   // Generate points for the line: x is % index, y is scaled value
   const getPoints = (dataset) => {
     return dataset.map((d, i) => {
-      const x = (i / (dataset.length - 1)) * width;
+      const x = dataset.length === 1 ? width / 2 : (i / (dataset.length - 1)) * width;
       // Inverse Y because SVG 0 is top. If max=min, put line in middle.
       const y = max === min 
         ? chartHeight / 2 
@@ -193,11 +194,18 @@ export function MultiLineChart({ days, height = 30, isRelationMap = false, isSag
       return `${x},${y}`;
     }).join(" ");
   };
-  // Guard against the error mode payload shape — MapPanel passes [forecastSeries, actualSeries, errorSeries]
-  // and any of those can be null if data hasn't loaded yet. Rendering with null datasets would crash.
-  if (data[0] === null || data[1] === null) return;
  return (
     <div style={{ position: "relative", marginTop: 12, width: "100%", paddingLeft: labelGutter, boxSizing: "border-box" }}>
+      {seriesLabels.length > 0 ? (
+        <div style={{ display: "flex", gap: 12, justifyContent: "flex-end", marginBottom: 5, fontSize: 10 }}>
+          {seriesLabels.map((label, index) => (
+            <span key={label} style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+              <span style={{ width: 14, height: 2, background: seriesColors[index] ?? "#ffffff", display: "inline-block" }} />
+              {label}
+            </span>
+          ))}
+        </div>
+      ) : null}
       
       {/* Shared Y-Axis */}
       <div style={{ position: "absolute", left: 0, top: 0, height: chartHeight, display: "flex", flexDirection: "column", justifyContent: "space-between", fontSize: "9px", fontWeight: "bold", opacity: 0.7, textAlign: "right", width: labelGutter - 6 }}>
@@ -236,7 +244,7 @@ export function MultiLineChart({ days, height = 30, isRelationMap = false, isSag
               <polyline 
                 key={`line-${i}`}
                 fill="none" 
-                stroke={`url(#gradient-${i})`} // Uses the dynamic gradient
+                stroke={seriesColors[i] ?? `url(#gradient-${i})`}
                 strokeWidth={i === 0 ? "2" : "1.5"} // Make the primary line slightly thicker
                 strokeOpacity={i === 0 ? "1" : "0.6"} // Fade secondary lines
                 strokeLinecap="round" 
@@ -248,9 +256,9 @@ export function MultiLineChart({ days, height = 30, isRelationMap = false, isSag
         </svg>
 
         {/* Weekly tick marks */}
-        {data.map((_, idx) => {
+        {data[0].map((_, idx) => {
           if (idx === 0 || idx % 7 !== 0) return null;
-          const leftPct = (idx / (data.length - 1)) * 100;
+          const leftPct = (idx / (data[0].length - 1)) * 100;
           return (
             <div key={`tick-${idx}`} style={{
                 position: "absolute", top: 0, left: `${leftPct}%`, width: "1px", height: chartHeight,
@@ -269,7 +277,7 @@ export function MultiLineChart({ days, height = 30, isRelationMap = false, isSag
         opacity: 0.6 
       }}>
         <span>{data[0][0]?.date}</span>
-        <span>{data[0][data.length - 1]?.date}</span>
+        <span>{data[0][data[0].length - 1]?.date}</span>
       </div>
     </div>
   );

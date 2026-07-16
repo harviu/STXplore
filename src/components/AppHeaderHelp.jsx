@@ -111,12 +111,12 @@ export default function AppHeaderHelp() {
 
                   <h3 style={{ fontSize: "0.95rem", fontWeight: 600, marginBottom: 4, marginTop: 16 }}>Anchor Date</h3>
                   <p style={{ margin: 0 }}>
-                    The anchor date is the dividing line between past and future. The model uses the 90 days before this date as its input and predicts the 30 days after it. You can change it using the date picker — only dates within the available data range are selectable.
+                    The anchor date <strong>D</strong> is the final model-input day. The model uses 90 days from <strong>D−89 through D</strong>, then predicts <strong>D+1 through D+30</strong>. You can change D using the date picker — only dates within the available data range are selectable.
                   </p>
 
                   <h3 style={{ fontSize: "0.95rem", fontWeight: 600, marginBottom: 4, marginTop: 16 }}>Sliders</h3>
                   <p style={{ margin: 0 }}>
-                    The <strong>left slider</strong> controls which portion of the past 90 days is shown on the left map and used in attribution calculations. The <strong>right slider</strong> controls which portion of the 30-day forecast window is shown on the right map. Drag either handle to narrow or shift the window.
+                    The <strong>left slider</strong> controls which portion of D−89 through D is shown on the left map and used in attribution calculations. The <strong>right slider</strong> controls which portion of prediction days 1–30 (D+1 through D+30) is shown on the right map. Drag either handle to narrow or shift the window.
                   </p>
 
                   <h3 style={{ fontSize: "0.95rem", fontWeight: 600, marginBottom: 4, marginTop: 16 }}>Left Map Tabs</h3>

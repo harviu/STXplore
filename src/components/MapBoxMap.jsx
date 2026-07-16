@@ -150,6 +150,10 @@ function buildMergedGeo(geo, crimeCounts, layer, useFixedRelationScale = false, 
     const absMax = Math.max(...counts.map(c => Math.abs(c)), 1);
     minCount = -absMax;
     maxCount = absMax;
+  } else if (useFixedRelationScale) {
+    // MI is non-negative and uses the same [0, max] domain as its heatmap and tooltip.
+    minCount = 0;
+    maxCount = Math.max(maxCount, 1);
   }
   return {
     mergedGeo: { type: "FeatureCollection", features },

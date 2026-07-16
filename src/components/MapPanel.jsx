@@ -139,7 +139,7 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
   const [pastDays, setPastDays] = useState([0,90]);
   const [pastStart, pastEnd] = pastDays;
   const pastSpanDays = pastEnd - pastStart;
-  /** Inclusive start / exclusive end as day offsets after anchor (matches targetRange / tensor slice). */
+  /** Half-open, zero-based forecast indices; index 0 represents prediction day D+1. */
   const [futureRange, setFutureRange] = useState([0, 30]);
   const [futureStart, futureEnd] = futureRange;
   const futureSpanDays = futureEnd - futureStart;
@@ -153,7 +153,7 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
   // Target/Actual map: show total crime count vs average per day
   const [targetCountMode, setTargetCountMode] = useState("average"); // "total" | "average"
 
-  // Target map + Community: ML forecast loads automatically (API sums full model horizon)
+  // Target map + Community: ML forecast loads automatically; the UI slices it to the selected window.
   const [model, setModel] = useState(FORECAST_MODEL_OPTIONS[0]);
 
   // "mi" = mutual information (ground truth from data)
@@ -165,11 +165,12 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
   // "source" = new mode: select left community, right map shows attribution
   const [relationMode, setRelationMode] = useState("target");
 
-  // Horizon for SHAP — midpoint of future range slider, clamped to 1..30
-  // Using the midpoint means SHAP always explains the "center" of whatever window the user has selected,
-  // rather than a fixed or arbitrary horizon. Clamped so it's always a valid model output index.
+  // SHAP uses a 1-based forecast horizon while the slider stores a half-open
+  // zero-based slice. Choose the lower middle prediction day in that slice.
   const shapHorizon = useMemo(() => {
-    const mid = Math.round((futureStart + futureEnd) / 2);
+    const firstPredictionDay = futureStart + 1;
+    const lastPredictionDay = futureEnd;
+    const mid = Math.floor((firstPredictionDay + lastPredictionDay) / 2);
     return Math.max(1, Math.min(30, mid || 1));
   }, [futureStart, futureEnd]);
 
@@ -208,10 +209,9 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
     return clampDateIso(anchorDay, predBounds.anchor_min, predBounds.anchor_max);
   }, [anchorDay, predBounds]);
   
-  // Invert slider values to tensor lag indices.
-  // Slider: pastEnd=90 (far past), pastStart=0 (near anchor) — high value = older.
-  // Tensor axis 0: index 0 = most recent lag, index 89 = oldest lag.
-  // So: tensor past_start = 90 - dPastEnd, tensor past_days = 90 - dPastStart
+  // Convert lag offsets to the tensor's oldest-to-newest history axis.
+  // Slider [0, 90) means lag 0 (D) through lag 89 (D-89).
+  // Tensor index 0 is D-89 and index 89 is D.
   const tPastStart = Math.min(89, 90 - dPastEnd);
   const tPastDays  = Math.max(1, 90 - dPastStart);
 
@@ -394,11 +394,15 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
     }));
   }, [forecastDailyResp, secondarySelectedId]);
 
+  const forecastDailyWindowSeries = useMemo(
+    () => forecastDailySeries?.slice(futureStart, futureEnd) ?? null,
+    [forecastDailySeries, futureStart, futureEnd]
+  );
+
   const forecastTotal = useMemo(() => {
-    if (!forecastDailyResp?.forecast_totals || !secondarySelectedId) return null;
-    const entry = forecastDailyResp.forecast_totals.find((t) => t.feature_id === String(secondarySelectedId));
-    return entry?.count ?? null;
-  }, [forecastDailyResp, secondarySelectedId]);
+    if (!forecastDailyWindowSeries) return null;
+    return forecastDailyWindowSeries.reduce((sum, item) => sum + Number(item.count ?? 0), 0);
+  }, [forecastDailyWindowSeries]);
 
   // Slice the 30-day forecast to just the days in the future slider window, then sum
   // across those days per community. This is what gets used to color the right map —
@@ -493,7 +497,7 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
       if (targetForecastEligible) {
         return targetCountMode === "average"
           ? "Avg forecast per day"
-          : `Forecast total (${model}, full horizon)`;
+          : `Forecast total (${model}, selected window)`;
       }
       return targetCountMode === "average" ? "Avg predicted crimes per day" : "Predicted Crime Count";
     }
@@ -569,9 +573,9 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
     return {mode, layer: layerX, id: idX, name: getBoundaryLabel(layerX, feature), days: daysX, dateISO, feature};
   }
 
-  const sourceSelection = useMemo(() => makeSelection("source", sourceLayer, sourceSelectedId, pastSpanDays, anchorDate, -pastEnd), [sourceLayer, sourceSelectedId, pastSpanDays, pastEnd, anchorDate]);
-  const relationSelection = useMemo(() => makeSelection("relation", relationLayer, relationSelectedId, pastSpanDays, anchorDate, -pastEnd), [relationLayer, relationSelectedId, pastEnd, anchorDate]);
-  const instanceSelection = useMemo(() => makeSelection("instance", instanceLayer, instanceSelectedId, pastSpanDays, anchorDate, -pastEnd), [instanceLayer, instanceSelectedId, pastEnd, anchorDate]);
+  const sourceSelection = useMemo(() => makeSelection("source", sourceLayer, sourceSelectedId, pastSpanDays, anchorDate, -(pastEnd - 1)), [sourceLayer, sourceSelectedId, pastSpanDays, pastEnd, anchorDate]);
+  const relationSelection = useMemo(() => makeSelection("relation", relationLayer, relationSelectedId, pastSpanDays, anchorDate, -(pastEnd - 1)), [relationLayer, relationSelectedId, pastSpanDays, pastEnd, anchorDate]);
+  const instanceSelection = useMemo(() => makeSelection("instance", instanceLayer, instanceSelectedId, pastSpanDays, anchorDate, -(pastEnd - 1)), [instanceLayer, instanceSelectedId, pastSpanDays, pastEnd, anchorDate]);
   const targetSelection = useMemo(() => makeSelection("target", targetLayer, targetSelectedId, futureSpanDays, anchorDate, futureEnd),[targetLayer, targetSelectedId, futureSpanDays, futureEnd, anchorDate]);
   const actualSelection = useMemo(() => makeSelection("actual", actualLayer, actualSelectedId, futureSpanDays, anchorDate, futureEnd),[actualLayer, actualSelectedId, futureSpanDays, futureEnd, anchorDate]);
   const errorSelection = useMemo(() => makeSelection("error", errorLayer, errorSelectedId, futureSpanDays, anchorDate, futureEnd),[errorLayer, errorSelectedId, futureSpanDays, futureEnd, anchorDate]);
@@ -613,30 +617,17 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
 
   //const { data: dateRange } = useApi(({ signal }) => api.dateRange({ signal }), []);
 
-  // Disable dates after the latest date in the DB. Use start of next day (local) so "after" disables that day and all later.
-  const maxDataDate = useMemo(() => {
-    if (!predBounds?.anchor_max) return new Date(); // fallback: at least disable future if API not loaded
-    const dateOnly = predBounds.anchor_max.slice(0, 10); // in case API returns "YYYY-MM-DD HH:mm:ss"
-    const [y, m, d] = dateOnly.split("-").map(Number);
-    return new Date(y, m - 1, d + 1); // 00:00:00 on the day after max
-  }, [predBounds?.anchor_max]);
-
   // Default anchor date to latest date in dataset when date range loads (store date-only, no time)
   useEffect(() => {
     if (predBounds?.anchor_max) setAnchorDate(predBounds.anchor_max.slice(0, 10));
   }, [predBounds?.anchor_max]);
 
-  const thirtyDaysAgo = new Date();
-  // thirtyDaysAgo is used as a heuristic: if the selected anchor date is within the last 30 days,
-  // there likely isn't enough future data yet for the Actual/Error tabs, so we snap back to Predicted.
-  // fallback to today if max date not loaded yet
-  if (maxDataDate) thirtyDaysAgo.setTime(maxDataDate.getTime());
-  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-
-  // Actual/Error tabs are only valid if the end of the selected future window is already in the past.
-  // addDaysISO(anchorDate, futureEnd) gives the last day of the window; if that's before maxDataDate
-  // then real data exists to compare against.
-  const canShowActualError = useMemo(()=>{return maxDataDate && new Date(addDaysISO(anchorDate, futureEnd) + "T00:00:00") <= maxDataDate},[maxDataDate, anchorDate, futureEnd]);
+  // The last selected prediction day is D+futureEnd. Actual/Error are valid
+  // only when that exact day exists in the data.
+  const canShowActualError = useMemo(() => {
+    const maxAvailableDay = predBounds?.anchor_max?.slice(0, 10);
+    return Boolean(maxAvailableDay && addDaysISO(anchorDate, futureEnd) <= maxAvailableDay);
+  }, [predBounds?.anchor_max, anchorDate, futureEnd]);
 
   //Reset to target if invalid actual/error
   useEffect(() => {
@@ -645,45 +636,69 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
     }
   }, [canShowActualError]);
 
-  // Actual/error heatmap: daily crime counts for all communities over the target window.
-  // The +1s sync with the forecast which predicts one day ahead of anchor.
+  // Actual/error heatmap: daily crime counts for all communities over the
+  // selected forecast indices. targetRange maps index 0 to D+1.
   const { data: futureCountsResp } = useApi(({ signal }) => {
     if (secondaryMode !== "actual" && secondaryMode !== "error") return Promise.resolve(null);
     if (!canShowActualError) return Promise.resolve(null);
-    const { start, end } = targetRange(futureStart + 1, futureEnd + 1, anchorDate);
+    const { start, end } = targetRange(futureStart, futureEnd, anchorDate);
     return api.selectionAllDailyCsv(start, end, { signal });
   }, [secondaryMode, secondaryLayer, futureStart, futureEnd, anchorDate, canShowActualError]);
   const futureCounts = futureCountsResp?.daily ?? null;
 
   const dailyForHeatMap = useMemo(()=>{
     if (forecastDailyResp === null || forecastDailyResp.forecast_daily === null) return null;
-    return forecastDailyResp.forecast_daily.flatMap((day) => {
+    return forecastDailyResp.forecast_daily.slice(futureStart, futureEnd).flatMap((day) => {
       return day.values.map((val,index) => ({
         id: (index+1).toString(),
         date: day.date,
         count: Math.round(val)
       }))
     });
-  },[forecastDailyResp]);
+  },[forecastDailyResp, futureStart, futureEnd]);
 
-  //Calculate the daily error
-  const errorSideValues = useMemo(()=>{
-    if (!forecastDailySeries || ! futureCounts) return;
-    const actual = futureCounts?.filter((day)=>{return day?.id === secondarySelectedId});
-    const totals = actual.reduce((acc, item) => {
-      acc[item.date] = item.count;
-      return acc;
-    }, {});
-    forecastDailySeries.forEach(item => {
-      if (totals[item.date] !== undefined) {
-        totals[item.date] -= item.count;
-      }
-    });
-    return Object.keys(totals).map(date => ({
-      date: date,
-      count: totals[date]
+  // Daily error heatmap for every community in the selected future window.
+  // Join by (community, date) so the matrix remains correct even when the
+  // actual-data response omits a zero-count entry.
+  const errorForHeatMap = useMemo(() => {
+    if (!futureCounts || !forecastDailyResp?.forecast_daily) return null;
+
+    const actualByCommunityAndDate = new Map(
+      futureCounts.map((item) => [`${item.id}:${item.date}`, Number(item.count) || 0])
+    );
+    const forecastWindow = forecastDailyResp.forecast_daily.slice(futureStart, futureEnd);
+
+    return forecastWindow.flatMap((day) =>
+      day.values.map((predicted, index) => {
+        const id = String(index + 1);
+        const actual = actualByCommunityAndDate.get(`${id}:${day.date}`) ?? 0;
+        return {
+          id,
+          date: day.date,
+          count: actual - Number(predicted ?? 0),
+        };
+      })
+    );
+  }, [futureCounts, forecastDailyResp, futureStart, futureEnd]);
+
+  // Error-tab side panel compares predicted and actual values directly. Align
+  // both series to the selected future window and the forecast's dates.
+  const errorComparisonSeries = useMemo(() => {
+    if (!forecastDailyWindowSeries || !futureCounts || !secondarySelectedId) return null;
+
+    const predicted = forecastDailyWindowSeries;
+    const actualByDate = new Map(
+      futureCounts
+        .filter((item) => String(item.id) === String(secondarySelectedId))
+        .map((item) => [item.date, Number(item.count) || 0])
+    );
+    const actual = predicted.map((item) => ({
+      date: item.date,
+      count: actualByDate.get(item.date) ?? 0,
     }));
-  },[forecastDailySeries, futureCounts]);
+
+    return [predicted, actual];
+  }, [forecastDailyWindowSeries, futureCounts, secondarySelectedId]);
 
   //pass selection and data up
   useEffect(() => {
@@ -703,7 +718,13 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
       error: errorSelection,
       //data for heatmaps
       heatData: activeMode === "source" ? crimeCounts : activeMode === "instance" ? null : relationValues,
-      targetHeatData: secondaryMode === "actual" ? futureCounts : secondaryMode === "target" ? dailyForHeatMap : null,
+      targetHeatData: secondaryMode === "actual"
+        ? futureCounts
+        : secondaryMode === "target"
+          ? dailyForHeatMap
+          : secondaryMode === "error"
+            ? errorForHeatMap
+            : null,
       // values needed by DashboardPanel for temporal series graphs
       forecastAnchorDate,
       shapHorizon,
@@ -728,6 +749,7 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
     relationValues,
     futureCounts,
     dailyForHeatMap,
+    errorForHeatMap,
 
     forecastAnchorDate,
     shapHorizon,
@@ -746,7 +768,7 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
     onSummaryChange?.({
       //summaries (split)
       left: {selection: leftSelection, summary: leftSummary, loading: leftSummaryLoading, error: leftSummaryError, range: sourceRange(pastStart, pastEnd, anchorDate), days: pastSpanDays, offset: pastStart, daily: leftDailyResp?.daily ?? null},
-      right: {selection: rightSelection, summary: rightSummary, loading: rightSummaryLoading, error: rightSummaryError, range: targetRange(futureStart, futureEnd, anchorDate), days: futureSpanDays, offset: futureStart, forecastDaily: secondaryMode === "error" ? [forecastDailySeries, futureCounts?.filter((day)=>{return day?.id === secondarySelectedId}), errorSideValues] : secondaryMode === "actual" ? futureCounts?.filter((day)=>{return day?.id === secondarySelectedId}) : forecastDailySeries, forecastTotal,},
+      right: {selection: rightSelection, summary: rightSummary, loading: rightSummaryLoading, error: rightSummaryError, range: targetRange(futureStart, futureEnd, anchorDate), days: futureSpanDays, offset: futureStart, forecastDaily: secondaryMode === "error" ? errorComparisonSeries : secondaryMode === "actual" ? futureCounts?.filter((day)=>{return day?.id === secondarySelectedId}) : forecastDailyWindowSeries, forecastTotal: secondaryMode === "target" ? forecastTotal : null,},
     });
   }, [
     leftSelection,
@@ -756,11 +778,19 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
     leftDailyResp,
     pastEnd,
     pastStart,
+    pastSpanDays,
+    anchorDate,
 
     rightSelection,
     rightSummary,
     rightSummaryLoading,
     rightSummaryError,
+    secondaryMode,
+    secondarySelectedId,
+    forecastDailyWindowSeries,
+    forecastTotal,
+    futureCounts,
+    errorComparisonSeries,
     futureStart,
     futureEnd,
     futureSpanDays,
@@ -823,14 +853,13 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
                         if (date) {
                           setAnchorDate(date.toISOString().slice(0, 10));
                           setCalendarOpen(false);
-                          // If the new anchor is recent enough that actual data won't exist for the
-                          // forecast window, snap back to Predicted so the user isn't left on a
-                          // blank Actual or Error tab.
-                          if (thirtyDaysAgo < date) setSecondaryMode("target");
                         }
                       }}
-                      startMonth={new Date(2001, 0)}
-                      disabled={{ before: new Date(2001, 3, 2), after: new Date((predBounds?.anchor_max) + "T12:00:00") }}
+                      startMonth={predBounds?.anchor_min ? new Date(predBounds.anchor_min + "T12:00:00") : new Date(2001, 0, 1)}
+                      disabled={{
+                        ...(predBounds?.anchor_min ? { before: new Date(predBounds.anchor_min + "T12:00:00") } : {}),
+                        ...(predBounds?.anchor_max ? { after: new Date(predBounds.anchor_max + "T12:00:00") } : {}),
+                      }}
                       navLayout="around"
                       showOutsideDays
                       animate
@@ -1138,16 +1167,18 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
               <div style={{ display: "flex", flex: "1 1 auto", flexDirection: "row", width: "100%", height: "100%", justifyContent: "left" }}>
                 <label htmlFor="pastEnd" style={{ flex: 1 }}>
                   <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "var(--space-3)", width: "100%", height: "100%" }}>
-                    Source date: {pastEnd} days before start <br/>({anchorDate})
+                    History window: {addDaysISO(anchorDate, -(pastEnd - 1))} – {addDaysISO(anchorDate, -pastStart)}
+                    <br />
+                    ({pastSpanDays} days; lags {pastStart}–{pastEnd - 1}, where lag 0 is anchor {anchorDate})
                   </div>
                 </label>
                 <span aria-hidden />
                 <label htmlFor="futureRange" style={{ flex: 1 }}>
                   <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "var(--space-3)", width: "100%", height: "100%" }}>
                     <span style={{ alignSelf: "center" }}>
-                      Target window: {addDaysISO(anchorDate, futureStart)} – {addDaysISO(anchorDate, futureEnd - 1)}
+                      Prediction window: {addDaysISO(anchorDate, futureStart + 1)} – {addDaysISO(anchorDate, futureEnd)}
                       <br />
-                      ({futureSpanDays} days; offsets {futureStart}–{futureEnd} from {anchorDate})
+                      ({futureSpanDays} days; prediction days {futureStart + 1}–{futureEnd} after anchor {anchorDate})
                     </span>
                   </div>
                 </label>
@@ -1166,7 +1197,8 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
                         setPastDays(value);
                       }}
                       valueLabelDisplay="auto"
-                      getAriaValueText={(v) => `${v} days ago`}
+                      valueLabelFormat={(value, index) => `Lag ${index === 0 ? value : value - 1}`}
+                      getAriaValueText={(value, index) => `History lag ${index === 0 ? value : value - 1}`}
                       min={0}
                       max={90}
                       sx={{
@@ -1202,9 +1234,8 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
                     setFutureRange(value);
                   }}
                   valueLabelDisplay="auto"
-                  getAriaValueText={(v) =>
-                    Array.isArray(v) ? `${v[0]}–${v[1]} days after anchor` : `${v} days after anchor`
-                  }
+                  valueLabelFormat={(value, index) => `Day ${index === 0 ? value + 1 : value}`}
+                  getAriaValueText={(value, index) => `Prediction day ${index === 0 ? value + 1 : value}`}
                   step={1}
                   min={0}
                   max={30}
@@ -1368,6 +1399,7 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
                     crimeCounts={rightCountsForMap}
                     legendTitle={rightMapLegendTitle}
                     layer={secondaryLayer}
+                    highlights={targetHighlight}
                     selectedId={secondarySelectedId}
                     onSelectId={setSecondarySelectedId}
                     onHover={(h) => setHover(h ? { ...h, which: "right" } : null)}

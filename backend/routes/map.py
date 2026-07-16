@@ -19,7 +19,7 @@ def _parse_iso_date(value: str, field: str) -> date:
 @router.get("/map/counts")
 def map_counts( # type: ignore
     start: str = Query(..., description="YYYY-MM-DD (inclusive)"),
-    end: str = Query(..., description="YYYY-MM-DD (inclusive)"),
+    end: str = Query(..., description="YYYY-MM-DD (exclusive)"),
   ):
     """Return total crime counts per community area for a date range, sourced from the database.
 

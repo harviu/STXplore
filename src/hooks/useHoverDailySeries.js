@@ -59,7 +59,7 @@ export function useHoverDailySeries({ hover, activeMode, secondaryMode, tensorSo
     }
 
     // Cache key encodes all inputs that determine a unique data response.
-    const key = `${hover.which}:${hover.layer}:${hover.id}:${start}:${end}:${isRelation}`;
+    const key = `${hover.which}:${hover.layer}:${hover.id}:${start}:${end}:${isRelation}:${tensorSourceId ?? ""}:${model}:${dataMode}:${futureStart}:${futureEnd}`;
 
     //Check if the hover daily series is cached
     const cached = hoverCacheRef.current.get(key);
@@ -84,18 +84,20 @@ export function useHoverDailySeries({ hover, activeMode, secondaryMode, tensorSo
 
     //Model/Data Level: fetch daily relation values from 4D tensor
       // Args: source community (hovered, 0-based), target community (tensorSourceId, 0-based),
-      // sliced to the current past window. Returns a 1D array of values over history days.
+      // sliced to the current past and future windows. Returns a 1D array of
+      // values over history days using the same aggregation as the heatmap.
       if (isRelation && tensorSourceId) {
         api
-          .get4dData(tPastDays ?? pastEnd, true, Number(hover.id) - 1, 30, true, Number(tensorSourceId) - 1, model, dataMode, {
+          .get4dData(tPastDays ?? pastEnd, true, Number(hover.id) - 1, futureEnd, true, Number(tensorSourceId) - 1, model, dataMode, {
             signal: ac.signal,
-            d3Start: 0,
+            d3Start: futureStart,
             d1Start: tPastStart ?? 0,
           })
           .then((data) => {
-            const nDays = data.length;
             const formatted = data.map((count, i) => ({
-              date: addDaysISO(anchorDate, -(nDays -1 - i)),
+              // The tensor response is chronological. Use the selected history
+              // range start so partial windows retain their true calendar dates.
+              date: addDaysISO(start, i),
               count,
             }));
             hoverCacheRef.current.set(key, formatted);
@@ -139,7 +141,7 @@ export function useHoverDailySeries({ hover, activeMode, secondaryMode, tensorSo
       if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
       if (hoverAbortRef.current) hoverAbortRef.current.abort();
     };
-    }, [hover?.which, hover?.id, hover?.layer, activeMode, secondaryMode, tensorSourceId, pastEnd, tPastStart, tPastDays, futureStart, futureEnd, anchorDate, canShowHoverData, model, dataMode]);
+    }, [hover?.which, hover?.id, hover?.layer, activeMode, secondaryMode, tensorSourceId, pastStart, pastEnd, tPastStart, tPastDays, futureStart, futureEnd, anchorDate, canShowHoverData, model, dataMode]);
   //Return the hover daily series, loading state, and whether the hover data can be shown
   return { hoverDaily, hoverDailyLoading, canShowHoverData };
 }

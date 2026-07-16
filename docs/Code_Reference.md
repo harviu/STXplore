@@ -379,7 +379,7 @@ Builds a `(90, 77)` history matrix from the CSV pivot file for the 90 days endin
 {
   "model": "Transformer",
   "date": "2024-12-01",
-  "history_start": "2024-09-02",
+  "history_start": "2024-09-03",
   "history_end": "2024-12-01",
   "forecast_start": "2024-12-02",
   "forecast_end": "2024-12-31",
@@ -472,7 +472,7 @@ SHAP values are signed: positive means that source community's past crime pushed
   "baseline": 6.11,
   "shap_sum": 2.28,
   "approx_error": 0.03,
-  "history_start": "2024-09-02",
+  "history_start": "2024-09-03",
   "history_end": "2024-12-01",
   "top_features": [...],
   "community_values": [
@@ -654,7 +654,7 @@ This is a low-level general-purpose tensor slicing endpoint used for the cluster
 
 | Parameter | Tensor axis | Description |
 |---|---|---|
-| `d1` / `b1` | axis 0 — history_lag | 0 = most recent, 89 = oldest |
+| `d1` / `b1` | axis 0 — history day | 0 = D-89 (oldest), 89 = D (newest) |
 | `d2` | axis 1 — source community | 0-indexed, `null` = all |
 | `d3` / `b3` | axis 2 — horizon | 0 = D+1, 29 = D+30 |
 | `d4` | axis 3 — target community | 0-indexed, `null` = all |
@@ -840,7 +840,7 @@ Only fires when `activeMode === "instance"`, `targetCommunityId` is set, `foreca
 
 ---
 
-### `useHoverDailySeries({ hover, activeMode, secondaryMode, tensorSourceId, model, dataMode, pastStart, pastEnd, tPastStart, tPastDays, futureStart, futureEnd, anchorDate, forecastAnchorDate, shapHorizon })`
+### `useHoverDailySeries({ hover, activeMode, secondaryMode, tensorSourceId, model, dataMode, pastStart, pastEnd, tPastStart, tPastDays, futureStart, futureEnd, anchorDate })`
 
 **Location:** `src/hooks/useHoverDailySeries.js`
 
@@ -848,7 +848,7 @@ Fetches the daily time series shown in the map hover tooltip. Debounced at 200ms
 
 The fetch path depends on the current mode:
 - **Instance mode (left map)** — fetches SHAP values and extracts the hovered community's daily series from the response
-- **Relation/Model/Data mode (left map)** — fetches a 4D tensor slice for the hovered source community
+- **Relation/Model/Data mode (left map)** — fetches a 4D tensor slice for the hovered source community using the selected history and prediction windows; both window bounds are included in the cache key
 - **Source mode or right map** — fetches the daily CSV series for the hovered community
 
 **Returns** `{ hoverDaily, hoverDailyLoading, canShowHoverData }`
@@ -900,8 +900,8 @@ Date arithmetic utilities used throughout the frontend.
 | `addDaysISO(iso, days)` | Adds `days` to an ISO date string and returns a new ISO string |
 | `todayISO()` | Returns today's date as `"YYYY-MM-DD"` |
 | `isoRangeDays(startISO, endISO)` | Returns an array of ISO date strings for every day in `[start, end)` |
-| `sourceRange(pastStartOffset, pastEndOffset, anchorISO)` | Converts past slider offsets to `{ start, end }` ISO date strings for the left map window |
-| `targetRange(futureStartOffset, futureEndOffset, anchorISO)` | Converts future slider offsets to `{ start, end }` ISO date strings for the right map window |
+| `sourceRange(pastStartOffset, pastEndOffset, anchorISO)` | Converts the half-open history-lag slider range to an exclusive `{ start, end }` date range; `[0, 90)` maps to `D-89` through `D` |
+| `targetRange(futureStartOffset, futureEndOffset, anchorISO)` | Converts the half-open forecast-index slider range to an exclusive `{ start, end }` date range; `[0, 30)` maps to `D+1` through `D+30` |
 | `clampDateIso(iso, minIso, maxIso)` | Clamps a date string to `[min, max]` inclusive |
 
 ---
@@ -925,11 +925,11 @@ Color stop arrays for all map and heatmap scales. Import from here — do not ha
 |---|---|---|
 | `CHOROPLETH_STOPS` | Past map crime counts | Sequential yellow → red |
 | `RELATION_STOPS` | MI (Data Level) attribution | Sequential light blue → dark green |
-| `SAGE_STOPS` | SAGE and SHAP cluster heatmap (d3 interpolator) | Diverging red → white → green, 7 stops including explicit white midpoint |
+| `SAGE_STOPS` | SAGE and SHAP heatmaps/tooltips | Diverging red → white → green, 7 stops including explicit white midpoint |
 | `SAGE_LEGEND_STOPS` | SAGE and SHAP map legend (`getLegendStepsDiverging`) | Diverging red → green, 6 stops — no white; legend inserts white at zero programmatically |
 | `ERROR_STOPS` | Error map (actual − predicted) | Diverging blue → white → red |
 
-All arrays contain 5–7 hex color strings ordered low → high. `SAGE_STOPS` is passed to `d3.interpolateRgbBasis()` in `ClusterHeatmap` and requires the explicit white midpoint for correct zero rendering. `SAGE_LEGEND_STOPS` omits white because `getLegendStepsDiverging` in `MapBoxMap` handles the zero entry itself — including white in both would produce a duplicate step in the legend.
+All arrays contain 5–7 hex color strings ordered low → high. `createColorScale()` uses piecewise RGB interpolation for both `ClusterHeatmap` and `TooltipMap`, so every configured stop is reached exactly. SAGE/SHAP uses a symmetric domain and therefore maps zero to the explicit white midpoint. MI uses `[0, max]`. `SAGE_LEGEND_STOPS` omits white because `getLegendStepsDiverging` in `MapBoxMap` handles the zero entry itself — including white in both would produce a duplicate step in the legend.
 
 ---
 
