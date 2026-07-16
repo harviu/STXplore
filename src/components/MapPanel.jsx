@@ -111,8 +111,13 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
   const secondarySelectedId = mapFaces[secondaryFacet].selectedId;
   const setSecondaryLayer = (newLayer) =>
     dispatchMapFaces({ type: "SET_FACET_LAYER", facet: secondaryFacet, layer: newLayer, clearSelection: true });
-  const setSecondarySelectedId = (newId) =>
+  const setSecondarySelectedId = (newId) => {
     dispatchMapFaces({ type: "SET_FACET_SELECTION", facet: secondaryFacet, selectedId: newId });
+    if (relationMode === "target" && secondaryFacet === "target" && newId !== mapFaces.target.selectedId) {
+      // A new prediction target starts a fresh two-stage SHAP flow.
+      dispatchMapFaces({ type: "SET_FACET_SELECTION", facet: "instance", selectedId: null });
+    }
+  };
 
   const sourceLayer = mapFaces.source.layer;
   const sourceSelectedId = mapFaces.source.selectedId;
@@ -212,7 +217,7 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
 
   //Hover daily series
   const tensorSourceId = targetSelectedId ?? null;
-  const { hoverDaily, hoverDailyLoading, canShowHoverData } = useHoverDailySeries({hover, activeMode, secondaryMode, tensorSourceId, model, pastStart, pastEnd, tPastStart, tPastDays, futureStart, futureEnd, anchorDate, dataMode: relationDataMode, forecastAnchorDate, shapHorizon, });
+  const { hoverDaily, hoverDailyLoading, canShowHoverData } = useHoverDailySeries({hover, activeMode, secondaryMode, tensorSourceId, model, pastStart, pastEnd, tPastStart, tPastDays, futureStart, futureEnd, anchorDate, dataMode: relationDataMode});
 
   //Model relation counts
   const { counts: relationCounts, loading: relationLoading } = useModelRelationCounts(activeMode, layer, targetSelectedId, model, relationDataMode, tPastStart, tPastDays, dFutureStart, dFutureEnd);
@@ -222,23 +227,13 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
 
   // Instance-level SHAP: predicted-map community = attribution target; left map shows per-source community weights
   const shapTargetCommunityId = relationTargetCommunityReady ? targetSelectedId : null;
-  const { counts: shapCounts, loading: shapLoading, error: shapError, matrix: shapMatrix } = useInstanceShapCounts(
+  const { counts: shapCounts, loading: shapLoading, error: shapError } = useInstanceShapCounts(
     activeMode,
     shapTargetCommunityId,
     model,
     forecastAnchorDate,
-    shapHorizon,
-    tPastStart,
-    tPastDays
+    shapHorizon
   );
-
-  // The SHAP matrix from the backend is ordered oldest→newest (matching history_dates).
-  // The cluster heatmap expects newest→oldest (matching the tensor and relation heatmap convention),
-  // so each community's row needs to be reversed before passing it down.
-  const correctSHAPOrder = useMemo(()=>{
-    if(!shapMatrix) return null;
-    return shapMatrix.map(row => [...row].reverse());
-  },[shapMatrix]);
 
   // Source-direction: left map selection drives right map attribution
   const leftActiveSelectedId = mapFaces[activeMode]?.selectedId ?? null;
@@ -527,15 +522,10 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
       for (const row of relationValues) for (const v of row) if (v < min) min = v;
       return min === Infinity ? null : min;
     }
-    if (activeMode === "instance" && shapMatrix) {
-      let min = Infinity;
-      for (const row of shapMatrix) for (const v of row) if (v < min) min = v;
-      return min === Infinity ? null : min;
-    }
     if (!leftCountsForMap) return null;
     const vals = Object.values(leftCountsForMap);
     return vals.length ? Math.min(...vals) : null;
-  }, [activeMode, relationValues, shapMatrix, leftCountsForMap]);
+  }, [activeMode, relationValues, leftCountsForMap]);
 
   const leftMapGlobalMax = useMemo(() => {
     if (activeMode === "relation" && relationValues) {
@@ -543,15 +533,10 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
       for (const row of relationValues) for (const v of row) if (v > max) max = v;
       return max === -Infinity ? null : max;
     }
-    if (activeMode === "instance" && shapMatrix) {
-      let max = -Infinity;
-      for (const row of shapMatrix) for (const v of row) if (v > max) max = v;
-      return max === -Infinity ? null : max;
-    }
     if (!leftCountsForMap) return null;
     const vals = Object.values(leftCountsForMap);
     return vals.length ? Math.max(...vals) : null;
-  }, [activeMode, relationValues, shapMatrix, leftCountsForMap]);
+  }, [activeMode, relationValues, leftCountsForMap]);
 
   const rightMapGlobalMin = useMemo(() => {
     if (!rightCountsForMap) return null;
@@ -717,7 +702,7 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
       actual: actualSelection,
       error: errorSelection,
       //data for heatmaps
-      heatData: activeMode === "source" ? crimeCounts : activeMode === "instance" ? correctSHAPOrder : relationValues,
+      heatData: activeMode === "source" ? crimeCounts : activeMode === "instance" ? null : relationValues,
       targetHeatData: secondaryMode === "actual" ? futureCounts : secondaryMode === "target" ? dailyForHeatMap : null,
       // values needed by DashboardPanel for temporal series graphs
       forecastAnchorDate,
@@ -741,8 +726,6 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
 
     crimeCounts,
     relationValues,
-    shapMatrix,
-
     futureCounts,
     dailyForHeatMap,
 
@@ -951,6 +934,8 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
                     onClick={() => {
                       if (isSourceMode && sourceSelectedId) {
                         dispatchMapFaces({ type: "SET_FACET_SELECTION", facet: "instance", selectedId: sourceSelectedId });
+                      } else {
+                        dispatchMapFaces({ type: "SET_FACET_SELECTION", facet: "instance", selectedId: null });
                       }
                       setActiveMode("instance");
                     }}

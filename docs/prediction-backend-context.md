@@ -20,15 +20,16 @@
 - layer support in v1: `community_area` only
 
 ### 3) Instance SHAP explanation (single sample, single target)
-`GET /api/predictions/instance-shap?date=YYYY-MM-DD&model=<model_name>&horizon=<1..30>&target_community=<1..77>`
+`GET /api/predictions/instance-shap?date=YYYY-MM-DD&model=<model_name>&horizon=<1..30>&target_community=<1..77>&explanation_level=<community|history>`
 
 - explains one scalar output:
   - sample chosen by `date`
   - output chosen by (`horizon`, `target_community`)
 - response includes:
   - `prediction`, `baseline`, `shap_sum`, `approx_error`
-  - `shap_values`: shape `(90, 77)` serialized by history day
-  - `top_features`: top absolute SHAP contributors by `(history_lag, community)`
+  - community level: `community_values`, 77 source-community attributions
+  - history level: `history_values`, 90 direct daily attributions for the required `source_community`
+  - `top_features`: top absolute contributors in the selected explanation space
 
 ## Data Source Behavior
 - Source is CSV-pivot for prediction/explanation APIs.
@@ -74,12 +75,14 @@
 
 ## SHAP Implementation Notes
 - Instance SHAP uses `shap.KernelExplainer`, aligned with `shap_ts.py` single-sample kernel mode.
-- Background anchors are sampled randomly from all valid anchor dates in the dataset (without replacement).
-- Internal defaults are fixed in code:
-  - `background_size=128`
-  - `shap_nsamples=128`
+- Background anchors are sampled from all valid anchor dates without replacement using the request seed.
+- Request defaults are:
+  - `background_size=4`
+  - `samples=256`
+  - `seed=0`
   - `top_k=20` (internal)
-- If time marks are used, SHAP input includes both `x_enc` and `x_mark_enc`; response returns encoder-feature SHAP map (`90 x 77`).
+- Time marks stay fixed at the query values and are not attributed.
+- Community mode toggles complete community histories. History mode toggles individual days for only the selected source while all other source histories remain actual.
 - Decoder input is rebuilt from each sampled `x_enc` (`last label_len + zero future`), matching inference logic.
 - Dependency: `shap` must be installed in the backend environment.
 

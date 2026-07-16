@@ -226,7 +226,7 @@ Shows SAGE attribution values from the precomputed tensor. Values are signed —
 
 ### Instance Level (SHAP or SAGE)
 
-Shows instance-specific attribution for a single prediction. In **All Sources → Target** mode this is SHAP — computed live from the model for a specific date, target community, and horizon. In **Source → All Targets** mode this is SAGE sliced to the selected source community and time window. SHAP takes several seconds to compute; SAGE reads from the precomputed tensor immediately.
+Shows instance-specific attribution for a single prediction. In **All Sources → Target** mode this is two-stage SHAP: selecting a target computes 77 community-history values for the map, then selecting one source computes its 90 daily values and displays them as a single row in the Past-map dashboard area. In **Source → All Targets** mode this is SAGE sliced to the selected source community and time window. SHAP takes several seconds per stage; SAGE reads from the precomputed tensor immediately.
 
 ### Data Level
 
@@ -299,7 +299,7 @@ Renders a D3-based heatmap showing values across all 77 communities over time, w
 The component handles three different data shapes depending on the active mode:
 - **Source/Past mode** — flat array of `{ id, date, count }` objects
 - **Model Level / Data Level modes** — 2D array (77 communities × N days)
-- **Instance Level / SHAP mode** — 2D array (77 communities × 90 history days)
+- **Instance Level / SHAP mode** — no cluster matrix; the dashboard displays one 90-day attribution row after a source is selected
 
 ### SidePanel.jsx
 
@@ -314,9 +314,9 @@ All data fetching uses a `useApi` hook that wraps fetch calls with an `AbortCont
 | `useApi` | Generic fetch wrapper with abort support |
 | `useModelRelationCounts` | MI or SAGE attribution for a selected community |
 | `useInstanceRelationCounts` | Instance-level MI for a source community |
-| `useInstanceShapCounts` | Live SHAP values → per-community attribution matrix |
+| `useInstanceShapCounts` | First-stage live SHAP → 77 community map values |
 | `useHoverDailySeries` | Daily time series shown in the hover tooltip |
-| `useClusterDailySeries` | Daily series for communities selected via the dendrogram |
+| `useClusterDailySeries` | Daily series for dendrogram selections, or second-stage 90-day SHAP for one selected source |
 | `useValueBounds` | Global min/max for MI and SAGE tensors (used for color scaling) |
 
 ### src/lib/
@@ -420,9 +420,12 @@ The `PRED_MODELS_DIR` environment variable controls the root path for this folde
 
 SHAP (SHapley Additive exPlanations) answers: *for this specific prediction, how much did each input contribute?*
 
-In this application, the inputs are the 90 days × 77 community crime counts fed into the model. The SHAP output is a `(90, 77)` matrix — one value per history day per source community. The frontend sums these across days to produce one value per community for the map.
+In this application, the model input is 90 days × 77 community crime counts, but SHAP is computed in two smaller feature spaces using `shap.KernelExplainer`:
 
-SHAP is computed live using `shap.KernelExplainer`. For production safety it explains 77 grouped features—one complete 90-day history per community—against a background history. Each community attribution is then distributed across its days according to their absolute deviation from the background. This preserves community totals and the existing 90×77 response without an unsafe 6,930-feature regression.
+1. After a target community is selected, 77 grouped features explain the complete 90-day history of each source community. These values color the Past map; the Past cluster heatmap remains empty.
+2. After a source community is selected, a new SHAP calculation uses that source's 90 history days as features. The other 76 community histories remain fixed at their actual values. The 90 direct daily attributions are displayed as a single row.
+
+This removes the former heuristic that distributed community attribution over time and avoids an unsafe 6,930-feature regression.
 
 The forecast horizon explained by SHAP is derived from the midpoint of the future window slider. If the slider covers days 0–30, SHAP explains the prediction at horizon day 15.
 
@@ -487,7 +490,6 @@ Two range sliders control the time windows used across all maps, charts, and bac
 **Past slider** (0–90 days before anchor) controls:
 - Which days of historical crime are aggregated for the left map colors
 - Which portion of the SAGE/MI tensor is sliced
-- Which history days are included in SHAP computation
 
 **Future slider** (0–30 days after anchor) controls:
 - Which forecast days are summed for the right map colors

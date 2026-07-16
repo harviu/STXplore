@@ -40,8 +40,10 @@ class InstanceShapResult:
     target_date: date
     target_horizon: int  # 1-based day-ahead horizon
     target_community_id: int  # 1..77
+    explanation_level: str  # "community" or "history"
+    source_community_id: int | None  # set only for history explanations
     history_dates: list[date]
     prediction: float
     baseline: float
-    shap_values: np.ndarray  # [seq_len, 77]
+    shap_values: np.ndarray  # [77] for community, [seq_len] for history
     top_features: list[dict[str, float | int | str]]

@@ -434,15 +434,14 @@ Same as `/api/predictions/by-date` but formats the response as a flat map payloa
 
 ### `GET /api/predictions/instance-shap`
 
-Compute instance-level SHAP values for a specific prediction.
+Compute one of two instance-level SHAP explanations for a specific prediction.
 
-Explains one scalar model output for a target community and forecast horizon. Kernel SHAP operates on 77 community-history groups against sampled background histories; group values are distributed across 90 days for the response matrix. Optional controls are `samples` (64–2048, default 256), `background_size` (1–32, default 4), and `seed` (default 0).
+- `explanation_level=community` (default) treats each community's complete 90-day history as one feature and returns 77 values for the Past map.
+- `explanation_level=history` requires `source_community`; it keeps the other 76 communities fixed at their actual histories and treats the selected source's 90 days as features. It returns one 90-day row for the dashboard.
 
-Returns a `(90, 77)` SHAP value matrix serialized as an array of 90 history day objects, each containing 77 community SHAP values. The frontend sums these across days to get one value per community for the map.
+This two-stage contract avoids calculating daily values until the user selects a source community. Optional controls are `samples` (64–2048, default 256), `background_size` (1–32, default 4), and `seed` (default 0).
 
 SHAP values are signed: positive means that source community's past crime pushed the target prediction up; negative means it pushed it down.
-
-> Known limitation: SHAP values are not fully deterministic between calls due to random background sample selection. See `ARCHITECTURE.md` Known Issues for details.
 
 **Query Parameters**
 
@@ -452,6 +451,11 @@ SHAP values are signed: positive means that source community's past crime pushed
 | `model` | string | Yes | Model folder name |
 | `horizon` | integer | Yes | Forecast horizon, 1-based (1..30). Day 1 = anchor + 1. |
 | `target_community` | integer | Yes | Target community ID, 1-based (1..77) |
+| `explanation_level` | string | No | `community` (default) or `history` |
+| `source_community` | integer | For `history` | Source community ID, 1-based (1..77) |
+| `samples` | integer | No | Kernel SHAP coalition samples; default 256 |
+| `background_size` | integer | No | Background history windows; default 4 |
+| `seed` | integer | No | Background and coalition sampling seed; default 0 |
 
 **Response**
 ```json
@@ -461,6 +465,8 @@ SHAP values are signed: positive means that source community's past crime pushed
   "target_date": "2024-12-15",
   "horizon": 15,
   "target_community": 24,
+  "explanation_level": "community",
+  "source_community": null,
   "source": "csv_pivot",
   "prediction": 8.42,
   "baseline": 6.11,
@@ -469,13 +475,15 @@ SHAP values are signed: positive means that source community's past crime pushed
   "history_start": "2024-09-02",
   "history_end": "2024-12-01",
   "top_features": [...],
-  "shap_values": [
-    { "date": "2024-09-02", "values": [-0.02, 0.14, ...] }
-  ]
+  "community_values": [
+    { "community_id": 1, "value": -0.02 },
+    { "community_id": 2, "value": 0.14 }
+  ],
+  "history_values": null
 }
 ```
 
-`shap_values` — 90 entries (oldest → most recent), each with 77 community SHAP values (0-indexed order, community 1 = index 0).
+For `explanation_level=history`, `community_values` is `null` and `history_values` contains 90 `{date, value}` entries ordered oldest to newest. Its baseline is conditional: the selected source uses its background history while all other communities retain their actual query histories.
 
 **Errors**
 - `400` — if the anchor date is outside the valid range or model cannot be loaded
@@ -744,7 +752,7 @@ Every backend endpoint has a corresponding function here. All functions accept a
 | `api.predictionAnchorBounds(opts)` | `GET /api/predictions/anchor-bounds` | |
 | `api.predictionByDate(date, model, opts)` | `GET /api/predictions/by-date` | |
 | `api.mapPredictions(layer, date, model, opts)` | `GET /api/map/predictions` | |
-| `api.predictionInstanceShap(date, model, horizon, targetCommunity, opts)` | `GET /api/predictions/instance-shap` | targetCommunity is 1-based |
+| `api.predictionInstanceShap(date, model, horizon, targetCommunity, opts)` | `GET /api/predictions/instance-shap` | `opts.explanationLevel`; `opts.sourceCommunity` for history; IDs are 1-based |
 | `api.relationalModel(target, model, pastStart, pastDays, futureStart, futureEnd, opts)` | `GET /api/model_level_relation` | target is 0-based |
 | `api.relationalModelSource(source, model, pastStart, pastDays, futureStart, futureEnd, opts)` | `GET /api/model_level_relation` | source is 0-based |
 | `api.sageLevelRelation(target, model, pastStart, pastDays, futureStart, futureEnd, opts)` | `GET /api/model_level_sage` | target is 0-based |

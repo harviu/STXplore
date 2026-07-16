@@ -1,15 +1,13 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState } from "react";
 import { api } from "../lib/api.js";
 
 /**
- * Fetches SHAP values for a target community (the predicted-map selection) and aggregates
- * them per source community for instance-level map counts.
- * shap_values shape: (90 history days, 77 communities)
- * Sums SHAP across history days per community for the selected past window.
+ * Fetches the first-stage SHAP explanation for a prediction target. Each feature
+ * is one source community's complete 90-day history, so the result maps directly
+ * to the 77 source-map communities without calculating daily attributions.
  */
-export function useInstanceShapCounts(activeMode, targetCommunityId, model, forecastAnchorDate, horizon, pastStart = 0, pastEnd = 90) {
+export function useInstanceShapCounts(activeMode, targetCommunityId, model, forecastAnchorDate, horizon) {
   const [counts, setCounts] = useState(null);
-  const [matrix, setMatrix] = useState(null); // raw (77x90) for cluster heatmap
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
@@ -18,7 +16,6 @@ export function useInstanceShapCounts(activeMode, targetCommunityId, model, fore
       setCounts(null);
       setLoading(false);
       setError(null);
-      setMatrix(null);
       return;
     }
 
@@ -32,33 +29,18 @@ export function useInstanceShapCounts(activeMode, targetCommunityId, model, fore
       model,
       horizon,
       Number(targetCommunityId),
-      { signal: ac.signal }
+      { explanationLevel: "community", signal: ac.signal }
     ).then((data) => {
       if (cancelled) return;
-      if (!data?.shap_values) {
+      if (!Array.isArray(data?.community_values)) {
         setCounts(null);
         setLoading(false);
         return;
       }
-
-      // Slice to the past window the slider controls
-      const windowedShap = data.shap_values.slice(pastStart, pastEnd);
-      // Build 77xdays matrix for cluster heatmap
-      const rawMatrix = [];
-      for (let c = 0; c < 77; c++) {
-        rawMatrix.push(windowedShap.map(row => row.values[c] ?? 0));
-      }
-      setMatrix(rawMatrix);
-      // Sum absolute SHAP values across the windowed history days per community
-      const perCommunity = new Array(77).fill(0);
-      for (const row of windowedShap) {
-        row.values.forEach((v, i) => {
-          perCommunity[i] += v;
-        });
-      }
-      // Convert to { "1": val, "2": val, ... } keyed by 1-based community id
       const result = {};
-      perCommunity.forEach((v, i) => { result[String(i + 1)] = v; });
+      for (const item of data.community_values) {
+        result[String(item.community_id)] = Number(item.value ?? 0);
+      }
       setCounts(result);
       setLoading(false);
     }).catch((err) => {
@@ -74,7 +56,7 @@ export function useInstanceShapCounts(activeMode, targetCommunityId, model, fore
       cancelled = true;
       ac.abort();
     };
-  }, [activeMode, targetCommunityId, model, forecastAnchorDate, horizon, pastStart, pastEnd]);
+  }, [activeMode, targetCommunityId, model, forecastAnchorDate, horizon]);
 
-  return { counts, loading, error, matrix};
+  return { counts, loading, error };
 }

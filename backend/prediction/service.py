@@ -27,26 +27,31 @@ class InferenceContext:
     history_matrix: np.ndarray
 
 
-def distribute_group_shap(
-    group_values: np.ndarray,
+def build_community_masked_histories(
+    feature_masks: np.ndarray,
     query_history: np.ndarray,
     baseline_history: np.ndarray,
 ) -> np.ndarray:
-    """Distribute one SHAP value per community across its history days.
-
-    Kernel SHAP operates on 77 community groups for runtime safety. The API still
-    returns a (history day, community) matrix, so each group value is allocated
-    according to that day's absolute deviation from the background history.
-    """
-    deltas = np.abs(query_history - baseline_history).astype(np.float32)
-    denominators = deltas.sum(axis=0, keepdims=True)
-    weights = np.divide(
-        deltas,
-        denominators,
-        out=np.full_like(deltas, 1.0 / deltas.shape[0]),
-        where=denominators > 0,
+    """Apply one coalition feature per community's complete history."""
+    masks = np.asarray(feature_masks, dtype=np.float32)
+    return baseline_history[None, :, :] + masks[:, None, :] * (
+        query_history[None, :, :] - baseline_history[None, :, :]
     )
-    return weights * np.asarray(group_values, dtype=np.float32).reshape(1, -1)
+
+
+def build_daily_masked_histories(
+    feature_masks: np.ndarray,
+    query_history: np.ndarray,
+    baseline_history: np.ndarray,
+    source_idx: int,
+) -> np.ndarray:
+    """Apply one coalition feature per day for a single source community."""
+    masks = np.asarray(feature_masks, dtype=np.float32)
+    histories = np.repeat(query_history[None, :, :], masks.shape[0], axis=0)
+    histories[:, :, source_idx] = baseline_history[None, :, source_idx] + masks * (
+        query_history[None, :, source_idx] - baseline_history[None, :, source_idx]
+    )
+    return histories
 
 
 class PredictionService:
@@ -212,6 +217,8 @@ class PredictionService:
         model_name: str,
         target_horizon: int,
         target_community_id: int,
+        explanation_level: str = "community",
+        source_community_id: int | None = None,
         background_size: int = 4,
         nsamples: int = 256,
         seed: int = 0,
@@ -234,6 +241,16 @@ class PredictionService:
             raise RuntimeError(f"target_horizon must be in [1, {pred_len}]")
         if target_community_id < 1 or target_community_id > len(COMMUNITY_IDS):
             raise RuntimeError(f"target_community_id must be in [1, {len(COMMUNITY_IDS)}]")
+        if explanation_level not in {"community", "history"}:
+            raise RuntimeError("explanation_level must be 'community' or 'history'")
+        if explanation_level == "history" and (
+            source_community_id is None
+            or source_community_id < 1
+            or source_community_id > len(COMMUNITY_IDS)
+        ):
+            raise RuntimeError(
+                f"source_community_id must be in [1, {len(COMMUNITY_IDS)}] for a history explanation"
+            )
 
         horizon_idx = target_horizon - 1  # convert 1-based UI horizon to 0-based tensor index
         community_idx = target_community_id - 1  # convert 1-based UI community ID to 0-based tensor index
@@ -301,15 +318,30 @@ class PredictionService:
 
         prediction = float(predict_fn(x_query_flat)[0])
 
-        # Explain 77 community groups rather than 6,930+ individual cells. A
-        # coalition value of 1 selects the query community's complete history;
-        # 0 selects its background history. This avoids an underdetermined
-        # 512-by-6,930 native regression that can crash with SIGSEGV.
-        def grouped_predict(group_masks: np.ndarray) -> np.ndarray:
-            masks = np.asarray(group_masks, dtype=np.float32)
-            histories = baseline_x[None, :, :] + masks[:, None, :] * (
-                x_explain[None, :, :] - baseline_x[None, :, :]
-            )
+        if explanation_level == "community":
+            # Stage one: explain the prediction using 77 features, one feature
+            # per community's complete 90-day history.
+            feature_count = enc_in
+
+            def grouped_predict(feature_masks: np.ndarray) -> np.ndarray:
+                histories = build_community_masked_histories(
+                    feature_masks, x_explain, baseline_x
+                )
+                return _predict_histories(histories)
+        else:
+            # Stage two: explain only the selected source community using 90
+            # features, one per history day. Every other community remains at
+            # its query value, so this is a conditional daily explanation.
+            feature_count = seq_len
+            source_idx = int(source_community_id) - 1
+
+            def grouped_predict(feature_masks: np.ndarray) -> np.ndarray:
+                histories = build_daily_masked_histories(
+                    feature_masks, x_explain, baseline_x, source_idx
+                )
+                return _predict_histories(histories)
+
+        def _predict_histories(histories: np.ndarray) -> np.ndarray:
             flat_histories = histories.reshape(histories.shape[0], -1)
             if fixed_query_marks is not None:
                 marks = np.repeat(fixed_query_marks, histories.shape[0], axis=0)
@@ -318,9 +350,8 @@ class PredictionService:
                 model_inputs = flat_histories
             return predict_fn(model_inputs)
 
-        group_count = enc_in
-        background_groups = np.zeros((1, group_count), dtype=np.float32)
-        query_groups = np.ones((1, group_count), dtype=np.float32)
+        background_groups = np.zeros((1, feature_count), dtype=np.float32)
+        query_groups = np.ones((1, feature_count), dtype=np.float32)
         explainer = shap.KernelExplainer(grouped_predict, background_groups)
         coalitions = min(max(64, int(nsamples)), 2048)
         with self._shap_lock:
@@ -335,10 +366,10 @@ class PredictionService:
         if isinstance(raw_values, list):
             raw_values = raw_values[0]
 
-        group_shap = np.asarray(raw_values, dtype=np.float32).reshape(-1)
-        shap_x = distribute_group_shap(group_shap, x_explain, baseline_x)
+        shap_values = np.asarray(raw_values, dtype=np.float32).reshape(-1)
 
-        # expected_value is KernelExplainer's baseline — the mean prediction over background samples
+        # expected_value is the prediction for the all-reference coalition. In
+        # history mode this is conditional on the other 76 actual histories.
         expected = explainer.expected_value
         if isinstance(expected, np.ndarray):
             baseline = float(np.asarray(expected).reshape(-1)[0])
@@ -346,24 +377,33 @@ class PredictionService:
             baseline = float(expected)
 
         # Find the top_k features by absolute SHAP value using argpartition (faster than full sort)
-        abs_vals = np.abs(shap_x)
-        k = max(1, min(int(top_k), shap_x.size))
+        abs_vals = np.abs(shap_values)
+        k = max(1, min(int(top_k), shap_values.size))
         flat_idx = np.argpartition(abs_vals.ravel(), -k)[-k:]
         # Re-sort the top-k indices by descending absolute value so results are ordered
         ordered = flat_idx[np.argsort(abs_vals.ravel()[flat_idx])[::-1]]
 
         top_features: list[dict[str, float | int | str]] = []
         for idx in ordered:
-            lag_idx, comm_idx = np.unravel_index(int(idx), shap_x.shape)
-            top_features.append(
-                {
-                    "history_index": int(lag_idx),
-                    "history_date": hist_days[lag_idx].isoformat(),
-                    "community_id": int(comm_idx + 1),  # convert back to 1-based for the UI
-                    "shap_value": float(shap_x[lag_idx, comm_idx]),
-                    "abs_shap_value": float(abs_vals[lag_idx, comm_idx]),
-                }
-            )
+            feature_idx = int(idx)
+            if explanation_level == "community":
+                top_features.append(
+                    {
+                        "community_id": feature_idx + 1,
+                        "shap_value": float(shap_values[feature_idx]),
+                        "abs_shap_value": float(abs_vals[feature_idx]),
+                    }
+                )
+            else:
+                top_features.append(
+                    {
+                        "history_index": feature_idx,
+                        "history_date": hist_days[feature_idx].isoformat(),
+                        "community_id": int(source_community_id),
+                        "shap_value": float(shap_values[feature_idx]),
+                        "abs_shap_value": float(abs_vals[feature_idx]),
+                    }
+                )
 
         return (
             InstanceShapResult(
@@ -372,10 +412,12 @@ class PredictionService:
                 target_date=anchor_date + timedelta(days=target_horizon),
                 target_horizon=target_horizon,
                 target_community_id=target_community_id,
+                explanation_level=explanation_level,
+                source_community_id=source_community_id if explanation_level == "history" else None,
                 history_dates=hist_days,
                 prediction=prediction,
                 baseline=baseline,
-                shap_values=shap_x,
+                shap_values=shap_values,
                 top_features=top_features,
             ),
             source,

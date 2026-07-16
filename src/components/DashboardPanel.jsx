@@ -3,7 +3,6 @@ import ClusterHeatmap from "./ClusterHeatmap.jsx";
 import { select } from 'https://esm.sh/d3-selection';
 import { useRef, useEffect, useState, useMemo, useCallback } from "react";
 import TooltipMap from "./tooltipMap.jsx";
-import { fillDaily } from "../lib/crimeAggregates.js"
 import { useClusterDailySeries } from "../hooks/useClusterDailySeries.js";
 import { addDaysISO } from "../lib/dates.js";
 
@@ -114,12 +113,13 @@ export default function DashboardPanel({ mode, selection, inactiveMode, inactive
   },[inactiveMode]);
 
   // For each highlighted community, extract its data from heatData
-  const { communitySeriesList } = useClusterDailySeries({
+  const { communitySeriesList, loading: communitySeriesLoading } = useClusterDailySeries({
     mode,
     relationDataMode: relationDataMode ?? "mi",
     selectedCommunities: sourceHighlight.community,
     heatData,
     targetCommunityId: right?.selection?.id ?? null,
+    sourceCommunityId: mode === "instance" ? selection?.id ?? null : null,
     forecastAnchorDate: forecastAnchorDate ?? null,
     shapHorizon: shapHorizon ?? null,
     relationModel: model ?? null,
@@ -168,19 +168,27 @@ export default function DashboardPanel({ mode, selection, inactiveMode, inactive
 
   return (
     <Panel title="Dashboard">
-      {/* Temporal graph panel — shows per-community crime series when a dendrogram branch is selected */}
+      {/* Temporal graph panel — instance mode shows one on-demand 90-day SHAP row. */}
       <div style={{ padding: "0 5%", boxSizing: "border-box", width: "100%" }}>
-        {communitySeriesList.length === 0 ? (
+        {mode === "instance" && right?.selection?.id && (
+          <p style={{ opacity: 1, margin: "12px 0 0", textAlign: "center" }}>Past map SHAP history</p>
+        )}
+        {communitySeriesLoading ? (
+          <p style={{ opacity: 0.7, margin: "12px 0", fontSize: 13, textAlign: "center" }}>
+            Calculating the selected source community's 90-day SHAP history…
+          </p>
+        ) : communitySeriesList.length === 0 ? (
           <p style={{ opacity: 0.5, margin: "12px 0", fontSize: 13, textAlign: "center" }}>
-            Select a dendrogram branch on the community axis to see temporal crime series.
+            {mode === "instance"
+              ? "Select a source community on the Past map to calculate its 90-day SHAP history."
+              : "Select a dendrogram branch on the community axis to see temporal crime series."}
           </p>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-3)", paddingBottom: "var(--space-4)" }}>
             {communitySeriesList.map(({ id, series }) => {
               // Cluster tree internal node IDs are composite strings like "1-2-5" (hyphen-joined leaf IDs).
-              // id.length < 3 filters to leaf nodes only — individual communities with short numeric IDs.
               // We only render temporal charts for actual communities, not intermediate cluster nodes.
-              if (id.length < 3){
+              if (!String(id).includes("-")){
                 return (
                   <div key={id}>
                     <div style={{ fontSize: 11, opacity: 0.7, marginBottom: 2 }}>Community {id}</div>

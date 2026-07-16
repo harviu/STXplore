@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { api } from "../lib/api.js";
-import { addDaysISO, sourceRange } from "../lib/dates.js";
+import { addDaysISO } from "../lib/dates.js";
 import { fillDaily } from "../lib/crimeAggregates.js";
 
 /**
@@ -8,7 +8,7 @@ import { fillDaily } from "../lib/crimeAggregates.js";
  * switching data source based on the active map mode.
  *
  * - Past (source): extracts from heatData directly (no fetch needed)
- * - Instance Level (SHAP): one predictionInstanceShap call, extract column per community
+ * - Instance Level (SHAP): calculate 90 daily values for the selected source community
  * - Model Level (SAGE) / Data Level (MI): one get4dData call per community (parallel)
  */
 export function useClusterDailySeries({
@@ -17,6 +17,7 @@ export function useClusterDailySeries({
   selectedCommunities,
   heatData,
   targetCommunityId,
+  sourceCommunityId,
   forecastAnchorDate,
   shapHorizon,
   relationModel,
@@ -30,8 +31,51 @@ export function useClusterDailySeries({
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
+    // Instance mode is a second, on-demand SHAP calculation. It explains the
+    // selected source community with 90 daily features and returns one row.
+    if (mode === "instance") {
+      if (!sourceCommunityId || !targetCommunityId || !forecastAnchorDate || !shapHorizon || !relationModel) {
+        setCommunitySeriesList([]);
+        setLoading(false);
+        return;
+      }
+
+      const ac = new AbortController();
+      setCommunitySeriesList([]);
+      setLoading(true);
+      api.predictionInstanceShap(
+        forecastAnchorDate,
+        relationModel,
+        shapHorizon,
+        Number(targetCommunityId),
+        {
+          explanationLevel: "history",
+          sourceCommunity: Number(sourceCommunityId),
+          signal: ac.signal,
+        }
+      ).then(data => {
+        const series = (data?.history_values ?? []).map(row => ({
+          date: row.date,
+          count: Number(row.value ?? 0),
+        }));
+        setCommunitySeriesList(series.length > 0 ? [{
+          id: sourceCommunityId,
+          label: `Community ${sourceCommunityId}`,
+          series,
+        }] : []);
+        setLoading(false);
+      }).catch(err => {
+        if (err?.name === "AbortError") return;
+        console.error("useClusterDailySeries SHAP fetch failed:", err);
+        setCommunitySeriesList([]);
+        setLoading(false);
+      });
+      return () => ac.abort();
+    }
+
     if (!selectedCommunities || selectedCommunities.length === 0) {
       setCommunitySeriesList([]);
+      setLoading(false);
       return;
     }
 
@@ -64,45 +108,8 @@ export function useClusterDailySeries({
       return;
     }
 
-    const ac = new AbortController();
     setLoading(true);
 
-    // ── Instance Level (SHAP): one call, extract column per community ──
-    if (mode === "instance") {
-      if (!forecastAnchorDate || !shapHorizon) {
-        setCommunitySeriesList([]);
-        setLoading(false);
-        return;
-      }
-      api.predictionInstanceShap(
-        forecastAnchorDate,
-        relationModel,
-        shapHorizon,
-        Number(targetCommunityId),
-        { signal: ac.signal }
-      ).then(data => {
-        const rows = data?.shap_values ?? [];
-        const leafIds = selectedCommunities.filter(id => id != null && !String(id).includes("-"));
-        const result = leafIds
-          .filter(id => id != null)
-          .map(commId => {
-            const commIdx = Number(commId) - 1; // selectedCommunities are 1-based for relation/instance mode
-            const series = rows.map((row, i) => ({
-              date: addDaysISO(anchorDate, -(rows.length - 1 - i)),
-              count: row.values?.[commIdx] ?? 0,
-            }));
-            return { id: commId, label: `Community ${commId}`, series };
-          });
-        setCommunitySeriesList(result);
-        setLoading(false);
-      }).catch(err => {
-        if (err?.name === "AbortError") return;
-        console.error("useClusterDailySeries SHAP fetch failed:", err);
-        setCommunitySeriesList([]);
-        setLoading(false);
-      });
-      return () => ac.abort();
-    }
     // ── Model Level (SAGE) / Data Level (MI): extract directly from heatData ──
     // heatData is the correct 2D array (77 communities × 90 days) already used by the heatmap,
     // so reading from it guarantees the temporal graphs match the heatmap cells exactly.
@@ -137,6 +144,7 @@ export function useClusterDailySeries({
     JSON.stringify(selectedCommunities),
     heatData,
     targetCommunityId,
+    sourceCommunityId,
     forecastAnchorDate,
     shapHorizon,
     relationModel,

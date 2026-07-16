@@ -131,6 +131,8 @@ def instance_shap(  # type: ignore
     model: str = Query(..., description="Model folder name under Community-Heatmaps/models"),
     horizon: int = Query(..., ge=1, description="1-based forecast horizon (1..30)"),
     target_community: int = Query(..., ge=1, le=77, description="Community ID in 1..77"),
+    explanation_level: str = Query("community", pattern="^(community|history)$", description="Explain 77 communities or 90 days for one source"),
+    source_community: int | None = Query(None, ge=1, le=77, description="Source community required for explanation_level=history"),
     samples: int = Query(256, ge=64, le=2048, description="Kernel SHAP coalition samples"),
     background_size: int = Query(4, ge=1, le=32, description="Number of history windows averaged for the SHAP baseline"),
     seed: int = Query(0, ge=0, le=2_147_483_647, description="Seed for background and coalition sampling"),
@@ -143,6 +145,8 @@ def instance_shap(  # type: ignore
             model_name=model,
             target_horizon=horizon,
             target_community_id=target_community,
+            explanation_level=explanation_level,
+            source_community_id=source_community,
             nsamples=samples,
             background_size=background_size,
             seed=seed,
@@ -152,13 +156,18 @@ def instance_shap(  # type: ignore
     except Exception as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
-    shap_by_day = [
-        {
-            "date": d.isoformat(),
-            "values": result.shap_values[i, :].astype(float).tolist(),
-        }
-        for i, d in enumerate(result.history_dates)
-    ]
+    community_values = None
+    history_values = None
+    if result.explanation_level == "community":
+        community_values = [
+            {"community_id": i + 1, "value": float(value)}
+            for i, value in enumerate(result.shap_values)
+        ]
+    else:
+        history_values = [
+            {"date": day.isoformat(), "value": float(result.shap_values[i])}
+            for i, day in enumerate(result.history_dates)
+        ]
 
     return {
         "model": result.model_name,
@@ -166,6 +175,8 @@ def instance_shap(  # type: ignore
         "target_date": result.target_date.isoformat(),
         "horizon": result.target_horizon,
         "target_community": result.target_community_id,
+        "explanation_level": result.explanation_level,
+        "source_community": result.source_community_id,
         "samples": samples,
         "background_size": background_size,
         "seed": seed,
@@ -177,5 +188,6 @@ def instance_shap(  # type: ignore
         "history_start": result.history_dates[0].isoformat(),
         "history_end": result.history_dates[-1].isoformat(),
         "top_features": result.top_features,
-        "shap_values": shap_by_day,
+        "community_values": community_values,
+        "history_values": history_values,
     }

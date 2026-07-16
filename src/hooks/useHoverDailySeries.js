@@ -6,10 +6,10 @@ import { fillDaily } from "../lib/crimeAggregates.js";
 /**
  * Debounced fetch of daily series for the map hover tooltip (standard selectionDaily or 4D relation path).
  */
-/** @param {string|null|undefined} tensorSourceId Community id used as tensor source for relation/instance visualization (Predicted map selection). */
-export function useHoverDailySeries({ hover, activeMode, secondaryMode, tensorSourceId, model, dataMode = "mi", pastStart = 0, pastEnd, tPastStart = 0, tPastDays, futureStart, futureEnd, anchorDate, forecastAnchorDate, shapHorizon }) {
+/** @param {string|null|undefined} tensorSourceId Community id used as the target for relation visualization. */
+export function useHoverDailySeries({ hover, activeMode, secondaryMode, tensorSourceId, model, dataMode = "mi", pastStart = 0, pastEnd, tPastStart = 0, tPastDays, futureStart, futureEnd, anchorDate }) {
   // canShowHoverData gates whether the tooltip actually fetches and displays data.
-  // Left map: always show for source mode; only show for relation/instance if a target community
+  // Left map: always show for source mode; only show for relation if a target community
   //   is already selected (tensorSourceId) — without it there's nothing to slice the tensor against.
   // Right map: only show in actual mode, since predicted/error values are choropleth totals
   //   not day-by-day series, and relation mode attribution isn't per-day.
@@ -19,8 +19,7 @@ export function useHoverDailySeries({ hover, activeMode, secondaryMode, tensorSo
         hover &&
         ((hover.which === "left" &&
           (activeMode === "source" ||
-            (activeMode === "relation" && !!tensorSourceId) ||
-            (activeMode === "instance" && !!tensorSourceId))) ||
+            (activeMode === "relation" && !!tensorSourceId))) ||
           (hover.which === "right" && secondaryMode === "actual"))
       ),
     [hover, activeMode, secondaryMode, tensorSourceId]
@@ -48,7 +47,6 @@ export function useHoverDailySeries({ hover, activeMode, secondaryMode, tensorSo
 
      //Check if the hover is on the left or right
     const isLeft = hover.which === "left";
-    const isInstance = isLeft && activeMode === "instance";
     const isRelation = isLeft && activeMode === "relation";
 
     //Get the start and end dates
@@ -61,13 +59,7 @@ export function useHoverDailySeries({ hover, activeMode, secondaryMode, tensorSo
     }
 
     // Cache key encodes all inputs that determine a unique data response.
-    // Instance mode needs a different key shape because the data comes from SHAP
-    // (anchored to forecastAnchorDate + shapHorizon + tensorSourceId) rather than
-    // a date range query — the same hovered community can have different values
-    // depending on which target and horizon are currently selected.
-    const key = isInstance
-      ? `instance:${hover.id}:${forecastAnchorDate}:${shapHorizon}:${tensorSourceId}`
-      : `${hover.which}:${hover.layer}:${hover.id}:${start}:${end}:${isRelation}`;
+    const key = `${hover.which}:${hover.layer}:${hover.id}:${start}:${end}:${isRelation}`;
 
     //Check if the hover daily series is cached
     const cached = hoverCacheRef.current.get(key);
@@ -90,32 +82,10 @@ export function useHoverDailySeries({ hover, activeMode, secondaryMode, tensorSo
       setHoverDaily(null);
       setHoverDailyLoading(true);
 
-    //Instance Level: fetch SHAP values and extract daily series for hovered community
-    if (isInstance && tensorSourceId && forecastAnchorDate && shapHorizon) {
-      api
-        .predictionInstanceShap(forecastAnchorDate, model, shapHorizon, Number(tensorSourceId), { signal: ac.signal })
-        .then((data) => {
-          const commIdx = Number(hover.id) - 1;
-          const rows = data?.shap_values ?? [];
-          // shap_values is ordered oldest→newest; map each history row to a real date
-          const formatted = rows.map((row, i) => ({
-            date: addDaysISO(anchorDate, -(rows.length - 1 - i)),
-            count: row.values?.[commIdx] ?? 0,
-          }));
-          hoverCacheRef.current.set(key, formatted);
-          setHoverDaily(formatted);
-          setHoverDailyLoading(false);
-        })
-        .catch((err) => {
-          if (err?.name === "AbortError") return;
-          console.error("Instance SHAP hover fetch failed:", err);
-          setHoverDaily(null);
-          setHoverDailyLoading(false);
-        });
-      //Model/Data Level: fetch daily relation values from 4D tensor
+    //Model/Data Level: fetch daily relation values from 4D tensor
       // Args: source community (hovered, 0-based), target community (tensorSourceId, 0-based),
       // sliced to the current past window. Returns a 1D array of values over history days.
-      } else if (isRelation && tensorSourceId) {
+      if (isRelation && tensorSourceId) {
         api
           .get4dData(tPastDays ?? pastEnd, true, Number(hover.id) - 1, 30, true, Number(tensorSourceId) - 1, model, dataMode, {
             signal: ac.signal,
@@ -169,7 +139,7 @@ export function useHoverDailySeries({ hover, activeMode, secondaryMode, tensorSo
       if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
       if (hoverAbortRef.current) hoverAbortRef.current.abort();
     };
-    }, [hover?.which, hover?.id, hover?.layer, activeMode, secondaryMode, tensorSourceId, pastEnd, tPastStart, tPastDays, futureStart, futureEnd, anchorDate, canShowHoverData, model, dataMode, forecastAnchorDate, shapHorizon]);
+    }, [hover?.which, hover?.id, hover?.layer, activeMode, secondaryMode, tensorSourceId, pastEnd, tPastStart, tPastDays, futureStart, futureEnd, anchorDate, canShowHoverData, model, dataMode]);
   //Return the hover daily series, loading state, and whether the hover data can be shown
   return { hoverDaily, hoverDailyLoading, canShowHoverData };
 }

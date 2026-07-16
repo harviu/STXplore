@@ -57,12 +57,21 @@ export const api = {
     ),
 
   predictionInstanceShap: (date, model, horizon, targetCommunity, opts = {}) => {
-    const { samples, backgroundSize, seed, ...requestOpts } = opts;
+    const {
+      samples,
+      backgroundSize,
+      seed,
+      explanationLevel = "community",
+      sourceCommunity,
+      ...requestOpts
+    } = opts;
     const params = new URLSearchParams();
     params.append("date", String(date));
     params.append("model", String(model));
     params.append("horizon", String(horizon));
     params.append("target_community", String(targetCommunity));
+    params.append("explanation_level", String(explanationLevel));
+    if (sourceCommunity != null) params.append("source_community", String(sourceCommunity));
     if (samples != null) params.append("samples", String(samples));
     if (backgroundSize != null) params.append("background_size", String(backgroundSize));
     if (seed != null) params.append("seed", String(seed));
