@@ -129,7 +129,9 @@ def map_predictions(  # type: ignore
 def instance_shap(  # type: ignore
     date: str = Query(..., description="Anchor date in YYYY-MM-DD"),
     model: str = Query(..., description="Model folder name under Community-Heatmaps/models"),
-    horizon: int = Query(..., ge=1, description="1-based forecast horizon (1..30)"),
+    horizon: int | None = Query(None, ge=1, le=30, description="Legacy single 1-based forecast horizon"),
+    horizon_start: int | None = Query(None, ge=1, le=30, description="First prediction day in the averaged SHAP window (inclusive)"),
+    horizon_end: int | None = Query(None, ge=1, le=30, description="Last prediction day in the averaged SHAP window (inclusive)"),
     target_community: int = Query(..., ge=1, le=77, description="Community ID in 1..77"),
     explanation_level: str = Query("community", pattern="^(community|history)$", description="Explain 77 communities or 90 days for one source"),
     source_community: int | None = Query(None, ge=1, le=77, description="Source community required for explanation_level=history"),
@@ -145,6 +147,8 @@ def instance_shap(  # type: ignore
             model_name=model,
             target_horizon=horizon,
             target_community_id=target_community,
+            target_horizon_start=horizon_start,
+            target_horizon_end=horizon_end,
             explanation_level=explanation_level,
             source_community_id=source_community,
             nsamples=samples,
@@ -172,8 +176,19 @@ def instance_shap(  # type: ignore
     return {
         "model": result.model_name,
         "date": result.anchor_date.isoformat(),
-        "target_date": result.target_date.isoformat(),
-        "horizon": result.target_horizon,
+        # Legacy single-horizon fields remain populated for old clients only
+        # when this explanation targets exactly one prediction day.
+        "target_date": result.target_start_date.isoformat()
+        if result.target_horizon_start == result.target_horizon_end
+        else None,
+        "horizon": result.target_horizon_start
+        if result.target_horizon_start == result.target_horizon_end
+        else None,
+        "target_start_date": result.target_start_date.isoformat(),
+        "target_end_date": result.target_end_date.isoformat(),
+        "horizon_start": result.target_horizon_start,
+        "horizon_end": result.target_horizon_end,
+        "aggregation": "mean",
         "target_community": result.target_community_id,
         "explanation_level": result.explanation_level,
         "source_community": result.source_community_id,

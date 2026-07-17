@@ -19,7 +19,8 @@ export function useClusterDailySeries({
   targetCommunityId,
   sourceCommunityId,
   forecastAnchorDate,
-  shapHorizon,
+  shapHorizonStart,
+  shapHorizonEnd,
   relationModel,
   pastDays,
   futureEnd,
@@ -34,7 +35,7 @@ export function useClusterDailySeries({
     // Instance mode is a second, on-demand SHAP calculation. It explains the
     // selected source community with 90 daily features and returns one row.
     if (mode === "instance") {
-      if (!sourceCommunityId || !targetCommunityId || !forecastAnchorDate || !shapHorizon || !relationModel) {
+      if (!sourceCommunityId || !targetCommunityId || !forecastAnchorDate || !shapHorizonStart || !shapHorizonEnd || !relationModel) {
         setCommunitySeriesList([]);
         setLoading(false);
         return;
@@ -46,11 +47,13 @@ export function useClusterDailySeries({
       api.predictionInstanceShap(
         forecastAnchorDate,
         relationModel,
-        shapHorizon,
+        null,
         Number(targetCommunityId),
         {
           explanationLevel: "history",
           sourceCommunity: Number(sourceCommunityId),
+          horizonStart: shapHorizonStart,
+          horizonEnd: shapHorizonEnd,
           signal: ac.signal,
         }
       ).then(data => {
@@ -148,7 +151,8 @@ export function useClusterDailySeries({
     targetCommunityId,
     sourceCommunityId,
     forecastAnchorDate,
-    shapHorizon,
+    shapHorizonStart,
+    shapHorizonEnd,
     relationModel,
     pastDays,
     futureEnd,

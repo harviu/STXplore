@@ -61,6 +61,8 @@ export const api = {
       samples,
       backgroundSize,
       seed,
+      horizonStart,
+      horizonEnd,
       explanationLevel = "community",
       sourceCommunity,
       ...requestOpts
@@ -68,7 +70,9 @@ export const api = {
     const params = new URLSearchParams();
     params.append("date", String(date));
     params.append("model", String(model));
-    params.append("horizon", String(horizon));
+    if (horizon != null) params.append("horizon", String(horizon));
+    if (horizonStart != null) params.append("horizon_start", String(horizonStart));
+    if (horizonEnd != null) params.append("horizon_end", String(horizonEnd));
     params.append("target_community", String(targetCommunity));
     params.append("explanation_level", String(explanationLevel));
     if (sourceCommunity != null) params.append("source_community", String(sourceCommunity));

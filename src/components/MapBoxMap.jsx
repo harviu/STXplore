@@ -3,7 +3,8 @@ import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import "./MapBoxMap.css";
 import { getBoundaryId, getBoundaryLabel } from "../lib/boundaries.js";
-import { CHOROPLETH_STOPS, RELATION_STOPS, SAGE_STOPS, SAGE_LEGEND_STOPS, ERROR_STOPS } from "../lib/colors.js"
+import { CHOROPLETH_STOPS, RELATION_STOPS, SAGE_LEGEND_STOPS, ERROR_STOPS } from "../lib/colors.js"
+import { getSymmetricColorDomain } from "../lib/colorScale.js";
 
 export const CHICAGO_CENTER = [-87.70, 41.84]; // Approximate center of Chicago
 export const CHICAGO_ZOOM = 9.1; // Initial zoom level to show the whole city
@@ -147,9 +148,7 @@ function buildMergedGeo(geo, crimeCounts, layer, useFixedRelationScale = false, 
   let minCount = counts.length ? Math.min(...counts) : 0;
   let maxCount = counts.length ? Math.max(...counts) : 1;
   if (isErrorMap || isSageMap) { // Set the range to the max abs to scale correctly around zero
-    const absMax = Math.max(...counts.map(c => Math.abs(c)), 1);
-    minCount = -absMax;
-    maxCount = absMax;
+    [minCount, maxCount] = getSymmetricColorDomain(minCount, maxCount);
   } else if (useFixedRelationScale) {
     // MI is non-negative and uses the same [0, max] domain as its heatmap and tooltip.
     minCount = 0;

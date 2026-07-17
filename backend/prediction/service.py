@@ -165,7 +165,8 @@ class PredictionService:
         enc_in: int,
         label_len: int,
         pred_len: int,
-        horizon_idx: int,
+        horizon_start_idx: int,
+        horizon_end_idx: int,
         community_idx: int,
         include_marks: bool,
         mark_dim: int,
@@ -205,8 +206,9 @@ class PredictionService:
             if isinstance(outputs, (tuple, list)):
                 outputs = outputs[0]
             outputs = outputs[:, -pred_len:, :]
-            # Extract the single scalar output for the target (horizon, community) pair
-            scalar = outputs[:, horizon_idx, community_idx]
+            # Kernel SHAP explains one scalar target. Average the selected
+            # prediction window so attributions describe its mean daily prediction.
+            scalar = outputs[:, horizon_start_idx:horizon_end_idx, community_idx].mean(dim=1)
             return scalar.detach().cpu().numpy()
 
         return predict_fn
@@ -215,8 +217,10 @@ class PredictionService:
         self,
         anchor_date: date,
         model_name: str,
-        target_horizon: int,
+        target_horizon: int | None,
         target_community_id: int,
+        target_horizon_start: int | None = None,
+        target_horizon_end: int | None = None,
         explanation_level: str = "community",
         source_community_id: int | None = None,
         background_size: int = 4,
@@ -237,8 +241,18 @@ class PredictionService:
         label_len = int(bundle.cfg["label_len"])
         enc_in = int(bundle.cfg["enc_in"])
 
-        if target_horizon < 1 or target_horizon > pred_len:
-            raise RuntimeError(f"target_horizon must be in [1, {pred_len}]")
+        if target_horizon_start is None and target_horizon_end is None:
+            if target_horizon is None:
+                raise RuntimeError("Provide either target_horizon or both SHAP horizon bounds")
+            target_horizon_start = target_horizon
+            target_horizon_end = target_horizon
+        elif target_horizon_start is None or target_horizon_end is None:
+            raise RuntimeError("target_horizon_start and target_horizon_end must be provided together")
+
+        if not (1 <= target_horizon_start <= target_horizon_end <= pred_len):
+            raise RuntimeError(
+                f"SHAP horizon window must satisfy 1 <= start <= end <= {pred_len}"
+            )
         if target_community_id < 1 or target_community_id > len(COMMUNITY_IDS):
             raise RuntimeError(f"target_community_id must be in [1, {len(COMMUNITY_IDS)}]")
         if explanation_level not in {"community", "history"}:
@@ -252,7 +266,9 @@ class PredictionService:
                 f"source_community_id must be in [1, {len(COMMUNITY_IDS)}] for a history explanation"
             )
 
-        horizon_idx = target_horizon - 1  # convert 1-based UI horizon to 0-based tensor index
+        # Convert the inclusive, 1-based API window to a half-open tensor slice.
+        horizon_start_idx = target_horizon_start - 1
+        horizon_end_idx = target_horizon_end
         community_idx = target_community_id - 1  # convert 1-based UI community ID to 0-based tensor index
 
         history_matrix, hist_days, source = self._build_history_matrix(anchor_date, seq_len=seq_len, db=db)
@@ -309,7 +325,8 @@ class PredictionService:
             enc_in=enc_in,
             label_len=label_len,
             pred_len=pred_len,
-            horizon_idx=horizon_idx,
+            horizon_start_idx=horizon_start_idx,
+            horizon_end_idx=horizon_end_idx,
             community_idx=community_idx,
             include_marks=include_marks,
             mark_dim=mark_dim,
@@ -409,8 +426,10 @@ class PredictionService:
             InstanceShapResult(
                 model_name=model_name,
                 anchor_date=anchor_date,
-                target_date=anchor_date + timedelta(days=target_horizon),
-                target_horizon=target_horizon,
+                target_start_date=anchor_date + timedelta(days=target_horizon_start),
+                target_end_date=anchor_date + timedelta(days=target_horizon_end),
+                target_horizon_start=target_horizon_start,
+                target_horizon_end=target_horizon_end,
                 target_community_id=target_community_id,
                 explanation_level=explanation_level,
                 source_community_id=source_community_id if explanation_level == "history" else None,

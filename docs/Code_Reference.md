@@ -434,7 +434,7 @@ Same as `/api/predictions/by-date` but formats the response as a flat map payloa
 
 ### `GET /api/predictions/instance-shap`
 
-Compute one of two instance-level SHAP explanations for a specific prediction.
+Compute one of two instance-level SHAP explanations for the mean daily prediction over an inclusive horizon window.
 
 - `explanation_level=community` (default) treats each community's complete 90-day history as one feature and returns 77 values for the Past map.
 - `explanation_level=history` requires `source_community`; it keeps the other 76 communities fixed at their actual histories and treats the selected source's 90 days as features. It returns one 90-day row for the dashboard.
@@ -449,7 +449,9 @@ SHAP values are signed: positive means that source community's past crime pushed
 |---|---|---|---|
 | `date` | string | Yes | Anchor date `YYYY-MM-DD` |
 | `model` | string | Yes | Model folder name |
-| `horizon` | integer | Yes | Forecast horizon, 1-based (1..30). Day 1 = anchor + 1. |
+| `horizon` | integer | Legacy | A single 1-based forecast horizon. Used only when window bounds are omitted. |
+| `horizon_start` | integer | Yes for window | First 1-based prediction day in the averaged window, inclusive. |
+| `horizon_end` | integer | Yes for window | Last 1-based prediction day in the averaged window, inclusive. |
 | `target_community` | integer | Yes | Target community ID, 1-based (1..77) |
 | `explanation_level` | string | No | `community` (default) or `history` |
 | `source_community` | integer | For `history` | Source community ID, 1-based (1..77) |
@@ -462,15 +464,20 @@ SHAP values are signed: positive means that source community's past crime pushed
 {
   "model": "Transformer",
   "date": "2024-12-01",
-  "target_date": "2024-12-15",
-  "horizon": 15,
+  "target_date": null,
+  "horizon": null,
+  "target_start_date": "2024-12-02",
+  "target_end_date": "2024-12-31",
+  "horizon_start": 1,
+  "horizon_end": 30,
+  "aggregation": "mean",
   "target_community": 24,
   "explanation_level": "community",
   "source_community": null,
   "source": "csv_pivot",
   "prediction": 8.42,
-  "baseline": 6.11,
-  "shap_sum": 2.28,
+  "baseline": 6.20,
+  "shap_sum": 2.19,
   "approx_error": 0.03,
   "history_start": "2024-09-03",
   "history_end": "2024-12-01",
@@ -752,7 +759,7 @@ Every backend endpoint has a corresponding function here. All functions accept a
 | `api.predictionAnchorBounds(opts)` | `GET /api/predictions/anchor-bounds` | |
 | `api.predictionByDate(date, model, opts)` | `GET /api/predictions/by-date` | |
 | `api.mapPredictions(layer, date, model, opts)` | `GET /api/map/predictions` | |
-| `api.predictionInstanceShap(date, model, horizon, targetCommunity, opts)` | `GET /api/predictions/instance-shap` | `opts.explanationLevel`; `opts.sourceCommunity` for history; IDs are 1-based |
+| `api.predictionInstanceShap(date, model, horizon, targetCommunity, opts)` | `GET /api/predictions/instance-shap` | The frontend passes `horizon=null` with `opts.horizonStart`/`horizonEnd` for an averaged window; `opts.sourceCommunity` selects history-level explanation |
 | `api.relationalModel(target, model, pastStart, pastDays, futureStart, futureEnd, opts)` | `GET /api/model_level_relation` | target is 0-based |
 | `api.relationalModelSource(source, model, pastStart, pastDays, futureStart, futureEnd, opts)` | `GET /api/model_level_relation` | source is 0-based |
 | `api.sageLevelRelation(target, model, pastStart, pastDays, futureStart, futureEnd, opts)` | `GET /api/model_level_sage` | target is 0-based |
@@ -823,20 +830,17 @@ Converts the 1-based `instanceSelectedId` from the UI to a 0-based index before 
 
 ---
 
-### `useInstanceShapCounts(activeMode, targetCommunityId, model, forecastAnchorDate, horizon, pastStart, pastEnd)`
+### `useInstanceShapCounts(activeMode, targetCommunityId, model, forecastAnchorDate, horizonStart, horizonEnd)`
 
 **Location:** `src/hooks/useInstanceShapCounts.js`
 
-Fetches live SHAP values for a target community and returns both a per-community summed count map (for the map choropleth) and a raw `(77 × days)` matrix (for the cluster heatmap).
+Fetches live SHAP values for the mean daily target-community prediction over the selected horizon window and returns one attribution per source community for the map choropleth.
 
-Only fires when `activeMode === "instance"`, `targetCommunityId` is set, `forecastAnchorDate` is set, and `horizon` is set. Slices the SHAP response to the `[pastStart, pastEnd]` window before summing.
+Only fires when `activeMode === "instance"`, `targetCommunityId` and `forecastAnchorDate` are set, and both horizon bounds are available.
 
-> Warning: SHAP values are not deterministic between calls. See `ARCHITECTURE.md` Known Issues.
+**Returns** `{ counts, loading, error }`
 
-**Returns** `{ counts, loading, error, matrix }`
-
-- `counts` — `{ "1": float, ..., "77": float }` summed SHAP per community, 1-based keys
-- `matrix` — `number[][]` of shape `(77, days)` for the cluster heatmap, or `null`
+- `counts` — `{ "1": float, ..., "77": float }` SHAP attribution per community, using 1-based keys
 
 ---
 
@@ -858,7 +862,7 @@ The fetch path depends on the current mode:
 
 ---
 
-### `useClusterDailySeries({ mode, relationDataMode, selectedCommunities, heatData, targetCommunityId, forecastAnchorDate, shapHorizon, relationModel, pastDays, futureEnd, anchorDate, rangeStart, rangeEnd })`
+### `useClusterDailySeries({ mode, relationDataMode, selectedCommunities, heatData, targetCommunityId, forecastAnchorDate, shapHorizonStart, shapHorizonEnd, relationModel, pastDays, anchorDate, rangeStart, rangeEnd })`
 
 **Location:** `src/hooks/useClusterDailySeries.js`
 

@@ -2,10 +2,11 @@ from datetime import date, timedelta
 from unittest.mock import patch
 
 import numpy as np
+import torch
 from fastapi import HTTPException
 
 from backend.prediction.schemas import InstanceShapResult, MapPredictionResult, PredictionResult
-from backend.prediction.service import build_community_masked_histories, build_daily_masked_histories
+from backend.prediction.service import PredictionService, build_community_masked_histories, build_daily_masked_histories
 from backend.routes.predictions import instance_shap, map_predictions, predictions_anchor_bounds, predictions_by_date
 
 
@@ -94,6 +95,33 @@ def test_daily_masks_only_toggle_selected_source_history():
     np.testing.assert_allclose(histories[1, :, 1], [2.0, 0.0, 6.0])
 
 
+def test_kernel_predict_fn_averages_selected_prediction_window():
+    class HorizonModel(torch.nn.Module):
+        def forward(self, x_enc, _x_mark, _dec_inp, _y_mark):
+            batch = x_enc.shape[0]
+            # Four prediction days with values 1, 2, 3, 4 for both communities.
+            days = torch.arange(1, 5, dtype=x_enc.dtype, device=x_enc.device)
+            return days.view(1, 4, 1).repeat(batch, 1, 2)
+
+    predict_fn = PredictionService()._make_kernel_predict_fn(
+        model=HorizonModel(),
+        device=torch.device("cpu"),
+        seq_len=2,
+        enc_in=2,
+        label_len=1,
+        pred_len=4,
+        horizon_start_idx=1,
+        horizon_end_idx=3,
+        community_idx=0,
+        include_marks=False,
+        mark_dim=0,
+        fixed_y_mark=None,
+    )
+
+    values = predict_fn(np.zeros((3, 4), dtype=np.float32))
+    np.testing.assert_allclose(values, [2.5, 2.5, 2.5])
+
+
 def _instance_result(level: str) -> InstanceShapResult:
     values = (
         np.arange(77, dtype=np.float32)
@@ -103,8 +131,10 @@ def _instance_result(level: str) -> InstanceShapResult:
     return InstanceShapResult(
         model_name="GRU",
         anchor_date=date(2025, 1, 31),
-        target_date=date(2025, 2, 1),
-        target_horizon=1,
+        target_start_date=date(2025, 2, 1),
+        target_end_date=date(2025, 3, 2),
+        target_horizon_start=1,
+        target_horizon_end=30,
         target_community_id=7,
         explanation_level=level,
         source_community_id=3 if level == "history" else None,
@@ -118,11 +148,13 @@ def _instance_result(level: str) -> InstanceShapResult:
 
 def test_instance_shap_community_response_has_map_values_only():
     result = _instance_result("community")
-    with patch("backend.routes.predictions.prediction_service.explain_instance_shap", return_value=(result, "parquet")):
+    with patch("backend.routes.predictions.prediction_service.explain_instance_shap", return_value=(result, "parquet")) as explain:
         out = instance_shap(
             date="2025-01-31",
             model="GRU",
-            horizon=1,
+            horizon=None,
+            horizon_start=1,
+            horizon_end=30,
             target_community=7,
             explanation_level="community",
             source_community=None,
@@ -131,7 +163,14 @@ def test_instance_shap_community_response_has_map_values_only():
             seed=0,
         )
 
+    assert explain.call_args.kwargs["target_horizon"] is None
+    assert explain.call_args.kwargs["target_horizon_start"] == 1
+    assert explain.call_args.kwargs["target_horizon_end"] == 30
     assert out["explanation_level"] == "community"
+    assert out["aggregation"] == "mean"
+    assert out["horizon_start"] == 1
+    assert out["horizon_end"] == 30
+    assert out["horizon"] is None
     assert len(out["community_values"]) == 77
     assert out["history_values"] is None
 
@@ -142,7 +181,9 @@ def test_instance_shap_history_response_has_one_90_day_source_series():
         out = instance_shap(
             date="2025-01-31",
             model="GRU",
-            horizon=1,
+            horizon=None,
+            horizon_start=1,
+            horizon_end=30,
             target_community=7,
             explanation_level="history",
             source_community=3,

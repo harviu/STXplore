@@ -165,14 +165,10 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
   // "source" = new mode: select left community, right map shows attribution
   const [relationMode, setRelationMode] = useState("target");
 
-  // SHAP uses a 1-based forecast horizon while the slider stores a half-open
-  // zero-based slice. Choose the lower middle prediction day in that slice.
-  const shapHorizon = useMemo(() => {
-    const firstPredictionDay = futureStart + 1;
-    const lastPredictionDay = futureEnd;
-    const mid = Math.floor((firstPredictionDay + lastPredictionDay) / 2);
-    return Math.max(1, Math.min(30, mid || 1));
-  }, [futureStart, futureEnd]);
+  // SHAP explains the mean daily prediction over the debounced slider window.
+  // Slider indices are zero-based and half-open; API horizons are 1-based and inclusive.
+  const shapHorizonStart = dFutureStart + 1;
+  const shapHorizonEnd = dFutureEnd;
 
   // Anchor date — defaults to latest date in dataset once loaded; user can pick another via calendar
   const [anchorDate, setAnchorDate] = useState(() => todayISO());
@@ -232,7 +228,8 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
     shapTargetCommunityId,
     model,
     forecastAnchorDate,
-    shapHorizon
+    shapHorizonStart,
+    shapHorizonEnd
   );
 
   // Source-direction: left map selection drives right map attribution
@@ -336,7 +333,7 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
   // When source map and "average" mode: show count / days; otherwise raw counts
   // Picks which data source colors the left map depending on the active mode:
   //   relation → SAGE/MI attribution counts for the selected target community
-  //   instance (target mode, community selected) → SHAP per-source-community sums
+  //   instance (target mode, community selected) → SHAP per-source-community values
   //   everything else → raw crime totals from the DB
   const leftCountsForMap = useMemo(() => {
     const raw =
@@ -727,7 +724,8 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
             : null,
       // values needed by DashboardPanel for temporal series graphs
       forecastAnchorDate,
-      shapHorizon,
+      shapHorizonStart,
+      shapHorizonEnd,
       model,
       pastStart: dPastStart,
       pastEnd: dPastEnd
@@ -752,7 +750,8 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
     errorForHeatMap,
 
     forecastAnchorDate,
-    shapHorizon,
+    shapHorizonStart,
+    shapHorizonEnd,
     model,
     pastStart,
     dPastStart,
@@ -1027,12 +1026,6 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
                     Data <br/> Level
                   </button>
               </div>
-              {activeMode === "instance" && relationTargetCommunityReady && (
-                <div style={{ display: "flex", gap: "var(--space-3)", alignItems: "center", fontSize: 13, opacity: 0.8 }}>
-                  <strong>SHAP horizon:</strong>
-                  <span>day {shapHorizon} (slider midpoint)</span>
-                </div>
-              )}
               <div style={{ display: "flex", gap: "var(--space-3)", alignItems: "center" }}>
                 <strong>Layer:</strong>
                 <label>
@@ -1129,7 +1122,7 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
                             : shapError
                               ? "SHAP Error"
                               : relationTargetCommunityReady
-                                ? `SHAP Attribution (horizon ${shapHorizon})`
+                                ? `SHAP Attribution (days ${shapHorizonStart}–${shapHorizonEnd} average)`
                                 : "Select a community on the Predicted map"
                           : relationDataMode === "sage"
                             ? "SAGE (model attribution)"
@@ -1317,11 +1310,6 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
                 <span style={{ fontSize: 15.5, color: "var(--color-warning)" }}>
                   Predicted Anchor Date: {forecastAnchorDate} (model max)
                 </span>
-              )}
-              {activeMode === "instance" && relationTargetCommunityReady && (
-                <div style={{ display: "flex", gap: "var(--space-3)", alignItems: "center", fontSize: 12, opacity: 0.0, cursor: 'default', userSelect: 'none' }}>
-                  <strong>SHAP horizon</strong>
-                </div>
               )}
               <div style={{ display: "flex", gap: "var(--space-3)", alignItems: "center" }}>
                 <strong>Layer:</strong>

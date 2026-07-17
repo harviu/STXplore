@@ -20,7 +20,7 @@
 - layer support in v1: `community_area` only
 
 ### 3) Instance SHAP explanation (single sample, single target)
-`GET /api/predictions/instance-shap?date=YYYY-MM-DD&model=<model_name>&horizon=<1..30>&target_community=<1..77>&explanation_level=<community|history>`
+`GET /api/predictions/instance-shap?date=YYYY-MM-DD&model=<model_name>&horizon_start=<1..30>&horizon_end=<1..30>&target_community=<1..77>&explanation_level=<community|history>`
 
 - explains one scalar output:
   - sample chosen by `date`

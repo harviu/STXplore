@@ -130,7 +130,8 @@ export default function App() {
             onTargetHighlight={setTargetHighlights}
             anchorDate={state.anchorDate}
             forecastAnchorDate={state.forecastAnchorDate}
-            shapHorizon={state.shapHorizon}
+            shapHorizonStart={state.shapHorizonStart}
+            shapHorizonEnd={state.shapHorizonEnd}
             model={state.model}
             relationDataMode={state.relationDataMode}
             pastStart={state.pastStart ?? 0}

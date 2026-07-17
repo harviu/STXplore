@@ -11,6 +11,17 @@ function finiteOr(value, fallback) {
   return Number.isFinite(number) ? number : fallback;
 }
 
+/** Return a non-degenerate symmetric domain based on the observed values. */
+export function getSymmetricColorDomain(minValue, maxValue) {
+  const min = finiteOr(minValue, 0);
+  const max = finiteOr(maxValue, 0);
+  const observedAbsMax = Math.max(Math.abs(min), Math.abs(max));
+  // D3 and Mapbox require distinct domain endpoints. This fallback is used
+  // only when every value is exactly zero; it is not a visible minimum range.
+  const absMax = observedAbsMax || Number.EPSILON;
+  return [-absMax, absMax];
+}
+
 /**
  * Build the shared sequential color scale used by heatmap cells and temporal
  * tooltip bars.
@@ -36,10 +47,7 @@ export function createColorScale(
         : CHOROPLETH_STOPS;
 
   const domain = isDiverging
-    ? (() => {
-        const absMax = Math.max(Math.abs(min), Math.abs(max)) || 1;
-        return [-absMax, absMax];
-      })()
+    ? getSymmetricColorDomain(min, max)
     : [0, Math.max(0, max) || 1];
 
   return d3

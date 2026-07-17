@@ -37,8 +37,10 @@ class MapPredictionResult:
 class InstanceShapResult:
     model_name: str
     anchor_date: date
-    target_date: date
-    target_horizon: int  # 1-based day-ahead horizon
+    target_start_date: date
+    target_end_date: date
+    target_horizon_start: int  # 1-based, inclusive
+    target_horizon_end: int  # 1-based, inclusive
     target_community_id: int  # 1..77
     explanation_level: str  # "community" or "history"
     source_community_id: int | None  # set only for history explanations

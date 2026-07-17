@@ -226,7 +226,7 @@ Shows SAGE attribution values from the precomputed tensor. Values are signed —
 
 ### Instance Level (SHAP or SAGE)
 
-Shows instance-specific attribution for a single prediction. In **All Sources → Target** mode this is two-stage SHAP: selecting a target computes 77 community-history values for the map, then selecting one source computes its 90 daily values and displays them as a single row in the Past-map dashboard area. In **Source → All Targets** mode this is SAGE sliced to the selected source community and time window. SHAP takes several seconds per stage; SAGE reads from the precomputed tensor immediately.
+Shows instance-specific attribution for the mean daily prediction over the selected future window. In **All Sources → Target** mode this is two-stage SHAP: selecting a target computes 77 community-history values for the map, then selecting one source computes its 90 daily values and displays them as a single row in the Past-map dashboard area. In **Source → All Targets** mode this is SAGE sliced to the selected source community and time window. SHAP takes several seconds per stage; SAGE reads from the precomputed tensor immediately.
 
 ### Data Level
 
@@ -427,7 +427,7 @@ In this application, the model input is 90 days × 77 community crime counts, bu
 
 This removes the former heuristic that distributed community attribution over time and avoids an unsafe 6,930-feature regression.
 
-The forecast horizon explained by SHAP is derived from the midpoint of the future window slider. The full slider range `[0, 30)` represents prediction days 1–30 (`D+1` through `D+30`), so SHAP explains prediction day 15.
+SHAP explains the mean of the target community's daily predictions over the selected future-slider window. The full slider range `[0, 30)` therefore explains the average daily prediction from `D+1` through `D+30`. Both the first-stage community explanation and the second-stage daily-history explanation use the same averaged target.
 
 SHAP values are signed: positive means that source community's past crime pushed the prediction up; negative means it pushed it down.
 
@@ -493,7 +493,7 @@ Two range sliders control the time windows used across all maps, charts, and bac
 
 **Future slider** (`[0, 30)` forecast indices) represents prediction days 1–30, or `D+1` through `D+30`, inclusive, and controls:
 - Which forecast days are summed for the right map colors
-- Which horizon SHAP explains (midpoint of the selected range)
+- Which prediction-window daily average SHAP explains
 - Which forecast days are included in SAGE/MI tensor slices
 
 Sliders are debounced at **150ms** via `useDebounced` in `MapPanel.jsx`. This prevents firing a burst of API requests while the user drags. The debounced values (`dPastStart`, `dPastEnd`, `dFutureStart`, `dFutureEnd`) are what get sent to the backend; the raw values update the slider position immediately so the UI feels responsive.

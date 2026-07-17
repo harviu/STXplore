@@ -70,7 +70,7 @@ function capitalizeFirst(string) {
  * @param {Object} props.targetHeatData - The data for the future map cluster heatmap.
  * @returns {JSX.Element} The rendered DashboardPanel component
  */
-export default function DashboardPanel({ mode, selection, inactiveMode, inactiveSelection, left, right, heatData, targetHeatData, isSageMap = false, onSourceHighlight, onTargetHighlight, anchorDate, forecastAnchorDate, shapHorizon, model, relationDataMode, pastStart = 0, pastEnd = 90}) {
+export default function DashboardPanel({ mode, selection, inactiveMode, inactiveSelection, left, right, heatData, targetHeatData, isSageMap = false, onSourceHighlight, onTargetHighlight, anchorDate, forecastAnchorDate, shapHorizonStart, shapHorizonEnd, model, relationDataMode, pastStart = 0, pastEnd = 90}) {
   const barsRef = useRef();
   const labelsRef = useRef();
   const countsRef = useRef();
@@ -124,7 +124,8 @@ export default function DashboardPanel({ mode, selection, inactiveMode, inactive
     targetCommunityId: right?.selection?.id ?? null,
     sourceCommunityId: mode === "instance" ? selection?.id ?? null : null,
     forecastAnchorDate: forecastAnchorDate ?? null,
-    shapHorizon: shapHorizon ?? null,
+    shapHorizonStart: shapHorizonStart ?? null,
+    shapHorizonEnd: shapHorizonEnd ?? null,
     relationModel: model ?? null,
     pastDays: left?.days ?? 90,
     futureEnd: right?.offset ?? 30,

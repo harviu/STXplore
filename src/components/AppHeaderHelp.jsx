@@ -147,7 +147,7 @@ export default function AppHeaderHelp() {
                   <ul style={{ margin: "6px 0 0 16px", padding: 0 }}>
                     <li><strong>MI (Mutual Information)</strong> — a purely statistical measure of how related two communities' crime patterns are in the raw data, with no model involved. Higher value means stronger statistical relationship. Always non-negative.</li>
                     <li><strong>SAGE</strong> — a model-level measure of how much each source community's past crime systematically influences the model's predictions for a target community. Positive means it pushes predictions up, negative means it pulls them down. Precomputed across the full dataset.</li>
-                    <li><strong>SHAP</strong> — similar to SAGE but specific to a single prediction at a specific date and horizon. It asks: for this particular forecast, how much did each community's recent crime history contribute? Takes a few seconds to compute because it runs live.</li>
+                    <li><strong>SHAP</strong> — similar to SAGE but specific to the mean daily forecast over the selected prediction window. It asks: for this window's average prediction, how much did each community's recent crime history contribute? Takes a few seconds to compute because it runs live.</li>
                   </ul>
                   <p style={{ marginBottom: 0 }}>
                     On all attribution maps, <strong>white means no influence</strong>, <strong>green means positive/amplifying</strong>, and <strong>red means negative/suppressive</strong>.
