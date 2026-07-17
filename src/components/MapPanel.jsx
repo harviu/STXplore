@@ -279,11 +279,14 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
     }
   }, [activeMode, isSourceMode]);
 
-  // Source heatmap: daily crime counts for all communities over the source window.
+  // Source heatmap: use the same processed daily community values as the model input.
+  // The training pivot is community-only, so beat/district retain incident aggregates.
   const { data: crimeCountsResp, loading: crimeCountsLoading } = useApi(({ signal }) => {
     if (activeMode !== "source") return Promise.resolve(null);
     const { start, end } = sourceRange(dPastStart, dPastEnd, anchorDate);
-    return api.selectionAllDaily(layer, start, end, { signal });
+    return layer === "community"
+      ? api.selectionAllDailyCsv(start, end, { signal })
+      : api.selectionAllDaily(layer, start, end, { signal });
   }, [activeMode, layer, dPastStart, dPastEnd, anchorDate]);
 
   const crimeCounts = crimeCountsResp?.daily ?? null;
@@ -315,11 +318,15 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
     return api.instanceLevelSource(pastEnd, futureStart, futureEnd, { signal });
   }, [activeMode, pastEnd, futureStart, futureEnd]);
 
-  //Get Data for Source HeatMap (used when activeMode is "source"; instance mode uses instanceSourceResp)
+  // Past map totals use the model-training pivot at community level so the map,
+  // heatmap, and hover tooltip all represent the same processed values.
+  // The pivot has no beat/district columns, so those layers use incident totals.
   const {data: leftTotalsResp, loading: leftTotalsLoading, error: leftTotalsError} = useApi(({ signal }) => {
     const { start, end } = sourceRange(dPastStart, dPastEnd, anchorDate);
     const apiLayer = UI_TO_API_LAYER[layer];
-    return api.mapTotals(apiLayer, start, end, { signal });
+    return layer === "community"
+      ? api.mapCountsPivot(start, end, { signal })
+      : api.mapTotals(apiLayer, start, end, { signal });
   }, [layer, dPastStart, dPastEnd, anchorDate]);
 
   const leftCrimeCounts = useMemo(
@@ -334,7 +341,7 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
   // Picks which data source colors the left map depending on the active mode:
   //   relation → SAGE/MI attribution counts for the selected target community
   //   instance (target mode, community selected) → SHAP per-source-community values
-  //   everything else → raw crime totals from the DB
+  //   source/community → processed pivot totals; beat/district → incident totals
   const leftCountsForMap = useMemo(() => {
     const raw =
       activeMode === "relation"
@@ -726,6 +733,8 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
       forecastAnchorDate,
       shapHorizonStart,
       shapHorizonEnd,
+      shapMapColorMin: activeMode === "instance" && !isSourceMode ? leftMapGlobalMin : null,
+      shapMapColorMax: activeMode === "instance" && !isSourceMode ? leftMapGlobalMax : null,
       model,
       pastStart: dPastStart,
       pastEnd: dPastEnd
@@ -752,6 +761,9 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
     forecastAnchorDate,
     shapHorizonStart,
     shapHorizonEnd,
+    isSourceMode,
+    leftMapGlobalMin,
+    leftMapGlobalMax,
     model,
     pastStart,
     dPastStart,
@@ -1438,8 +1450,20 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
                 )}
                 {!hoverDailyLoading && hoverDaily && hoverDaily.length > 0 && (
                   <TooltipMap
-                    globalMin={hover.which === "left" ? leftMapGlobalMin : rightMapGlobalMin}
-                    globalMax={hover.which === "left" ? leftMapGlobalMax : rightMapGlobalMax}
+                    globalMin={
+                      hover.which === "left" && activeMode === "source"
+                        ? null
+                        : hover.which === "left"
+                          ? leftMapGlobalMin
+                          : rightMapGlobalMin
+                    }
+                    globalMax={
+                      hover.which === "left" && activeMode === "source"
+                        ? null
+                        : hover.which === "left"
+                          ? leftMapGlobalMax
+                          : rightMapGlobalMax
+                    }
                     days={hoverDaily}
                     isRelationMap={
                       (activeMode === "relation" || activeMode === "instance") && hover.which === "left"
@@ -1449,6 +1473,7 @@ export default function MapPanel({ onSelectionChange, onSummaryChange, sourceHig
                       || activeMode === "instance")
                       && hover.which === "left"
                     }
+                    useObservedDomain={hover.which === "left" && activeMode === "source"}
                   />
                 )}
               </>

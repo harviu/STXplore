@@ -3,7 +3,7 @@
  * Colors for the choropleth and relation maps. 
  * Each array is ordered from low to high values, with 5 stops each. 
  * Yellow → orange → red choropleth colors for crime counts
- * Light blue → teal → dark green relation colors for relation counts
+ * White → dark green single-hue relation colors for relation counts
  * 
  */
 //used for crime counts which should be positive
@@ -17,11 +17,11 @@ export const CHOROPLETH_STOPS = [
 
 //for positive relational values
 export const RELATION_STOPS = [
-  "#0acaff", //light blue (low)
-  "#4ae4e4",
-  "#66c2a4",
-  "#2ca25f",
-  "#006d2c", //dark green (high)
+  "#ffffff", // observed minimum
+  "#d9f0d3",
+  "#a6dba0",
+  "#5aae61",
+  "#1b7837", // dark green (high)
 ];
 
 /**

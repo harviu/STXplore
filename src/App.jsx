@@ -132,6 +132,8 @@ export default function App() {
             forecastAnchorDate={state.forecastAnchorDate}
             shapHorizonStart={state.shapHorizonStart}
             shapHorizonEnd={state.shapHorizonEnd}
+            shapMapColorMin={state.shapMapColorMin}
+            shapMapColorMax={state.shapMapColorMax}
             model={state.model}
             relationDataMode={state.relationDataMode}
             pastStart={state.pastStart ?? 0}

@@ -1,4 +1,11 @@
+import { useState } from "react";
 import { createColorScale } from "../lib/colorScale.js";
+
+function formatValue(value) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return String(value);
+  return Number(number.toPrecision(6)).toString();
+}
 
 /**
  * Component for the small bar chart you see when you hover over a boundary. 
@@ -11,14 +18,16 @@ import { createColorScale } from "../lib/colorScale.js";
  * @param {boolean} [props.isRelationMap=false] - A flag indicating whether to use relation map color stops. Default is false.
  * @param {boolean} [props.isSageMap=false] - A flag indicating whether to use sage map color stops. Default is false.
  * @param {Array} [props.highlightDates=null] - An array of dates to highlight.
+ * @param {boolean} [props.showValueTooltip=false] - Show a custom date/value tooltip on bar hover.
  * @returns {JSX.Element}
  */
 //The box component you see when you hover
-export default function TooltipMap({ days, height = 12, isRelationMap = false, isSageMap = false, highlightDates = null, globalMin = null, globalMax = null }) {
+export default function TooltipMap({ days, height = 12, isRelationMap = false, isSageMap = false, highlightDates = null, globalMin = null, globalMax = null, showValueTooltip = false, useObservedDomain = false }) {
+  const [hoveredBar, setHoveredBar] = useState(null);
   const values = (days ?? []).map((day) => Number(day.count) || 0);
   const max = globalMax ?? (values.length > 0 ? Math.max(...values) : 0);
   const min = globalMin ?? (values.length > 0 ? Math.min(...values) : 0);
-  const colorScale = createColorScale(min, max, { isRelationMap, isSageMap });
+  const colorScale = createColorScale(min, max, { isRelationMap, isSageMap, useObservedDomain });
   const tickHeight = height + 8; // taller than bars
   const tickTop = -4; // extend above and below bar row
   const hasHighlight = highlightDates != null && highlightDates.length > 0;
@@ -33,7 +42,7 @@ export default function TooltipMap({ days, height = 12, isRelationMap = false, i
     >
       {/* Bars */}
       <div style={{ display: "flex", gap: 1, width: "100%" }}>
-        {(days ?? []).map((d) => {
+        {(days ?? []).map((d, index) => {
           const c = d.count || 0;
 
           const background = colorScale(c);
@@ -44,6 +53,10 @@ export default function TooltipMap({ days, height = 12, isRelationMap = false, i
             <div
               key={d.date}
               title={`${d.date}: ${c}`}
+              onMouseEnter={() => {
+                if (showValueTooltip) setHoveredBar({ index, date: d.date, value: c });
+              }}
+              onMouseLeave={() => setHoveredBar(null)}
               style={{
                 flex: "1 1 0",
                 height,
@@ -57,6 +70,31 @@ export default function TooltipMap({ days, height = 12, isRelationMap = false, i
           );
         })}
       </div>
+
+      {showValueTooltip && hoveredBar ? (
+        <div
+          role="tooltip"
+          style={{
+            position: "absolute",
+            left: `${Math.min(96, Math.max(4, ((hoveredBar.index + 0.5) / Math.max(days?.length ?? 1, 1)) * 100))}%`,
+            bottom: height + 7,
+            transform: "translateX(-50%)",
+            padding: "4px 7px",
+            borderRadius: 4,
+            background: "rgba(17, 24, 39, 0.96)",
+            border: "1px solid rgba(255, 255, 255, 0.35)",
+            color: "white",
+            fontSize: 11,
+            lineHeight: 1.35,
+            whiteSpace: "nowrap",
+            pointerEvents: "none",
+            zIndex: 2,
+          }}
+        >
+          <div>{hoveredBar.date}</div>
+          <div>SHAP: {formatValue(hoveredBar.value)}</div>
+        </div>
+      ) : null}
 
       {/* Weekly tick marks (every 7 days) */}
       {(days ?? []).map((_, idx) => {

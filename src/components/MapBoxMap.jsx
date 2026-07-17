@@ -18,7 +18,7 @@ const getMapboxToken = () => import.meta.env.VITE_MAPBOX_ACCESS_TOKEN ?? "";
 
 const LEGEND_TITLE = "Crime count";
 
-/** Max fractional digits for legend bounds when not using the fixed 0–100 MI scale (SHAP, SAGE, error, etc.). */
+/** Max fractional digits shown for continuous legend bounds. */
 const LEGEND_FLOAT_DECIMALS = 3;
 
 function formatLegendEndpoint(value) {
@@ -132,8 +132,7 @@ function getCount(crimeCounts, id) {
 }
 
 //Adds crime count data to map data
-/** @param useFixedRelationScale When true (model-level MI relation), map 0–100. When false, stretch colors from data min/max (crime counts, SAGE, SHAP / instance). */
-function buildMergedGeo(geo, crimeCounts, layer, useFixedRelationScale = false, isErrorMap = false, isSageMap = false) {
+function buildMergedGeo(geo, crimeCounts, layer, isErrorMap = false, isSageMap = false) {
   if (!geo?.features?.length) return { mergedGeo: geo, minCount: 0, maxCount: 1 };
   const hasCounts = hasAnyCounts(crimeCounts);
   const features = geo.features.map((f) => {
@@ -149,10 +148,6 @@ function buildMergedGeo(geo, crimeCounts, layer, useFixedRelationScale = false, 
   let maxCount = counts.length ? Math.max(...counts) : 1;
   if (isErrorMap || isSageMap) { // Set the range to the max abs to scale correctly around zero
     [minCount, maxCount] = getSymmetricColorDomain(minCount, maxCount);
-  } else if (useFixedRelationScale) {
-    // MI is non-negative and uses the same [0, max] domain as its heatmap and tooltip.
-    minCount = 0;
-    maxCount = Math.max(maxCount, 1);
   }
   return {
     mergedGeo: { type: "FeatureCollection", features },
@@ -239,8 +234,6 @@ export default function MapBoxMap({
   onHover = null,
   recenterTrigger = null,
   isRelationMap = false,
-  /** When true with isRelationMap, use data min/max for fill (SHAP); keep relation color stops. */
-  isInstanceShapMap = false,
   isSageMap = false,
   isErrorMap = false,
   loading = false,
@@ -261,10 +254,6 @@ export default function MapBoxMap({
   const onHoverRef = useRef(onHover);
   const selectedIdRef = useRef(selectedId);
   const isRelationMapRef = useRef(isRelationMap);
-  const relationFixedScale = isRelationMap && !isSageMap && !isInstanceShapMap;
-  // relationFixedScale is true only for plain MI (data level) — it maps 0–100 to a fixed scale.
-  // SAGE and SHAP are excluded because they are signed and need a data-driven diverging domain instead.
-  const relationFixedScaleRef = useRef(relationFixedScale);
   const [mapStyle, setMapStyle] = useState("streets");
   const lastHoverStateRef = useRef(null);
   const basemapSelectId = useId();
@@ -300,9 +289,6 @@ export default function MapBoxMap({
   useEffect(() => {
     isRelationMapRef.current = isRelationMap;
   }, [isRelationMap]);
-  useEffect(() => {
-    relationFixedScaleRef.current = relationFixedScale;
-  }, [relationFixedScale]);
   useEffect(() => {
   const map = mapRef.current;
   if (!map) return;
@@ -367,10 +353,8 @@ export default function MapBoxMap({
     return () => { if (loadingHideTimerRef.current) clearTimeout(loadingHideTimerRef.current); };
   }, [loading])
 
-// Pass fixed scale only for plain MI (not SAGE or SHAP) — SAGE/SHAP need a data-driven
-// diverging domain, and isErrorMap gets its own symmetric domain inside buildMergedGeo.
 const { mergedGeo, minCount: dataMin, maxCount: dataMax } = useMemo(
-  () => buildMergedGeo(geo, crimeCounts, layer, isRelationMap && !isSageMap, isErrorMap, isSageMap),
+  () => buildMergedGeo(geo, crimeCounts, layer, isErrorMap, isSageMap),
   [geo, crimeCounts, layer, isRelationMap, isSageMap, isErrorMap]
 );
 
@@ -419,7 +403,7 @@ const minCount = dataMin;
             geoRef.current,
             crimeCountsRef.current,
             layerRef.current,
-            relationFixedScaleRef.current,
+            false,
             false
           );
         const paint = getFillColorPaint(

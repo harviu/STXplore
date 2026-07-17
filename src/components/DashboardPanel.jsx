@@ -70,7 +70,7 @@ function capitalizeFirst(string) {
  * @param {Object} props.targetHeatData - The data for the future map cluster heatmap.
  * @returns {JSX.Element} The rendered DashboardPanel component
  */
-export default function DashboardPanel({ mode, selection, inactiveMode, inactiveSelection, left, right, heatData, targetHeatData, isSageMap = false, onSourceHighlight, onTargetHighlight, anchorDate, forecastAnchorDate, shapHorizonStart, shapHorizonEnd, model, relationDataMode, pastStart = 0, pastEnd = 90}) {
+export default function DashboardPanel({ mode, selection, inactiveMode, inactiveSelection, left, right, heatData, targetHeatData, isSageMap = false, onSourceHighlight, onTargetHighlight, anchorDate, forecastAnchorDate, shapHorizonStart, shapHorizonEnd, shapMapColorMin, shapMapColorMax, model, relationDataMode, pastStart = 0, pastEnd = 90}) {
   const barsRef = useRef();
   const labelsRef = useRef();
   const countsRef = useRef();
@@ -198,12 +198,13 @@ export default function DashboardPanel({ mode, selection, inactiveMode, inactive
                   <div key={id}>
                     <div style={{ fontSize: 11, opacity: 0.7, marginBottom: 2 }}>Community {id}</div>
                     <TooltipMap
-                      globalMin={heatGlobalMin} 
-                      globalMax={heatGlobalMax}
+                      globalMin={mode === "instance" ? shapMapColorMin : heatGlobalMin}
+                      globalMax={mode === "instance" ? shapMapColorMax : heatGlobalMax}
                       days={series}
                       height={14}
                       isRelationMap={mode !== "source"}
                       isSageMap={isSageMap && mode !== "source"}
+                      showValueTooltip={mode === "instance"}
                       highlightDates={
                         sourceHighlight.date?.length > 0
                           ? mode === "source"

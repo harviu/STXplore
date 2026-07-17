@@ -12,13 +12,14 @@ export function fillDaily(start, end, rows) {
   return dates.map((dt) => ({ date: dt, count: by.get(dt) ?? 0 }));
 }
 
-/** Backend shape: { data: [{ feature_id, count }, ...] } → id → count */
+/** Supported backend map shapes → feature id → count. */
 export function responseToCounts(resp) {
   const rows = resp?.data ?? [];
   const out = {};
   for (const r of rows) {
-    if (r?.feature_id == null) continue;
-    out[String(r.feature_id)] = Number(r.count) || 0;
+    const id = r?.feature_id ?? r?.community_area ?? r?.id;
+    if (id == null) continue;
+    out[String(id)] = Number(r.count) || 0;
   }
   return out;
 }

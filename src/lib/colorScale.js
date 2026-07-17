@@ -33,7 +33,12 @@ export function getSymmetricColorDomain(minValue, maxValue) {
 export function createColorScale(
   minValue,
   maxValue,
-  { isRelationMap = false, isSageMap = false, isErrorMap = false } = {},
+  {
+    isRelationMap = false,
+    isSageMap = false,
+    isErrorMap = false,
+    useObservedDomain = false,
+  } = {},
 ) {
   const min = finiteOr(minValue, 0);
   const max = finiteOr(maxValue, 0);
@@ -46,9 +51,14 @@ export function createColorScale(
         ? RELATION_STOPS
         : CHOROPLETH_STOPS;
 
+  const observedDomain = min === max
+    ? [min, min + Number.EPSILON]
+    : [min, max];
   const domain = isDiverging
     ? getSymmetricColorDomain(min, max)
-    : [0, Math.max(0, max) || 1];
+    : useObservedDomain || isRelationMap
+      ? observedDomain
+      : [0, Math.max(0, max) || 1];
 
   return d3
     .scaleSequential()
